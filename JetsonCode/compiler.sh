@@ -1,0 +1,1 @@
+nvcc -o program Trial.cu Kernels.cu -rdc=true -std=c++11 -I/usr/include/opencv -I/usr/include/opencv2 -I/home/nvidia/tegra_multimedia_api/argus/include -I/usr/local/cuda-9.0/include -L/usr/lib/aarch64-linux-gnu/tegra-egl -L/usr/lib/aarch64-linux-gnu/tegra -L/usr/lib -lEGL -lcuda -largus -lopencv_core -lopencv_highgui
