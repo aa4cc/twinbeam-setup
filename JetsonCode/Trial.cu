@@ -703,13 +703,13 @@ int main(int argc, char* argv[]){
 	sleeping = true;
 	send_points = false;
 	thread thr1 (consumer_thread);
-	//thread thr2 (print_thread);
+	thread thr2 (print_thread);
 	thread thr3 (input_thread);
 	thread thr4 (output_thread);
 	thread thr5 (keyboard_input);
 	
 	thr1.join();
-	//thr2.join();
+	thr2.join();
 	thr3.join();
 	thr4.join();
 	thr5.join();
