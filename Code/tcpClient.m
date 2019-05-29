@@ -1,13 +1,14 @@
 quit = 0;
 message = NaN;
-width = 1024;
-height = 1024;
+
 while quit == 0
     disp("Waiting for input\n");
     in = input('','s');
     switch in
         % type connect to throw a dialog window and later connect to jetson
         case "connect"
+            width = 1024;
+            height = 1024;
             client = 0;
             prompt = {'IP Address:','Port:','Timeout:'};
             dlgtitle = 'Connection settings';

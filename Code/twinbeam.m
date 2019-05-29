@@ -9,12 +9,16 @@ classdef twinbeam
     end
     
     methods
-        function obj = twinbeam(ip, port)
+        function obj = twinbeam(ip, port, varargin)
             %TWINBEAM Construct an instance of this class
             %   Detailed explanation goes here
-            obj.connection = 0;
-            obj.height = 1024;
-            obj.width = 1024;
+            
+            p = inputParser;
+            addRequired(p,'ip',@ischar);
+            addRequired(p,'port',@isnumeric);
+            addOptional(p,'Timeout',10,@isnumeric);
+            %addParameter(p,'units',defaultUnits,@isstring);
+            
             if nargin == 0
                 prompt = {'IP Address:','Port:','Timeout:'};
                 dlgtitle = 'Connection settings';
@@ -26,8 +30,14 @@ classdef twinbeam
                 port = str2double(answer(2));
                 timeout = str2double(answer(3));
             else
-                timeout = 10;
+                parse(p, ip, port, varargin{:});
+                ip = p.Results.ip;
+                port = p.Results.port;
+                timeout = p.Results.Timeout;
             end
+            
+            obj.height = 1024;
+            obj.width = 1024;
             
             obj.connection = tcpclient(ip, port, 'ConnectTimeout', timeout);
             read(obj.connection)
@@ -51,11 +61,11 @@ classdef twinbeam
                 axis equal;
                 colormap gray;
             else
-                ret = image2D
+                ret = image2D;
             end
         end
         
-        function settings(obj, width, height, offset_x, offset_y, exposure, red_dist, green_dist)
+        function obj = settings(obj, width, height, offset_x, offset_y, exposure, red_dist, green_dist)
             if nargin == 0
                 prompt = {'Width:','Height:','Offset X:', 'Offset Y:', 'Exposure time [ns]:', 'Red distance [um]:', 'Green distance [um]:'};
                 dlgtitle = 'New settings';
@@ -79,6 +89,11 @@ classdef twinbeam
 
         function stop(obj)
             write(obj.connection, uint8('q'));
+        end
+        
+        function delete(obj)
+            write(obj.connection, uint8('d'));
+            pause(0.2);
         end
     end
 end
