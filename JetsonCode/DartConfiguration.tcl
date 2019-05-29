@@ -4,8 +4,8 @@
 
 
 # Configuration directories and files
-SourceDirectory: /home/nvidia/Documents/koropvik/Code/JetsonCode
-BuildDirectory: /home/nvidia/Documents/koropvik/Code/JetsonCode
+SourceDirectory: /home/nvidia/twinbeam-setup/JetsonCode
+BuildDirectory: /home/nvidia/twinbeam-setup/JetsonCode
 
 # Where to place the cost data store
 CostDataFile: 
@@ -33,7 +33,7 @@ ScpCommand: /usr/bin/scp
 NightlyStartTime: 00:00:00 EDT
 
 # Commands for the build/test/submit cycle
-ConfigureCommand: "/usr/local/bin/cmake" "/home/nvidia/Documents/koropvik/Code/JetsonCode"
+ConfigureCommand: "/usr/local/bin/cmake" "/home/nvidia/twinbeam-setup/JetsonCode"
 MakeCommand: /usr/local/bin/cmake --build . --config "${CTEST_CONFIGURATION_TYPE}"
 DefaultCTestConfigurationType: Release
 

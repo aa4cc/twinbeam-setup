@@ -21,7 +21,7 @@ FIND_LIBRARY(CUDA NAMES libcuda.so libcuda.so.1 libcuda.so.1.1 PATHS /usr/lib/aa
 FIND_LIBRARY(CUFFT NAMES libcufft.so libcufft.so.9.0 libcufft.so.9.0.252 PATHS /usr/local/cuda/lib64)
 
 SET(OpenCV_DIR "usr/lib")
-SET(HEADERS_FOLDER "$ENV{HOME}/Documents/koropvik/Code/JetsonCode")
+SET(HEADERS_FOLDER "{CMAKE_CURRENT_SOURCE_DIR}")
 FIND_PACKAGE(OpenCV REQUIRED COMPONENTS core highgui)
 
 include_directories($ENV{HOME}/tegra_multimedia_api/include ${OpenCV_INCLUDE_DIRS} ${HEADERS_FOLDER})

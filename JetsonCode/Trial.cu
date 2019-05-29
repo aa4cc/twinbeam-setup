@@ -606,7 +606,8 @@ void print_thread(){
 		cudaMalloc(&tempArray2, sizeof(float)*settings[0]*settings[1]);
 		float* output = (float*)malloc(sizeof(float)*settings[0]*settings[1]);
 		float* output2 = (float*)malloc(sizeof(float)*settings[0]*settings[1]);
-		cv::namedWindow("Basic Visualization");
+		cv::namedWindow("Basic Visualization", CV_WINDOW_NORMAL);
+		cv::setWindowProperty("Basic Visualization", CV_WND_PROP_FULLSCREEN, CV_WINDOW_FULLSCREEN);
 		while(!initialized && connected){}
 		while(!sleeping && connected){
 			if(cycles >= 3){
