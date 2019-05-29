@@ -336,6 +336,13 @@ void input_thread(){
 	sockName.sin_family = AF_INET;
 	sockName.sin_port =	htons(PORT);
 	sockName.sin_addr.s_addr = INADDR_ANY;
+
+	int yes = 1;
+	if ( setsockopt(mainSocket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1 )
+	{
+	    perror("setsockopt");
+	}
+
 	bind(mainSocket, (sockaddr*)&sockName, sizeof(sockName));
 	listen(mainSocket, 10000000);
 	while(true){
@@ -347,12 +354,17 @@ void input_thread(){
 		 {
 			 connected = true;
 		 }
-		
+
 		while(connected){
-			if (recv(client, buf, BUFSIZE - 1, 0) == -1)
+			int msg_len = recv(client, buf, BUFSIZE - 1, 0);
+
+			if (msg_len == -1)
 			{
 				printf("Error while receiving data\n");
 			}
+
+			printf("Received bytes: %d\n", msg_len);
+
 			response = parseMessage(buf);
 			switch(response){
 				case MSG_WAKEUP:
