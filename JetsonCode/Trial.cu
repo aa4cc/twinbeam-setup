@@ -632,7 +632,7 @@ void print_thread(){
 				cudaMemcpy(output2, tempArray2, sizeof(float)*settings[0]*settings[1], cudaMemcpyDeviceToHost);
 				const cv::Mat img(cv::Size(settings[0], settings[1]), CV_32F, output);
 				const cv::Mat img2(cv::Size(settings[0], settings[1]), CV_32F, output2);
-				const cv::Mat result = img + img2;
+				const cv::Mat result = img2;
 				cv::imshow("Basic Visualization", result);
 				cv::waitKey(1);
 			}
