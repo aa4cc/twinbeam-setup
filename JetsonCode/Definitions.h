@@ -3,13 +3,11 @@
 
 #define WIDTH 4056
 #define HEIGHT 3040
-#define lambda_green 0.00000052f
-#define lambda_red 625e-9
+#define lambda_green 520e-9f
+#define lambda_red 625e-9f
 #define blockSize 1024
 #define n 1.45f
-#define zGreen 0.0025f
-#define zRed 0.00125f
-#define dx 0.00000185f
+#define dx 1.55e-6f
 
 enum MESSAGE_TYPE{
 	MSG_HELLO,
