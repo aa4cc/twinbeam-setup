@@ -66,7 +66,7 @@ classdef twinbeam
         end
         
         function obj = settings(obj, width, height, offset_x, offset_y, exposure, red_dist, green_dist)
-            if nargin == 0
+            if nargin == 1
                 prompt = {'Width:','Height:','Offset X:', 'Offset Y:', 'Exposure time [ns]:', 'Red distance [um]:', 'Green distance [um]:'};
                 dlgtitle = 'New settings';
                 dims = [1 40];
@@ -84,7 +84,7 @@ classdef twinbeam
             obj.width = width;
             obj.height = height;
             message = uint8(char(strcat("o ", num2str(width), " ", num2str(height), " ", num2str(offset_x), " ", num2str(offset_y), " ", num2str(exposure), " ", num2str(red_dist), " ", num2str(green_dist), " ")));
-            write(client, message);
+            write(obj.connection, message);
         end
 
         function stop(obj)
