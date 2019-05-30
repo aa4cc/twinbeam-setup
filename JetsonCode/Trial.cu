@@ -13,6 +13,7 @@
 #include <fstream>
 #include <chrono>
 #include <opencv2/opencv.hpp>
+#include <opencv2/highgui/highgui.hpp>
 #include "Kernels.h"
 #include <cstdlib>
 #include <thread>
@@ -67,6 +68,7 @@ bool connected;
 bool initialized;
 bool requested_image;
 bool send_points;
+bool force_exit;
 int settings[7];
 int client;
 
@@ -294,9 +296,11 @@ MESSAGE_TYPE parseMessage(char* buf){
 
 
 
-void keyboard_input(){
+void keyboard_thread(){
+	printf("keyboard_thread: started\n");
+
 	char input;
-	while(true){
+	while(!force_exit){
 		input = getchar();
 		if(input == 's'){
 			printf("Putting the process to sleep\n");
@@ -317,10 +321,17 @@ void keyboard_input(){
 			sleeping = true;
 			initialized = false;
 		}
+		else if(input == 'e'){
+			force_exit = true;
+		}		
 	}
+
+	printf("keyboard_thread: ended\n");
 }
 
 void input_thread(){
+	printf("input_thread: started\n");
+
 	std::string text;
 	sockaddr_in sockName;
 	sockaddr_in clientInfo; 
@@ -345,7 +356,7 @@ void input_thread(){
 
 	bind(mainSocket, (sockaddr*)&sockName, sizeof(sockName));
 	listen(mainSocket, 10000000);
-	while(true){
+	while(!force_exit){
 		
 		addrlen = sizeof(clientInfo);
 		client = accept(mainSocket, (sockaddr*)&clientInfo, &addrlen);
@@ -355,7 +366,7 @@ void input_thread(){
 			 connected = true;
 		 }
 
-		while(connected){
+		while(connected && !force_exit){
 			int msg_len = recv(client, buf, BUFSIZE - 1, 0);
 
 			if (msg_len == -1)
@@ -409,10 +420,13 @@ void input_thread(){
 		close(client);
 	}
 	close(mainSocket);
+
+	printf("input_thread: ended\n");
 }
 
 //#end_region
 void consumer_thread(){
+	printf("consumer_thread: started\n");
 	//Initializing LibArgus according to the tutorial for a sample project.
 	// First we create a CameraProvider, necessary for each project.
 	UniqueObj<CameraProvider> cameraProvider(CameraProvider::create());
@@ -448,9 +462,10 @@ void consumer_thread(){
 	
 	cudaChannelFormatDesc yChannelDesc;
 	cudaChannelFormatDesc uvChannelDesc;
-	while(true){
-		while(connected){
-			while(sleeping && connected){}
+	while(!force_exit){
+		while(connected && !force_exit){
+			while(sleeping && connected && !force_exit){}
+			if (force_exit) break;
 			// Managing the settings for the capture session.
 			UniqueObj<OutputStreamSettings> streamSettings(iCaptureSession->createOutputStreamSettings());
 			IOutputStreamSettings *iStreamSettings = interface_cast<IOutputStreamSettings>(streamSettings);
@@ -530,9 +545,10 @@ void consumer_thread(){
 			std::chrono::duration<double> sorting_seconds_average = initializer-initializer;
 
 			int final_count = 0;
-			while(!initialized && connected){
-			}
-			while(!sleeping && connected){
+			while(!initialized && connected && !force_exit){}
+			if (force_exit) break;
+
+			while(!sleeping && connected && ! force_exit){
 				auto start = std::chrono::system_clock::now();
 				
 				
@@ -607,20 +623,41 @@ void consumer_thread(){
 			outputStream.reset();
 		}
 	}
+
+	printf("consumer_thread: ended\n");
+}
+
+void CallBackFunc(int event, int x, int y, int flags, void* userdata)
+{
+	// https://www.opencv-srf.com/2011/11/mouse-events.html
+	if ( event == CV_EVENT_MOUSEMOVE )
+     {
+          cout << "Mouse move over the window - position (" << x << ", " << y << ")" << endl;
+          force_exit = true;
+     }
 }
 
 void print_thread(){
+	printf("print_thread: started\n");
+
 	float* tempArray;
 	float* tempArray2;
 	while(true){
-		while(sleeping && connected){}
+		while(sleeping && connected && !force_exit){}
+		if (force_exit) break;
+			
 		cudaMalloc(&tempArray, sizeof(float)*settings[0]*settings[1]);
 		cudaMalloc(&tempArray2, sizeof(float)*settings[0]*settings[1]);
 		float* output = (float*)malloc(sizeof(float)*settings[0]*settings[1]);
 		float* output2 = (float*)malloc(sizeof(float)*settings[0]*settings[1]);
 		cv::namedWindow("Basic Visualization", CV_WINDOW_NORMAL);
 		cv::setWindowProperty("Basic Visualization", CV_WND_PROP_FULLSCREEN, CV_WINDOW_FULLSCREEN);
-		while(!initialized && connected){}
+		//set the callback function for any mouse event
+     	cv::setMouseCallback("Basic Visualization", CallBackFunc, NULL);
+
+		while(!initialized && connected && !force_exit){}
+		if (force_exit) break;
+
 		while(!sleeping && connected){
 			if(cycles >= 3){
 				cycles = 0;
@@ -639,22 +676,31 @@ void print_thread(){
 			else{
 				usleep(10);
 			}
+
+			if (force_exit) break;
 		}
 		cudaFree(tempArray);
 		cudaFree(tempArray2);
 		free(output);
 		free(output2);
 	}
+
+	printf("print_thread: ended\n");
 }
 
+
 void output_thread(){
+	printf("output_thread: started\n");
+
 	float *temporary;
 	float *temporary_red_positions;
 	float *temporary_green_positions;
 	int *sorted_red_positions;
 	int *sorted_green_positions;
 	while(true){
-		while(sleeping){}
+		while(sleeping && !force_exit){}
+		if (force_exit) break;
+
 		cudaMalloc(&temporary, settings[0]*settings[1]*sizeof(float));
 		cudaMalloc(&temporary_red_positions, settings[0]*settings[1]*sizeof(float));
 		cudaMalloc(&temporary_green_positions, settings[0]*settings[1]*sizeof(float));
@@ -681,25 +727,31 @@ void output_thread(){
 				int redCount = processPoints(temporary_red_positions, sorted_red_positions);
 				//send(client, buffer, sizeof(float)*settings[0]*settings[1], 0);
 				//send(client, buffer, sizeof(float)*settings[0]*settings[1], 0);
-				printf("%d; %d\n", redCount, greenCount);
+				// printf("%d; %d\n", redCount, greenCount);
 				send_points = false;
 				auto test4 = std::chrono::system_clock::now();
 				sorting_seconds_average += test4-test3;
 			}
+
+			if (force_exit) break;
 		}
 		cudaFree(temporary_red_positions);
 		cudaFree(temporary_green_positions);
 		
 		cudaFree(temporary);
-		free(buffer);
+		free(buffer);		
 	}
+
+	printf("output_thread: ended\n");
 }
 
 int main(int argc, char* argv[]){
-	if(argc > 1){
-		#undef PORT
-		#define PORT strtol(argv[1])
-	}
+	// if(argc > 1){
+		// #undef PORT
+		// #define PORT strtol(argv[1])
+	// }
+
+	force_exit = false;
 	
 	cycles = 0;
 	settings[0] = 1024;
@@ -712,20 +764,30 @@ int main(int argc, char* argv[]){
 	
 	quitSequence = false;
 	playSequence = false;
-	connected = false;
-	sleeping = true;
 	send_points = false;
-	thread thr1 (consumer_thread);
-	thread thr2 (print_thread);
-	thread thr3 (input_thread);
-	thread thr4 (output_thread);
-	thread thr5 (keyboard_input);
+
+	if (argc > 1 && !strcmp(argv[1], "-s")) {
+		initialized = true;
+		connected = true;
+		sleeping = false;
+		printf("-s detected\n");
+	} else {
+		connected = false;
+		sleeping = true;
+		printf("-s non-detected\n");
+	}
+
+	thread consumr_thr (consumer_thread);
+	thread print_thr (print_thread);
+	thread input_thr (input_thread);
+	thread output_thr (output_thread);
+	thread keyboard_thr (keyboard_thread);
 	
-	thr1.join();
-	thr2.join();
-	thr3.join();
-	thr4.join();
-	thr5.join();
+	consumr_thr.join();
+	print_thr.join();
+	// input_thr.join();
+	output_thr.join();
+	// keyboard_thr.join();
 
 
 	return 0;
