@@ -67,6 +67,7 @@ bool sleeping;
 bool connected;
 bool initialized;
 bool requested_image;
+REQUEST_TYPE requested_type;
 bool send_points;
 bool force_exit;
 bool touch_kill;
@@ -351,7 +352,12 @@ MESSAGE_TYPE parseMessage(char* buf){
 			case 'd':
 				return MSG_DISCONNECT;
 			case 'r':
+				requested_type = BACKPROPAGATED;
 				return MSG_REQUEST;
+			case 'x':
+				return MSG_REQUEST_RAW_G;
+			case 'y':
+				return MSG_REQUEST_RAW_R;
 			default:
 				return MSG_UNKNOWN_TYPE;
 		}
@@ -472,6 +478,14 @@ void input_thread(){
 				}
 				case MSG_REQUEST:
 					requested_image = true;
+					break;
+				case MSG_REQUEST_RAW_G:
+					requested_image = true;
+					requested_type = RAW_G;
+					break;
+				case MSG_REQUEST_RAW_R:
+					requested_image = true;
+					requested_type = RAW_R;
 					break;
 				case MSG_HELLO:
 				{
@@ -788,7 +802,18 @@ void output_thread(){
 		while(connected && !sleeping){
 			if(requested_image){
 				mtx.lock();
-				cudaMemcpy(temporary, outputArray, sizeof(float)*settings[0]*settings[1], cudaMemcpyDeviceToDevice);
+				switch (requested_type){
+					case BACKPROPAGATED:
+						cudaMemcpy(temporary, outputArray, sizeof(float)*settings[0]*settings[1], cudaMemcpyDeviceToDevice);
+						break;
+					case RAW_G:
+						cudaMemcpy(temporary, doubleTemporary, sizeof(float)*settings[0]*settings[1], cudaMemcpyDeviceToDevice);
+						break;
+					case RAW_R:
+						cudaMemcpy(temporary, redConverted, sizeof(float)*settings[0]*settings[1], cudaMemcpyDeviceToDevice);
+						break;
+				}	
+				
 				mtx.unlock();
 				cudaMemcpy(buffer, temporary, sizeof(float)*settings[0]*settings[1], cudaMemcpyDeviceToHost);
 				send(client, buffer, sizeof(float)*settings[0]*settings[1], 0);
