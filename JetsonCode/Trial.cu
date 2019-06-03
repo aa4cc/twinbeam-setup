@@ -766,7 +766,7 @@ void print_thread(){
 				cv::waitKey(1);
 			}
 			else{
-				usleep(10);
+				usleep(5000);
 			}
 
 			if (force_exit) break;
@@ -813,7 +813,7 @@ void output_thread(){
 						cudaMemcpy(temporary, redConverted, sizeof(float)*settings[0]*settings[1], cudaMemcpyDeviceToDevice);
 						break;
 				}	
-				
+
 				mtx.unlock();
 				cudaMemcpy(buffer, temporary, sizeof(float)*settings[0]*settings[1], cudaMemcpyDeviceToHost);
 				send(client, buffer, sizeof(float)*settings[0]*settings[1], 0);
@@ -835,6 +835,8 @@ void output_thread(){
 				auto test4 = std::chrono::system_clock::now();
 				sorting_seconds_average += test4-test3;
 			}
+
+			usleep(1000);
 
 			if (force_exit) break;
 		}
