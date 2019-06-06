@@ -1,0 +1,29 @@
+jtop.__main__ - INFO - Load jetson variables from script
+jtop.__main__ - DEBUG - New Enviroment variable JETSON_L4T_REVISION:2.1
+jtop.__main__ - DEBUG - New Enviroment variable JETSON_VISIONWORKS:1.6.0.500n
+jtop.__main__ - DEBUG - New Enviroment variable JETSON_BOARD:TX2
+jtop.__main__ - DEBUG - New Enviroment variable JETSON_OPENCV:3.3.1
+jtop.__main__ - DEBUG - New Enviroment variable JETSON_CUDNN:7.0.5.15-1+cuda9.0
+jtop.__main__ - DEBUG - New Enviroment variable JETSON_L4T_RELEASE:28
+jtop.__main__ - DEBUG - New Enviroment variable JETSON_CUDA_ARCH_BIN:6.2
+jtop.__main__ - DEBUG - New Enviroment variable JETSON_DESCRIPTION:NVIDIA Jetson TX2
+jtop.__main__ - DEBUG - New Enviroment variable JETSON_L4T:28.2.1
+jtop.__main__ - DEBUG - New Enviroment variable JETSON_JETPACK:3.3 | 3.2.1
+jtop.__main__ - DEBUG - New Enviroment variable JETSON_TYPE:TX2
+jtop.__main__ - DEBUG - New Enviroment variable JETSON_TENSORRT:3.0.4-1+cuda9.0
+jtop.__main__ - DEBUG - New Enviroment variable JETSON_OPENCV_CUDA:NO
+jtop.__main__ - DEBUG - New Enviroment variable JETSON_CUDA:9.0.252
+jtop.jtop - INFO - Load tegrastats /home/nvidia/tegrastats
+jtop.jtop - DEBUG - nvqmodel status b'NV Power Mode: MAXP_CORE_ARM\n3\n'
+jtop.jtop - DEBUG - /sys/kernel/debug/tegra_fan/target_pwm status status b'255\n'
+jtop.jtop - DEBUG - nvqmodel status b'NV Power Mode: MAXP_CORE_ARM\n3\n'
+jtop.jtop - DEBUG - /sys/kernel/debug/tegra_fan/target_pwm status status b'255\n'
+jtop.jtop - ERROR - Attribute error
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/dist-packages/jtop/jtop.py", line 133, in run
+    self._jetsonstats = self.decode(tegrastats_data)
+  File "/usr/local/lib/python3.5/dist-packages/jtop/jtop.py", line 312, in decode
+    ram_status, text = self.RAM(text)
+  File "/usr/local/lib/python3.5/dist-packages/jtop/jtop.py", line 239, in RAM
+    ram_string = re.search(r'RAM (.+?)B', text).group()
+AttributeError: 'NoneType' object has no attribute 'group'

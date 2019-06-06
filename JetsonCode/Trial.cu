@@ -859,8 +859,8 @@ int main(int argc, char* argv[]){
 	cycles = 0;
 	settings[0] = 1024;
 	settings[1] = 1024;
-	settings[2] = 1750;
-	settings[3] = 1100;
+	settings[2] = 1195;
+	settings[3] = 500;
 	settings[4] = 5000000;
 	settings[5] = 3100;
 	settings[6] = 2400;
