@@ -24,9 +24,7 @@
 #include <string.h>
 #include "Definitions.h"
 #include "cxxopts.hpp"
-
-#define BUFSIZE 1000
-#define PORT 30000
+#include "Misc.h"
 
 static const int    DEFAULT_FPS        = 30;
 
@@ -91,12 +89,6 @@ bool quitSequence;
 short cycles;
 
 std::chrono::duration<double> elapsed_seconds_average;
-std::chrono::duration<double> initialization_seconds_average;
-std::chrono::duration<double> conversion_seconds_average;
-std::chrono::duration<double> back_propagation_seconds_average;
-std::chrono::duration<double> convolution_seconds_average;
-std::chrono::duration<double> localmaxima_seconds_average;
-std::chrono::duration<double> sorting_seconds_average;
 
 
 EGLStreamKHR eglStream;
@@ -245,15 +237,6 @@ void transformKernel(int M, int N, int kernelDim, float* kernel, cufftComplex* o
     cufftDestroy(plan);
 }
 
-void printArray(float* array, int width, int height){
-	for(int i = 0; i < height; i++){
-		for (int j = 0; j < width; j++){
-			printf("%f ", array[j + height*i]);
-			}
-			printf("\n");
-		}
-}
-
 
 void h_backPropagate(int M, int N, float lambda, float z, float* input,
 		cufftComplex* kernel, float* output, float* output2, bool display)
@@ -307,10 +290,7 @@ void h_backPropagate(int M, int N, float lambda, float z, float* input,
     cudaFree(temporary);
 }
 
-void printErrorRuntime(cudaError_t result){
-	const char* pstr = cudaGetErrorName(result);
-	//printf("%s\n", pstr);
-}
+
 
 
 void changeSettings(char* buf){
@@ -338,32 +318,6 @@ void changeSettings(char* buf){
 		current_index++;
 	}
 }
-
-MESSAGE_TYPE parseMessage(char* buf){
-		switch (buf[0]){
-			case 's':
-				return MSG_WAKEUP;
-			case 'q':
-				return MSG_SLEEP;
-			case 'o':
-				return MSG_SETTINGS;
-			case 'a':
-				return MSG_HELLO;
-			case 'd':
-				return MSG_DISCONNECT;
-			case 'r':
-				requested_type = BACKPROPAGATED;
-				return MSG_REQUEST;
-			case 'x':
-				return MSG_REQUEST_RAW_G;
-			case 'y':
-				return MSG_REQUEST_RAW_R;
-			default:
-				return MSG_UNKNOWN_TYPE;
-		}
-}
-
-
 
 void keyboard_thread(){
 	printf("keyboard_thread: started\n");
@@ -408,7 +362,6 @@ void input_thread(){
 	char buf[BUFSIZE];
 	socklen_t addrlen;
 	MESSAGE_TYPE response;
-	int size;
 	
 	mainSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if(mainSocket == -1)
@@ -478,6 +431,7 @@ void input_thread(){
 				}
 				case MSG_REQUEST:
 					requested_image = true;
+					requested_type = BACKPROPAGATED;
 					break;
 				case MSG_REQUEST_RAW_G:
 					requested_image = true;
@@ -533,9 +487,6 @@ void consumer_thread(){
 	cudaEglFrame eglFrame;		
 	cudaArray_t yArray;
 	cudaArray_t uvArray;
-	float* extremesMapGreen;
-	
-	
 	
 	cudaChannelFormatDesc yChannelDesc;
 	cudaChannelFormatDesc uvChannelDesc;
@@ -614,12 +565,6 @@ void consumer_thread(){
 			//Main loop
 			auto initializer = std::chrono::system_clock::now();
 			std::chrono::duration<double> elapsed_seconds_average = initializer-initializer;
-			std::chrono::duration<double> initialization_seconds_average = initializer-initializer;
-			std::chrono::duration<double> conversion_seconds_average = initializer-initializer;
-			std::chrono::duration<double> back_propagation_seconds_average = initializer-initializer;
-			std::chrono::duration<double> convolution_seconds_average = initializer-initializer;
-			std::chrono::duration<double> localmaxima_seconds_average = initializer-initializer;
-			std::chrono::duration<double> sorting_seconds_average = initializer-initializer;
 
 			int final_count = 0;
 			while(!initialized && connected && !force_exit){}
@@ -648,8 +593,6 @@ void consumer_thread(){
 				numBlocks = (settings[0]*settings[1]/2 +BLOCKSIZE -1)/BLOCKSIZE;
 				yuv2bgr<<<numBlocks, BLOCKSIZE>>>(settings[0], settings[1], settings[2], settings[3], G, R);
 				auto test = std::chrono::system_clock::now();
-				conversion_seconds_average += test - initialization;
-				initialization_seconds_average += initialization-start;
 				u16ToDouble<<<numBlocks, BLOCKSIZE>>>(settings[0], settings[1], G, doubleTemporary);
 				u16ToDouble<<<numBlocks, BLOCKSIZE>>>(settings[0], settings[1], R, redConverted);
 				mtx.lock();
@@ -757,11 +700,15 @@ void print_thread(){
 				const cv::Mat img2(cv::Size(settings[0], settings[1]), CV_32F, output2);
 
 				const cv::Mat img2_trans(cv::Size(settings[0], settings[1]), CV_32F);
+				const cv::Mat img_trans(cv::Size(settings[0], settings[1]), CV_32F);
 
 				cv::flip(img2, img2_trans, -1);
 				cv::transpose(img2_trans, img2);
+				cv::flip(img, img_trans, -1);
+				cv::transpose(img_trans, img);
 
-				const cv::Mat result = img2 + img;
+
+				const cv::Mat result = img2+img;
 				cv::imshow("Basic Visualization", result);
 				cv::waitKey(1);
 			}
@@ -833,7 +780,6 @@ void output_thread(){
 				// printf("%d; %d\n", redCount, greenCount);
 				send_points = false;
 				auto test4 = std::chrono::system_clock::now();
-				sorting_seconds_average += test4-test3;
 			}
 
 			usleep(1000);
@@ -863,7 +809,7 @@ int main(int argc, char* argv[]){
 	settings[3] = 500;
 	settings[4] = 5000000;
 	settings[5] = 3100;
-	settings[6] = 2400;
+	settings[6] = 2750;
 	
 	quitSequence = false;
 	playSequence = false;

@@ -498,6 +498,33 @@ ContinuousUpdate/fast:
 	$(MAKE) -f CMakeFiles/ContinuousUpdate.dir/build.make CMakeFiles/ContinuousUpdate.dir/build
 .PHONY : ContinuousUpdate/fast
 
+Misc.o: Misc.cpp.o
+
+.PHONY : Misc.o
+
+# target to build an object file
+Misc.cpp.o:
+	$(MAKE) -f CMakeFiles/trial.dir/build.make CMakeFiles/trial.dir/Misc.cpp.o
+.PHONY : Misc.cpp.o
+
+Misc.i: Misc.cpp.i
+
+.PHONY : Misc.i
+
+# target to preprocess a source file
+Misc.cpp.i:
+	$(MAKE) -f CMakeFiles/trial.dir/build.make CMakeFiles/trial.dir/Misc.cpp.i
+.PHONY : Misc.cpp.i
+
+Misc.s: Misc.cpp.s
+
+.PHONY : Misc.s
+
+# target to generate assembly for a file
+Misc.cpp.s:
+	$(MAKE) -f CMakeFiles/trial.dir/build.make CMakeFiles/trial.dir/Misc.cpp.s
+.PHONY : Misc.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -536,6 +563,9 @@ help:
 	@echo "... ExperimentalSubmit"
 	@echo "... ContinuousStart"
 	@echo "... ContinuousUpdate"
+	@echo "... Misc.o"
+	@echo "... Misc.i"
+	@echo "... Misc.s"
 .PHONY : help
 
 

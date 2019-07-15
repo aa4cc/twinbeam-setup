@@ -299,10 +299,10 @@ __global__ void generateConvoMaskGreen(int m, int n, float* convoMask){
                 temp = sqrt((double)(SQUARE((double)((i%m) - (double)(m/2))) + SQUARE((double)((i/m) - (double)(m/2)))));
                 convoMask[i] = 0;
                 if( temp <= 23 ){
-                    convoMask[i] = -0.72;
+                    convoMask[i] = -0.78;
                 }
-                else if(temp > 23 && temp <= 26){
-                    convoMask[i] = 1.58;
+                else if(temp > 23 && temp <= 28){
+                    convoMask[i] = 1;
                 }
             }
 }

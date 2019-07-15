@@ -8,6 +8,8 @@
 #define BLOCKSIZE 1024
 #define REFRACTION_INDEX 1.45f
 #define PIXEL_DX 1.55e-6f
+#define BUFSIZE 1000
+#define PORT 30000
 
 enum MESSAGE_TYPE{
 	MSG_HELLO,
