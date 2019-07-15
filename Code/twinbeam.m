@@ -49,10 +49,27 @@ classdef twinbeam
             read(obj.connection);
         end
         
-        function ret = get(obj)
+        function ret = get(obj, img_type)
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here
-            write(obj.connection, uint8('r'));
+            
+            if nargin < 2
+                img_type = 'backpropagated';
+            end
+            
+            switch lower(img_type)
+                case 'backpropagated'
+                    write(obj.connection, uint8('r'));
+                case 'raw_g'
+                    write(obj.connection, uint8('x'));
+                case 'raw_r'
+                    write(obj.connection, uint8('y'));
+                otherwise
+                    error('This image type is not supported.')
+            end
+            
+            
+            
             image = typecast(read(obj.connection, obj.height*obj.width*4), 'single');
             image2D = reshape(image, obj.width, obj.height);
             if nargout == 0
@@ -70,7 +87,7 @@ classdef twinbeam
                 prompt = {'Width:','Height:','Offset X:', 'Offset Y:', 'Exposure time [ns]:', 'Red distance [um]:', 'Green distance [um]:'};
                 dlgtitle = 'New settings';
                 dims = [1 40];
-                definput = {'1024','1024','1500','1000','5000000', '2500', '2500'};
+                definput = {'1024','1024','1500','1000','5000000', '2500', '2400'};
                 answer = inputdlg(prompt,dlgtitle,dims,definput);
                 width = str2double(answer(1));
                 height = str2double(answer(2));
