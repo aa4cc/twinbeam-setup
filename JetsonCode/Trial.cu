@@ -23,12 +23,12 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include "Definitions.h"
+#include "cxxopts.hpp"
 
 #define BUFSIZE 1000
 #define PORT 30000
 
 static const int    DEFAULT_FPS        = 30;
-
 
 using namespace std;
 using namespace Argus;
@@ -67,10 +67,17 @@ bool sleeping;
 bool connected;
 bool initialized;
 bool requested_image;
+REQUEST_TYPE requested_type;
 bool send_points;
 bool force_exit;
+bool touch_kill;
 int settings[7];
 int client;
+
+// Options
+bool opt_verbose	= false;
+bool opt_debug		= false;
+bool opt_show		= false;
 
 uint16_t *R;
 uint16_t *G;
@@ -109,6 +116,63 @@ struct is_zero
   }
 };
 
+
+// cxxopts.hpp related definitions
+cxxopts::ParseResult
+parse(int argc, char* argv[])
+{
+  try
+  {
+    cxxopts::Options options(argv[0], " - Twin-beam setup - image processing");
+    options
+      .positional_help("[optional args]")
+      .show_positional_help();
+
+    options
+      .add_options()
+      ("s,show", "Display the processed image on the display", 	cxxopts::value<bool>(opt_show))
+      ("d,debug", "Prints debug information",					cxxopts::value<bool>(opt_debug))
+      ("v,verbose", "Prints some additional information",		cxxopts::value<bool>(opt_verbose))
+      ("help", "Prints help")
+    ;
+
+    auto result = options.parse(argc, argv);
+
+    if (result.count("help"))
+    {
+      std::cout << options.help({"", "Group"}) << std::endl;
+      exit(0);
+    }
+
+
+    if (opt_debug) {
+	    if (opt_show)
+	    {
+	      std::cout << "Saw option ‘s’" << std::endl;
+	    }
+
+	    if (opt_debug)
+	    {
+	      std::cout << "Saw option ‘d’" << std::endl;
+	    }
+
+	    if (opt_verbose)
+	    {
+	      std::cout << "Saw option ‘v’" << std::endl;
+	    }
+	}
+
+
+    return result;
+
+  } catch (const cxxopts::OptionException& e)
+  {
+    std::cout << "error parsing options: " << e.what() << std::endl;
+    exit(1);
+  }
+}
+
+
 int processPoints(float* inputPoints, int* outputArray){
 	int* positions;
 	int* positionsSorted;
@@ -125,8 +189,8 @@ int processPoints(float* inputPoints, int* outputArray){
     memset(counting, 0, sizeof(int));
 	
 	cudaMemcpy(points, inputPoints, sizeof(float)*settings[0]*settings[1], cudaMemcpyDeviceToDevice);
-	findPoints<<<numBlocks, blockSize>>>(settings[0], settings[1], points, positions, counter);
-	stupidSort<<<numBlocks, blockSize>>>(settings[0], settings[1],positions, positionsSorted, counting);
+	findPoints<<<numBlocks, BLOCKSIZE>>>(settings[0], settings[1], points, positions, counter);
+	stupidSort<<<numBlocks, BLOCKSIZE>>>(settings[0], settings[1],positions, positionsSorted, counting);
 	cudaMemcpy(counting, counter, sizeof(int), cudaMemcpyDeviceToHost);
 	temp = (int*)malloc(sizeof(int)*counting[0]);
 	cudaMemcpy(temp, positionsSorted, sizeof(int)*counting[0], cudaMemcpyDeviceToHost);
@@ -170,7 +234,7 @@ __global__ void yuv2bgr(int width, int height, int offset_x, int offset_y,
 
 void transformKernel(int M, int N, int kernelDim, float* kernel, cufftComplex* outputKernel){
 	
-	kernelToImage<<<numBlocks, blockSize>>>(M, N, kernelDim, kernel, outputKernel);
+	kernelToImage<<<numBlocks, BLOCKSIZE>>>(M, N, kernelDim, kernel, outputKernel);
    
     cufftHandle plan;
     
@@ -209,32 +273,32 @@ void h_backPropagate(int M, int N, float lambda, float z, float* input,
     cudaMalloc(&temporary, N*M*sizeof(float));
     cudaMalloc(&extremes, sizeof(float));
 
-    convertToComplex<<<numBlocks, blockSize>>>(N*M, input, image);
+    convertToComplex<<<numBlocks, BLOCKSIZE>>>(N*M, input, image);
     // Declaring the FFT plan
     cufftPlan2d(&plan, N,M, CUFFT_C2C);
     // Execute forward FFT on the green channel
     cufftExecC2C(plan, image, image, CUFFT_FORWARD);
     // Calculating the Hq matrix according to the equations in the original .m file.
-    calculate<<<numBlocks, blockSize>>>(N,M, z, dx, n, lambda, Hq);
+    calculate<<<numBlocks, BLOCKSIZE>>>(N,M, z, PIXEL_DX, REFRACTION_INDEX, lambda, Hq);
     // Element-wise multiplication of Hq matrix and the image
-	elMultiplication<<<numBlocks, blockSize>>>(M, N, Hq, image);
-	elMultiplication2<<<numBlocks, blockSize>>>(M, N, image, kernel, kernelizedImage);
+	elMultiplication<<<numBlocks, BLOCKSIZE>>>(M, N, Hq, image);
+	elMultiplication2<<<numBlocks, BLOCKSIZE>>>(M, N, image, kernel, kernelizedImage);
     if(display){
 		// Executing inverse FFT
 		cufftExecC2C(plan, image, image, CUFFT_INVERSE);
 		// Conversion of result matrix to a real double matrix
-		absoluteValue<<<numBlocks, blockSize>>>(M,N, image, output);
+		absoluteValue<<<numBlocks, BLOCKSIZE>>>(M,N, image, output);
 
-		findExtremes<<<numBlocks, blockSize>>>(M,N, output, extremes);
-		normalize<<<numBlocks, blockSize>>>(M,N, output, extremes);
+		findExtremes<<<numBlocks, BLOCKSIZE>>>(M,N, output, extremes);
+		normalize<<<numBlocks, BLOCKSIZE>>>(M,N, output, extremes);
 	}
 	cufftExecC2C(plan, kernelizedImage, kernelizedImage, CUFFT_INVERSE);
-	cutAndConvert<<<numBlocks, blockSize>>>(M,N,kernelizedImage, convoOutputArrayGreen);
+	cutAndConvert<<<numBlocks, BLOCKSIZE>>>(M,N,kernelizedImage, convoOutputArrayGreen);
     cudaFree(extremes);
     cudaMalloc(&extremes, sizeof(float));
-	findExtremes<<<numBlocks, blockSize>>>(M,N, convoOutputArrayGreen, extremes);
-	normalize<<<numBlocks, blockSize>>>(M,N, convoOutputArrayGreen, extremes);
-	getLocalMaxima<<<numBlocks, blockSize>>>(M,N,convoOutputArrayGreen,output2);
+	findExtremes<<<numBlocks, BLOCKSIZE>>>(M,N, convoOutputArrayGreen, extremes);
+	normalize<<<numBlocks, BLOCKSIZE>>>(M,N, convoOutputArrayGreen, extremes);
+	getLocalMaxima<<<numBlocks, BLOCKSIZE>>>(M,N,convoOutputArrayGreen,output2);
 	// Freeing the memory of FFT plan
 	cufftDestroy(plan);
 
@@ -288,7 +352,12 @@ MESSAGE_TYPE parseMessage(char* buf){
 			case 'd':
 				return MSG_DISCONNECT;
 			case 'r':
+				requested_type = BACKPROPAGATED;
 				return MSG_REQUEST;
+			case 'x':
+				return MSG_REQUEST_RAW_G;
+			case 'y':
+				return MSG_REQUEST_RAW_R;
 			default:
 				return MSG_UNKNOWN_TYPE;
 		}
@@ -396,7 +465,7 @@ void input_thread(){
 						printf("Can't change settings while the loop is running\n");
 					else{
 						changeSettings(buf);
-						printf("Changed settings");
+						printf("Changed settings\n");
 					}
 					break;
 				}
@@ -409,6 +478,14 @@ void input_thread(){
 				}
 				case MSG_REQUEST:
 					requested_image = true;
+					break;
+				case MSG_REQUEST_RAW_G:
+					requested_image = true;
+					requested_type = RAW_G;
+					break;
+				case MSG_REQUEST_RAW_R:
+					requested_image = true;
+					requested_type = RAW_R;
 					break;
 				case MSG_HELLO:
 				{
@@ -499,8 +576,8 @@ void consumer_thread(){
 			cudaMalloc(&convolutionMaskGreen, CONVO_DIM_GREEN*CONVO_DIM_GREEN*sizeof(float));
 			cudaMalloc(&convolutionMaskRed, CONVO_DIM_RED*CONVO_DIM_RED*sizeof(float));
 			numBlocks = 1024;
-			generateConvoMaskGreen<<<numBlocks, blockSize>>>(CONVO_DIM_GREEN, CONVO_DIM_GREEN, convolutionMaskGreen);
-			generateConvoMaskRed<<<numBlocks, blockSize>>>(CONVO_DIM_RED, CONVO_DIM_RED, convolutionMaskRed);
+			generateConvoMaskGreen<<<numBlocks, BLOCKSIZE>>>(CONVO_DIM_GREEN, CONVO_DIM_GREEN, convolutionMaskGreen);
+			generateConvoMaskRed<<<numBlocks, BLOCKSIZE>>>(CONVO_DIM_RED, CONVO_DIM_RED, convolutionMaskRed);
 			
 			cudaMalloc(&kernelGreen, settings[0]*settings[1]*sizeof(cufftComplex));
 			cudaMalloc(&kernelRed, settings[0]*settings[1]*sizeof(cufftComplex));
@@ -568,25 +645,28 @@ void consumer_thread(){
 				auto initialization = std::chrono::system_clock::now();
 
 				
-				numBlocks = (settings[0]*settings[1]/2 +blockSize -1)/blockSize;
-				yuv2bgr<<<numBlocks, blockSize>>>(settings[0], settings[1], settings[2], settings[3], G, R);
+				numBlocks = (settings[0]*settings[1]/2 +BLOCKSIZE -1)/BLOCKSIZE;
+				yuv2bgr<<<numBlocks, BLOCKSIZE>>>(settings[0], settings[1], settings[2], settings[3], G, R);
 				auto test = std::chrono::system_clock::now();
 				conversion_seconds_average += test - initialization;
 				initialization_seconds_average += initialization-start;
-				u16ToDouble<<<numBlocks, blockSize>>>(settings[0], settings[1], G, doubleTemporary);
-				u16ToDouble<<<numBlocks, blockSize>>>(settings[0], settings[1], R, redConverted);
+				u16ToDouble<<<numBlocks, BLOCKSIZE>>>(settings[0], settings[1], G, doubleTemporary);
+				u16ToDouble<<<numBlocks, BLOCKSIZE>>>(settings[0], settings[1], R, redConverted);
 				mtx.lock();
-				h_backPropagate(settings[0], settings[1], lambda_green, (float)settings[6]/(float)1000000,
+				h_backPropagate(settings[0], settings[1], LAMBDA_GREEN, (float)settings[6]/(float)1000000,
 						doubleTemporary, kernelGreen, outputArray, maximaGreen, true);		
-				h_backPropagate(settings[0],settings[1], lambda_red, (float)settings[5]/(float)1000000,
+				h_backPropagate(settings[0],settings[1], LAMBDA_RED, (float)settings[5]/(float)1000000,
 						redConverted, kernelRed, convoOutputArray, maximaRed, false);
 				mtx.unlock();
 				
 				
 				auto test2 = std::chrono::system_clock::now();
 				std::chrono::duration<double> elapsed_seconds = test2-test;
-				std::cout << "Converting the image format took: " << elapsed_seconds.count() << "s\n";
 				
+				if(opt_verbose) {
+					std::cout << "Converting the image format took: " << elapsed_seconds.count() << "s\n";
+				}
+
 				cudaUnbindTexture(yTex);
 				cudaUnbindTexture(uvTex);
 				
@@ -597,9 +677,13 @@ void consumer_thread(){
 				elapsed_seconds_average +=elapsed_seconds;
 				final_count++;
 				send_points = true;
-				std::cout << "This cycle took: " << elapsed_seconds.count() << "s\n";
-				cycles++;
-				printf("%d\n", quitSequence);
+				
+				if(opt_verbose) {
+					std::cout << "This cycle took: " << elapsed_seconds.count() << "s\n";
+					printf("%d\n", quitSequence);
+				}
+
+				cycles++;				
 			}
 			std::cout << "average complete: " << elapsed_seconds_average.count()/final_count << "s\n";
 			iCaptureSession->waitForIdle();
@@ -632,8 +716,10 @@ void CallBackFunc(int event, int x, int y, int flags, void* userdata)
 	// https://www.opencv-srf.com/2011/11/mouse-events.html
 	if ( event == CV_EVENT_MOUSEMOVE )
      {
-          cout << "Mouse move over the window - position (" << x << ", " << y << ")" << endl;
-          force_exit = true;
+        cout << "Mouse move over the window - position (" << x << ", " << y << ")" << endl;
+        if (touch_kill) {
+        	force_exit = true;
+      	}
      }
 }
 
@@ -669,12 +755,18 @@ void print_thread(){
 				cudaMemcpy(output2, tempArray2, sizeof(float)*settings[0]*settings[1], cudaMemcpyDeviceToHost);
 				const cv::Mat img(cv::Size(settings[0], settings[1]), CV_32F, output);
 				const cv::Mat img2(cv::Size(settings[0], settings[1]), CV_32F, output2);
-				const cv::Mat result = img2;
+
+				const cv::Mat img2_trans(cv::Size(settings[0], settings[1]), CV_32F);
+
+				cv::flip(img2, img2_trans, -1);
+				cv::transpose(img2_trans, img2);
+
+				const cv::Mat result = img2 + img;
 				cv::imshow("Basic Visualization", result);
 				cv::waitKey(1);
 			}
 			else{
-				usleep(10);
+				usleep(5000);
 			}
 
 			if (force_exit) break;
@@ -710,7 +802,18 @@ void output_thread(){
 		while(connected && !sleeping){
 			if(requested_image){
 				mtx.lock();
-				cudaMemcpy(temporary, outputArray, sizeof(float)*settings[0]*settings[1], cudaMemcpyDeviceToDevice);
+				switch (requested_type){
+					case BACKPROPAGATED:
+						cudaMemcpy(temporary, outputArray, sizeof(float)*settings[0]*settings[1], cudaMemcpyDeviceToDevice);
+						break;
+					case RAW_G:
+						cudaMemcpy(temporary, doubleTemporary, sizeof(float)*settings[0]*settings[1], cudaMemcpyDeviceToDevice);
+						break;
+					case RAW_R:
+						cudaMemcpy(temporary, redConverted, sizeof(float)*settings[0]*settings[1], cudaMemcpyDeviceToDevice);
+						break;
+				}	
+
 				mtx.unlock();
 				cudaMemcpy(buffer, temporary, sizeof(float)*settings[0]*settings[1], cudaMemcpyDeviceToHost);
 				send(client, buffer, sizeof(float)*settings[0]*settings[1], 0);
@@ -733,6 +836,8 @@ void output_thread(){
 				sorting_seconds_average += test4-test3;
 			}
 
+			usleep(1000);
+
 			if (force_exit) break;
 		}
 		cudaFree(temporary_red_positions);
@@ -746,35 +851,33 @@ void output_thread(){
 }
 
 int main(int argc, char* argv[]){
-	// if(argc > 1){
-		// #undef PORT
-		// #define PORT strtol(argv[1])
-	// }
+	// cxxopt.h initialization
+  	auto result = parse(argc, argv);
 
 	force_exit = false;
 	
 	cycles = 0;
 	settings[0] = 1024;
 	settings[1] = 1024;
-	settings[2] = 1500;
-	settings[3] = 1000;
+	settings[2] = 1195;
+	settings[3] = 500;
 	settings[4] = 5000000;
 	settings[5] = 3100;
-	settings[6] = 2750;
+	settings[6] = 2400;
 	
 	quitSequence = false;
 	playSequence = false;
 	send_points = false;
 
-	if (argc > 1 && !strcmp(argv[1], "-s")) {
+	if (opt_show) {
 		initialized = true;
 		connected = true;
 		sleeping = false;
-		printf("-s detected\n");
+		touch_kill = true;
 	} else {
 		connected = false;
 		sleeping = true;
-		printf("-s non-detected\n");
+		touch_kill = false;
 	}
 
 	thread consumr_thr (consumer_thread);

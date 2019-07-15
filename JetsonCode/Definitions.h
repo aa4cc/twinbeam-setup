@@ -3,11 +3,11 @@
 
 #define WIDTH 4056
 #define HEIGHT 3040
-#define lambda_green 520e-9f
-#define lambda_red 625e-9f
-#define blockSize 1024
-#define n 1.45f
-#define dx 1.55e-6f
+#define LAMBDA_GREEN 520e-9f
+#define LAMBDA_RED 625e-9f
+#define BLOCKSIZE 1024
+#define REFRACTION_INDEX 1.45f
+#define PIXEL_DX 1.55e-6f
 
 enum MESSAGE_TYPE{
 	MSG_HELLO,
@@ -15,8 +15,17 @@ enum MESSAGE_TYPE{
 	MSG_SLEEP,
 	MSG_SETTINGS,
 	MSG_DISCONNECT,
-	MSG_REQUEST,
+	MSG_REQUEST, // request on sending the backpropagated image
+	MSG_REQUEST_RAW_G, // request on sending the unprocessed green channel
+	MSG_REQUEST_RAW_R, // request on sending the unprocessed red channel
 	MSG_UNKNOWN_TYPE
+};
+
+
+enum REQUEST_TYPE{
+	BACKPROPAGATED,
+	RAW_G,
+	RAW_R
 };
 
 #endif
