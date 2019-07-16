@@ -8,6 +8,6 @@ public:
 	static int values[NUMBER_OF_SETTINGS];
 
 	static void set_setting(int index, int new_setting);
-}
+};
 
 #endif
