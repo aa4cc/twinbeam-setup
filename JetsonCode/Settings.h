@@ -3,11 +3,9 @@
 
 #include "Definitions.h"
 
-#define SIZE NUMBER_OF_SETTINGS
-
 class Settings {
 public:
-	static int values[SIZE];
+	static int values[STG_NUMBER_OF_SETTINGS];
 
 	static void set_setting(int index, int new_setting);
 };
