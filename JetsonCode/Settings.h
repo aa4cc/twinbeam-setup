@@ -1,5 +1,5 @@
-#ifndef MISC_H
-#define MISC_H
+#ifndef SETTINGS_H
+#define SETTINGS_H
 
 #include "Definitions.h"
 
