@@ -25,6 +25,7 @@
 #include "Definitions.h"
 #include "cxxopts.hpp"
 #include "Misc.h"
+#include "Settings.h"
 
 static const int    DEFAULT_FPS        = 30;
 
@@ -69,7 +70,6 @@ REQUEST_TYPE requested_type;
 bool send_points;
 bool force_exit;
 bool touch_kill;
-int settings[7];
 int client;
 
 // Options
@@ -173,16 +173,16 @@ int processPoints(float* inputPoints, int* outputArray){
 	int* counting;
 	int* temp;
 	
-	cudaMalloc(&points, settings[0]*settings[1]*sizeof(float));
-	cudaMalloc(&positions, settings[0]*settings[1]*sizeof(int));
-	cudaMalloc(&positionsSorted, settings[0]*settings[1]*sizeof(int));
+	cudaMalloc(&points, Settings::values[WIDTH]*Settings::values[HEIGHT]*sizeof(float));
+	cudaMalloc(&positions, Settings::values[WIDTH]*Settings::values[HEIGHT]*sizeof(int));
+	cudaMalloc(&positionsSorted, Settings::values[WIDTH]*Settings::values[HEIGHT]*sizeof(int));
 	cudaMalloc(&counter, sizeof(int));
 	cudaMallocHost(&counting,sizeof(int));
     memset(counting, 0, sizeof(int));
 	
-	cudaMemcpy(points, inputPoints, sizeof(float)*settings[0]*settings[1], cudaMemcpyDeviceToDevice);
-	findPoints<<<numBlocks, BLOCKSIZE>>>(settings[0], settings[1], points, positions, counter);
-	stupidSort<<<numBlocks, BLOCKSIZE>>>(settings[0], settings[1],positions, positionsSorted, counting);
+	cudaMemcpy(points, inputPoints, sizeof(float)*Settings::values[WIDTH]*Settings::values[HEIGHT], cudaMemcpyDeviceToDevice);
+	findPoints<<<numBlocks, BLOCKSIZE>>>(Settings::values[WIDTH], Settings::values[HEIGHT], points, positions, counter);
+	stupidSort<<<numBlocks, BLOCKSIZE>>>(Settings::values[WIDTH], Settings::values[HEIGHT],positions, positionsSorted, counting);
 	cudaMemcpy(counting, counter, sizeof(int), cudaMemcpyDeviceToHost);
 	temp = (int*)malloc(sizeof(int)*counting[0]);
 	cudaMemcpy(temp, positionsSorted, sizeof(int)*counting[0], cudaMemcpyDeviceToHost);
@@ -311,8 +311,8 @@ void changeSettings(char* buf){
 			tmpSettings = 0;
 		}
 		if(tmpSettings != 0){
-			settings[count] = tmpSettings;
-			printf("%d\n", settings[count]);
+			Settings::set_setting(count, tmpSettings);
+			printf("%d\n", Settings::values[count]);
 		}
 		count++;
 		current_index++;
@@ -516,12 +516,12 @@ void consumer_thread(){
 			
 			ISourceSettings *iSourceSettings = interface_cast<ISourceSettings>(iRequest->getSourceSettings());
 			iSourceSettings->setFrameDurationRange(Range<uint64_t>(1e9/DEFAULT_FPS));
-			iSourceSettings->setExposureTimeRange(Range<uint64_t>(settings[4]));
+			iSourceSettings->setExposureTimeRange(Range<uint64_t>(Settings::values[EXPOSURE]));
 
-			cudaMalloc(&G, settings[0]*settings[1]*sizeof(uint16_t));
-			cudaMalloc(&R, settings[0]*settings[1]*sizeof(uint16_t));
-			cudaMalloc(&positionsGreen, settings[0]*settings[1]*sizeof(float));
-			cudaMalloc(&positionsRed, settings[0]*settings[1]*sizeof(float));
+			cudaMalloc(&G, Settings::values[WIDTH]*Settings::values[HEIGHT]*sizeof(uint16_t));
+			cudaMalloc(&R, Settings::values[WIDTH]*Settings::values[HEIGHT]*sizeof(uint16_t));
+			cudaMalloc(&positionsGreen, Settings::values[WIDTH]*Settings::values[HEIGHT]*sizeof(float));
+			cudaMalloc(&positionsRed, Settings::values[WIDTH]*Settings::values[HEIGHT]*sizeof(float));
 			
 			
 			cudaMalloc(&convolutionMaskGreen, CONVO_DIM_GREEN*CONVO_DIM_GREEN*sizeof(float));
@@ -530,23 +530,23 @@ void consumer_thread(){
 			generateConvoMaskGreen<<<numBlocks, BLOCKSIZE>>>(CONVO_DIM_GREEN, CONVO_DIM_GREEN, convolutionMaskGreen);
 			generateConvoMaskRed<<<numBlocks, BLOCKSIZE>>>(CONVO_DIM_RED, CONVO_DIM_RED, convolutionMaskRed);
 			
-			cudaMalloc(&kernelGreen, settings[0]*settings[1]*sizeof(cufftComplex));
-			cudaMalloc(&kernelRed, settings[0]*settings[1]*sizeof(cufftComplex));
+			cudaMalloc(&kernelGreen, Settings::values[WIDTH]*Settings::values[HEIGHT]*sizeof(cufftComplex));
+			cudaMalloc(&kernelRed, Settings::values[WIDTH]*Settings::values[HEIGHT]*sizeof(cufftComplex));
 			
-			transformKernel(settings[0], settings[1], CONVO_DIM_GREEN, convolutionMaskGreen, kernelGreen);
-			transformKernel(settings[0], settings[1], CONVO_DIM_RED, convolutionMaskRed, kernelRed);
+			transformKernel(Settings::values[WIDTH], Settings::values[HEIGHT], CONVO_DIM_GREEN, convolutionMaskGreen, kernelGreen);
+			transformKernel(Settings::values[WIDTH], Settings::values[HEIGHT], CONVO_DIM_RED, convolutionMaskRed, kernelRed);
 			
-			cudaMalloc(&convoOutputArrayGreen, settings[0]*settings[1]*sizeof(float));
-			cudaMalloc(&convoOutputArrayRed, settings[0]*settings[1]*sizeof(float));
+			cudaMalloc(&convoOutputArrayGreen, Settings::values[WIDTH]*Settings::values[HEIGHT]*sizeof(float));
+			cudaMalloc(&convoOutputArrayRed, Settings::values[WIDTH]*Settings::values[HEIGHT]*sizeof(float));
 			cudaMallocManaged(&current_index, sizeof(int));
 			mtx.lock();
-			cudaMalloc(&maximaGreen, settings[0]*settings[1]*sizeof(float));
-			cudaMalloc(&maximaRed, settings[0]*settings[1]*sizeof(float));
-			cudaMalloc(&doubleArray, 2*settings[1]*settings[0]*sizeof(float));
+			cudaMalloc(&maximaGreen, Settings::values[WIDTH]*Settings::values[HEIGHT]*sizeof(float));
+			cudaMalloc(&maximaRed, Settings::values[WIDTH]*Settings::values[HEIGHT]*sizeof(float));
+			cudaMalloc(&doubleArray, 2*Settings::values[HEIGHT]*Settings::values[WIDTH]*sizeof(float));
 			doubleTemporary = &doubleArray[0];
-			outputArray = &doubleArray[settings[1]*settings[0]];
-			cudaMalloc(&convoOutputArray, settings[0]*settings[1]*sizeof(float));
-			cudaMalloc(&redConverted, settings[0]*settings[1]*sizeof(float));
+			outputArray = &doubleArray[Settings::values[HEIGHT]*Settings::values[WIDTH]];
+			cudaMalloc(&convoOutputArray, Settings::values[WIDTH]*Settings::values[HEIGHT]*sizeof(float));
+			cudaMalloc(&redConverted, Settings::values[WIDTH]*Settings::values[HEIGHT]*sizeof(float));
 			mtx.unlock();
 
 			yTexRef.normalized = 0;
@@ -590,15 +590,15 @@ void consumer_thread(){
 				auto initialization = std::chrono::system_clock::now();
 
 				
-				numBlocks = (settings[0]*settings[1]/2 +BLOCKSIZE -1)/BLOCKSIZE;
-				yuv2bgr<<<numBlocks, BLOCKSIZE>>>(settings[0], settings[1], settings[2], settings[3], G, R);
+				numBlocks = (Settings::values[WIDTH]*Settings::values[HEIGHT]/2 +BLOCKSIZE -1)/BLOCKSIZE;
+				yuv2bgr<<<numBlocks, BLOCKSIZE>>>(Settings::values[WIDTH], Settings::values[HEIGHT], Settings::values[OFFSET_X], Settings::values[OFFSET_Y], G, R);
 				auto test = std::chrono::system_clock::now();
-				u16ToDouble<<<numBlocks, BLOCKSIZE>>>(settings[0], settings[1], G, doubleTemporary);
-				u16ToDouble<<<numBlocks, BLOCKSIZE>>>(settings[0], settings[1], R, redConverted);
+				u16ToDouble<<<numBlocks, BLOCKSIZE>>>(Settings::values[WIDTH], Settings::values[HEIGHT], G, doubleTemporary);
+				u16ToDouble<<<numBlocks, BLOCKSIZE>>>(Settings::values[WIDTH], Settings::values[HEIGHT], R, redConverted);
 				mtx.lock();
-				h_backPropagate(settings[0], settings[1], LAMBDA_GREEN, (float)settings[6]/(float)1000000,
+				h_backPropagate(Settings::values[WIDTH], Settings::values[HEIGHT], LAMBDA_GREEN, (float)Settings::values[Z_GREEN]/(float)1000000,
 						doubleTemporary, kernelGreen, outputArray, maximaGreen, true);		
-				h_backPropagate(settings[0],settings[1], LAMBDA_RED, (float)settings[5]/(float)1000000,
+				h_backPropagate(Settings::values[WIDTH],Settings::values[HEIGHT], LAMBDA_RED, (float)Settings::values[Z_RED]/(float)1000000,
 						redConverted, kernelRed, convoOutputArray, maximaRed, false);
 				mtx.unlock();
 				
@@ -675,10 +675,10 @@ void print_thread(){
 		while(sleeping && connected && !force_exit){}
 		if (force_exit) break;
 			
-		cudaMalloc(&tempArray, sizeof(float)*settings[0]*settings[1]);
-		cudaMalloc(&tempArray2, sizeof(float)*settings[0]*settings[1]);
-		float* output = (float*)malloc(sizeof(float)*settings[0]*settings[1]);
-		float* output2 = (float*)malloc(sizeof(float)*settings[0]*settings[1]);
+		cudaMalloc(&tempArray, sizeof(float)*Settings::values[WIDTH]*Settings::values[HEIGHT]);
+		cudaMalloc(&tempArray2, sizeof(float)*Settings::values[WIDTH]*Settings::values[HEIGHT]);
+		float* output = (float*)malloc(sizeof(float)*Settings::values[WIDTH]*Settings::values[HEIGHT]);
+		float* output2 = (float*)malloc(sizeof(float)*Settings::values[WIDTH]*Settings::values[HEIGHT]);
 		cv::namedWindow("Basic Visualization", CV_WINDOW_NORMAL);
 		cv::setWindowProperty("Basic Visualization", CV_WND_PROP_FULLSCREEN, CV_WINDOW_FULLSCREEN);
 		//set the callback function for any mouse event
@@ -691,16 +691,16 @@ void print_thread(){
 			if(cycles >= 3){
 				cycles = 0;
 				mtx.lock();
-				cudaMemcpy(tempArray, maximaGreen, sizeof(float)*settings[0]*settings[1], cudaMemcpyDeviceToDevice);
-				cudaMemcpy(tempArray2, outputArray, sizeof(float)*settings[0]*settings[1], cudaMemcpyDeviceToDevice);
+				cudaMemcpy(tempArray, maximaGreen, sizeof(float)*Settings::values[WIDTH]*Settings::values[HEIGHT], cudaMemcpyDeviceToDevice);
+				cudaMemcpy(tempArray2, outputArray, sizeof(float)*Settings::values[WIDTH]*Settings::values[HEIGHT], cudaMemcpyDeviceToDevice);
 				mtx.unlock();
-				cudaMemcpy(output, tempArray, sizeof(float)*settings[0]*settings[1], cudaMemcpyDeviceToHost);
-				cudaMemcpy(output2, tempArray2, sizeof(float)*settings[0]*settings[1], cudaMemcpyDeviceToHost);
-				const cv::Mat img(cv::Size(settings[0], settings[1]), CV_32F, output);
-				const cv::Mat img2(cv::Size(settings[0], settings[1]), CV_32F, output2);
+				cudaMemcpy(output, tempArray, sizeof(float)*Settings::values[WIDTH]*Settings::values[HEIGHT], cudaMemcpyDeviceToHost);
+				cudaMemcpy(output2, tempArray2, sizeof(float)*Settings::values[WIDTH]*Settings::values[HEIGHT], cudaMemcpyDeviceToHost);
+				const cv::Mat img(cv::Size(Settings::values[WIDTH], Settings::values[HEIGHT]), CV_32F, output);
+				const cv::Mat img2(cv::Size(Settings::values[WIDTH], Settings::values[HEIGHT]), CV_32F, output2);
 
-				const cv::Mat img2_trans(cv::Size(settings[0], settings[1]), CV_32F);
-				const cv::Mat img_trans(cv::Size(settings[0], settings[1]), CV_32F);
+				const cv::Mat img2_trans(cv::Size(Settings::values[WIDTH], Settings::values[HEIGHT]), CV_32F);
+				const cv::Mat img_trans(cv::Size(Settings::values[WIDTH], Settings::values[HEIGHT]), CV_32F);
 
 				cv::flip(img2, img2_trans, -1);
 				cv::transpose(img2_trans, img2);
@@ -740,43 +740,43 @@ void output_thread(){
 		while(sleeping && !force_exit){}
 		if (force_exit) break;
 
-		cudaMalloc(&temporary, settings[0]*settings[1]*sizeof(float));
-		cudaMalloc(&temporary_red_positions, settings[0]*settings[1]*sizeof(float));
-		cudaMalloc(&temporary_green_positions, settings[0]*settings[1]*sizeof(float));
+		cudaMalloc(&temporary, Settings::values[WIDTH]*Settings::values[HEIGHT]*sizeof(float));
+		cudaMalloc(&temporary_red_positions, Settings::values[WIDTH]*Settings::values[HEIGHT]*sizeof(float));
+		cudaMalloc(&temporary_green_positions, Settings::values[WIDTH]*Settings::values[HEIGHT]*sizeof(float));
 		
-		char* buffer = (char*)malloc(settings[0]*settings[1]*sizeof(float));
+		char* buffer = (char*)malloc(Settings::values[WIDTH]*Settings::values[HEIGHT]*sizeof(float));
 		
 		while(connected && !sleeping){
 			if(requested_image){
 				mtx.lock();
 				switch (requested_type){
 					case BACKPROPAGATED:
-						cudaMemcpy(temporary, outputArray, sizeof(float)*settings[0]*settings[1], cudaMemcpyDeviceToDevice);
+						cudaMemcpy(temporary, outputArray, sizeof(float)*Settings::values[WIDTH]*Settings::values[HEIGHT], cudaMemcpyDeviceToDevice);
 						break;
 					case RAW_G:
-						cudaMemcpy(temporary, doubleTemporary, sizeof(float)*settings[0]*settings[1], cudaMemcpyDeviceToDevice);
+						cudaMemcpy(temporary, doubleTemporary, sizeof(float)*Settings::values[WIDTH]*Settings::values[HEIGHT], cudaMemcpyDeviceToDevice);
 						break;
 					case RAW_R:
-						cudaMemcpy(temporary, redConverted, sizeof(float)*settings[0]*settings[1], cudaMemcpyDeviceToDevice);
+						cudaMemcpy(temporary, redConverted, sizeof(float)*Settings::values[WIDTH]*Settings::values[HEIGHT], cudaMemcpyDeviceToDevice);
 						break;
 				}	
 
 				mtx.unlock();
-				cudaMemcpy(buffer, temporary, sizeof(float)*settings[0]*settings[1], cudaMemcpyDeviceToHost);
-				send(client, buffer, sizeof(float)*settings[0]*settings[1], 0);
+				cudaMemcpy(buffer, temporary, sizeof(float)*Settings::values[WIDTH]*Settings::values[HEIGHT], cudaMemcpyDeviceToHost);
+				send(client, buffer, sizeof(float)*Settings::values[WIDTH]*Settings::values[HEIGHT], 0);
 				printf("Image sent!\n");
 				requested_image = false;
 			}
 			if(send_points){
 				auto test3 = std::chrono::system_clock::now();
 				outputMtx.lock();
-				cudaMemcpy(temporary_green_positions, maximaGreen, sizeof(int)*settings[0]*settings[1], cudaMemcpyDeviceToHost);
-				cudaMemcpy(temporary_red_positions, maximaGreen, sizeof(int)*settings[0]*settings[1], cudaMemcpyDeviceToHost);
+				cudaMemcpy(temporary_green_positions, maximaGreen, sizeof(int)*Settings::values[WIDTH]*Settings::values[HEIGHT], cudaMemcpyDeviceToHost);
+				cudaMemcpy(temporary_red_positions, maximaGreen, sizeof(int)*Settings::values[WIDTH]*Settings::values[HEIGHT], cudaMemcpyDeviceToHost);
 				outputMtx.unlock();
 				int greenCount = processPoints(temporary_green_positions, sorted_green_positions);
 				int redCount = processPoints(temporary_red_positions, sorted_red_positions);
-				//send(client, buffer, sizeof(float)*settings[0]*settings[1], 0);
-				//send(client, buffer, sizeof(float)*settings[0]*settings[1], 0);
+				//send(client, buffer, sizeof(float)*Settings::values[WIDTH]*Settings::values[HEIGHT], 0);
+				//send(client, buffer, sizeof(float)*Settings::values[WIDTH]*Settings::values[HEIGHT], 0);
 				// printf("%d; %d\n", redCount, greenCount);
 				send_points = false;
 				auto test4 = std::chrono::system_clock::now();
@@ -803,13 +803,6 @@ int main(int argc, char* argv[]){
 	force_exit = false;
 	
 	cycles = 0;
-	settings[0] = 1024;
-	settings[1] = 1024;
-	settings[2] = 1195;
-	settings[3] = 500;
-	settings[4] = 5000000;
-	settings[5] = 3100;
-	settings[6] = 2750;
 	
 	quitSequence = false;
 	playSequence = false;
