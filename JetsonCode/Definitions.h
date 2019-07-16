@@ -39,6 +39,6 @@ enum SETTINGS_TYPE{
 	Z_RED,
 	Z_GREEN,
 	NUMBER_OF_SETTINGS
-}
+};
 
 #endif
