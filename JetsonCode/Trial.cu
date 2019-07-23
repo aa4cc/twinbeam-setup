@@ -696,7 +696,7 @@ void print_thread(){
 				cv::transpose(img_trans, img);
 
 
-				const cv::Mat result = img2+img;
+				const cv::Mat result = img2;//+img;
 				cv::imshow("Basic Visualization", result);
 				cv::waitKey(1);
 			}
