@@ -1,5 +1,7 @@
 #include "cuda.h"
 #include "cufft.h"
+#include "Misc.h"
+#include "Settings.h"
 #include "cudaEGL.h"
 #include "cuda_egl_interop.h"
 #include "Argus/Argus.h"
@@ -24,8 +26,6 @@
 #include <string.h>
 #include "Definitions.h"
 #include "cxxopts.hpp"
-#include "Misc.h"
-#include "Settings.h"
 
 static const int    DEFAULT_FPS        = 30;
 
