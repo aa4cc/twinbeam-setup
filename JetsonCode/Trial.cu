@@ -498,7 +498,7 @@ void consumer_thread(){
 			UniqueObj<OutputStreamSettings> streamSettings(iCaptureSession->createOutputStreamSettings());
 			IOutputStreamSettings *iStreamSettings = interface_cast<IOutputStreamSettings>(streamSettings);
 			iStreamSettings->setPixelFormat(PIXEL_FMT_YCbCr_420_888);
-			iStreamSettings->setResolution(Size2D<uint32_t>(STG_WIDTH,STG_HEIGHT));
+			iStreamSettings->setResolution(Size2D<uint32_t>(Settings::values[STG_WIDTH],Settings::values[STG_HEIGHT]));
 			
 			// Creating an Output stream. This should already create a producer.
 			UniqueObj<OutputStream> outputStream(iCaptureSession->createOutputStream(streamSettings.get()));
