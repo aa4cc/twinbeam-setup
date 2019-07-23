@@ -1,8 +1,5 @@
 #include "cuda.h"
 #include "cufft.h"
-#include "Definitions.h"
-#include "Misc.h"
-#include "Settings.h"
 #include "cudaEGL.h"
 #include "cuda_egl_interop.h"
 #include "Argus/Argus.h"
@@ -26,6 +23,9 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include "cxxopts.hpp"
+#include "Definitions.h"
+#include "Misc.h"
+#include "Settings.h"
 
 static const int    DEFAULT_FPS        = 30;
 
@@ -413,7 +413,7 @@ void input_thread(){
 				}
 				case MSG_DISCONNECT:
 				{
-					Settings::connected(false);
+					Settings::set_connected(false);
 					Settings::set_sleeping(true);
 					Settings::set_initialized(false);
 					break;

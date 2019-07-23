@@ -34,3 +34,7 @@ void Settings::set_force_exit(const bool value){
 void Settings::set_send_points(const bool value){
 	Settings::send_points = value;
 }
+
+void Settings::set_touch_kill(const bool value){
+	Settings::touch_kill = value;
+}

@@ -12,7 +12,7 @@ public:
 	static bool initialized;
 	static bool force_exit;
 	static bool send_points;
-	
+
 	static bool touch_kill;
 
 	static void set_setting(int index, const int new_setting);
@@ -22,6 +22,7 @@ public:
 	static void set_initialized(const bool value);
 	static void set_force_exit(const bool value);
 	static void set_send_points(const bool value);
+	static void set_touch_kill(const bool value);
 
 };
 
