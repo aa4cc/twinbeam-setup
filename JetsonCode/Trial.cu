@@ -1,5 +1,6 @@
 #include "cuda.h"
 #include "cufft.h"
+#include "Definitions.h"
 #include "Misc.h"
 #include "Settings.h"
 #include "cudaEGL.h"
@@ -24,7 +25,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <string.h>
-#include "Definitions.h"
 #include "cxxopts.hpp"
 
 static const int    DEFAULT_FPS        = 30;
