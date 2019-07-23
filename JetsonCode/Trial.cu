@@ -798,7 +798,7 @@ void output_thread(){
 
 int main(int argc, char* argv[]){
 	// cxxopt.h initialization
-	for(int i = 0 ; i < STD_NUMBER_OF_SETTINGS; i++){
+	for(int i = 0 ; i < STG_NUMBER_OF_SETTINGS; i++){
 		printf("%d\n", Settings::values[i]);
 	}
   	auto result = parse(argc, argv);
