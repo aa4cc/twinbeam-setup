@@ -61,15 +61,8 @@ int* redPointsLast;
 int* greenPointsLast;
 int* current_index;
 
-bool playSequence;
-bool sleeping;
-bool connected;
-bool initialized;
 bool requested_image;
 REQUEST_TYPE requested_type;
-bool send_points;
-bool force_exit;
-bool touch_kill;
 int client;
 
 // Options
@@ -85,7 +78,6 @@ mutex outputMtx;
 
 int numBlocks;
 
-bool quitSequence;
 short cycles;
 
 std::chrono::duration<double> elapsed_seconds_average;
@@ -290,8 +282,38 @@ void h_backPropagate(int M, int N, float lambda, float z, float* input,
     cudaFree(temporary);
 }
 
+void keyboard_thread(){
+	printf("keyboard_thread: started\n");
 
+	char input;
+	while(!Settings::force_exit){
+		input = getchar();
+		if(input == 's'){
+			printf("Putting the process to sleep\n");
+			Settings::set_sleeping(true);
+			Settings::set_initialized(false);
+		}
+		else if(input == 'c'){
+			printf("Connected the main manipulation computer\n");
+			Settings::set_connected(true);
+		}
+		else if(input == 'w'){
+			printf("Starting the program from keyboard\n");
+			Settings::set_initialized(true);
+			Settings::set_sleeping(false);
+		}
+		else if(input == 'd'){
+			Settings::set_connected(false);
+			Settings::set_sleeping(true);
+			Settings::set_initialized(false);
+		}
+		else if(input == 'e'){
+			Settings::set_force_exit(true);
+		}		
+	}
 
+	printf("keyboard_thread: ended\n");
+}
 
 void changeSettings(char* buf){
 	int tmpSettings; 
@@ -317,39 +339,6 @@ void changeSettings(char* buf){
 		count++;
 		current_index++;
 	}
-}
-
-void keyboard_thread(){
-	printf("keyboard_thread: started\n");
-
-	char input;
-	while(!force_exit){
-		input = getchar();
-		if(input == 's'){
-			printf("Putting the process to sleep\n");
-			sleeping = true;
-			initialized = false;
-		}
-		else if(input == 'c'){
-			printf("Connected the main manipulation computer\n");
-			connected = true;
-		}
-		else if(input == 'w'){
-			printf("Starting the program from keyboard\n");
-			initialized = true;
-			sleeping = false;
-		}
-		else if(input == 'd'){
-			connected = false;
-			sleeping = true;
-			initialized = false;
-		}
-		else if(input == 'e'){
-			force_exit = true;
-		}		
-	}
-
-	printf("keyboard_thread: ended\n");
 }
 
 void input_thread(){
@@ -378,17 +367,17 @@ void input_thread(){
 
 	bind(mainSocket, (sockaddr*)&sockName, sizeof(sockName));
 	listen(mainSocket, 10000000);
-	while(!force_exit){
+	while(!Settings::force_exit){
 		
 		addrlen = sizeof(clientInfo);
 		client = accept(mainSocket, (sockaddr*)&clientInfo, &addrlen);
 		cout << "Got a connection from " << inet_ntoa((in_addr)clientInfo.sin_addr) << endl;
 		if (client != -1)
 		 {
-			 connected = true;
+			 Settings::set_connected(true);
 		 }
 
-		while(connected && !force_exit){
+		while(Settings::connected && !Settings::force_exit){
 			int msg_len = recv(client, buf, BUFSIZE - 1, 0);
 
 			if (msg_len == -1)
@@ -402,19 +391,19 @@ void input_thread(){
 			switch(response){
 				case MSG_WAKEUP:
 				{
-					sleeping = false;
-					initialized = true;
+					Settings::set_sleeping(false);
+					Settings::set_initialized(true);
 					break;
 				}
 				case MSG_SLEEP:
 				{
-					sleeping = true;
-					initialized = false;
+					Settings::set_sleeping(true);
+					Settings::set_initialized(false);
 					break;
 				}
 				case MSG_SETTINGS:
 				{
-					if(sleeping == false)
+					if(!Settings::sleeping)
 						printf("Can't change settings while the loop is running\n");
 					else{
 						changeSettings(buf);
@@ -424,9 +413,9 @@ void input_thread(){
 				}
 				case MSG_DISCONNECT:
 				{
-					connected = false;
-					sleeping = true;
-					initialized = false;
+					Settings::connected(false);
+					Settings::set_sleeping(true);
+					Settings::set_initialized(false);
 					break;
 				}
 				case MSG_REQUEST:
@@ -490,10 +479,10 @@ void consumer_thread(){
 	
 	cudaChannelFormatDesc yChannelDesc;
 	cudaChannelFormatDesc uvChannelDesc;
-	while(!force_exit){
-		while(connected && !force_exit){
-			while(sleeping && connected && !force_exit){}
-			if (force_exit) break;
+	while(!Settings::force_exit){
+		while(Settings::connected && !Settings::force_exit){
+			while(Settings::sleeping && Settings::connected && !Settings::force_exit){}
+			if (Settings::force_exit) break;
 			// Managing the settings for the capture session.
 			UniqueObj<OutputStreamSettings> streamSettings(iCaptureSession->createOutputStreamSettings());
 			IOutputStreamSettings *iStreamSettings = interface_cast<IOutputStreamSettings>(streamSettings);
@@ -567,10 +556,10 @@ void consumer_thread(){
 			std::chrono::duration<double> elapsed_seconds_average = initializer-initializer;
 
 			int final_count = 0;
-			while(!initialized && connected && !force_exit){}
-			if (force_exit) break;
+			while(!Settings::initialized && Settings::connected && !Settings::force_exit){}
+			if (Settings::force_exit) break;
 
-			while(!sleeping && connected && ! force_exit){
+			while(!Settings::sleeping && Settings::connected && ! Settings::force_exit){
 				auto start = std::chrono::system_clock::now();
 				
 				
@@ -619,11 +608,10 @@ void consumer_thread(){
 				elapsed_seconds = end-start;
 				elapsed_seconds_average +=elapsed_seconds;
 				final_count++;
-				send_points = true;
+				Settings::send_points = true;
 				
 				if(opt_verbose) {
 					std::cout << "This cycle took: " << elapsed_seconds.count() << "s\n";
-					printf("%d\n", quitSequence);
 				}
 
 				cycles++;				
@@ -660,8 +648,8 @@ void CallBackFunc(int event, int x, int y, int flags, void* userdata)
 	if ( event == CV_EVENT_MOUSEMOVE )
      {
         cout << "Mouse move over the window - position (" << x << ", " << y << ")" << endl;
-        if (touch_kill) {
-        	force_exit = true;
+        if (Settings::touch_kill) {
+        	Settings::set_force_exit(true);
       	}
      }
 }
@@ -672,8 +660,8 @@ void print_thread(){
 	float* tempArray;
 	float* tempArray2;
 	while(true){
-		while(sleeping && connected && !force_exit){}
-		if (force_exit) break;
+		while(Settings::sleeping && Settings::connected && !Settings::force_exit){}
+		if (Settings::force_exit) break;
 			
 		cudaMalloc(&tempArray, sizeof(float)*Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT]);
 		cudaMalloc(&tempArray2, sizeof(float)*Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT]);
@@ -684,10 +672,10 @@ void print_thread(){
 		//set the callback function for any mouse event
      	cv::setMouseCallback("Basic Visualization", CallBackFunc, NULL);
 
-		while(!initialized && connected && !force_exit){}
-		if (force_exit) break;
+		while(!Settings::initialized && Settings::connected && !Settings::force_exit){}
+		if (Settings::force_exit) break;
 
-		while(!sleeping && connected){
+		while(!Settings::sleeping && Settings::connected){
 			if(cycles >= 3){
 				cycles = 0;
 				mtx.lock();
@@ -716,7 +704,7 @@ void print_thread(){
 				usleep(5000);
 			}
 
-			if (force_exit) break;
+			if (Settings::force_exit) break;
 		}
 		cudaFree(tempArray);
 		cudaFree(tempArray2);
@@ -737,8 +725,8 @@ void output_thread(){
 	int *sorted_red_positions;
 	int *sorted_green_positions;
 	while(true){
-		while(sleeping && !force_exit){}
-		if (force_exit) break;
+		while(Settings::sleeping && !Settings::force_exit){}
+		if (Settings::force_exit) break;
 
 		cudaMalloc(&temporary, Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT]*sizeof(float));
 		cudaMalloc(&temporary_red_positions, Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT]*sizeof(float));
@@ -746,7 +734,7 @@ void output_thread(){
 		
 		char* buffer = (char*)malloc(Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT]*sizeof(float));
 		
-		while(connected && !sleeping){
+		while(Settings::connected && !Settings::sleeping){
 			if(requested_image){
 				mtx.lock();
 				switch (requested_type){
@@ -767,7 +755,7 @@ void output_thread(){
 				printf("Image sent!\n");
 				requested_image = false;
 			}
-			if(send_points){
+			if(Settings::send_points){
 				auto test3 = std::chrono::system_clock::now();
 				outputMtx.lock();
 				cudaMemcpy(temporary_green_positions, maximaGreen, sizeof(int)*Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT], cudaMemcpyDeviceToHost);
@@ -778,13 +766,13 @@ void output_thread(){
 				//send(client, buffer, sizeof(float)*Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT], 0);
 				//send(client, buffer, sizeof(float)*Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT], 0);
 				// printf("%d; %d\n", redCount, greenCount);
-				send_points = false;
+				Settings::set_send_points(false);
 				auto test4 = std::chrono::system_clock::now();
 			}
 
 			usleep(1000);
 
-			if (force_exit) break;
+			if (Settings::force_exit) break;
 		}
 		cudaFree(temporary_red_positions);
 		cudaFree(temporary_green_positions);
@@ -802,24 +790,14 @@ int main(int argc, char* argv[]){
 		printf("%d\n", Settings::values[i]);
 	}
   	auto result = parse(argc, argv);
-
-	force_exit = false;
 	
 	cycles = 0;
-	
-	quitSequence = false;
-	playSequence = false;
-	send_points = false;
 
 	if (opt_show) {
-		initialized = true;
-		connected = true;
-		sleeping = false;
-		touch_kill = true;
-	} else {
-		connected = false;
-		sleeping = true;
-		touch_kill = false;
+		Settings::set_initialized(true);
+		Settings::set_connected(true);
+		Settings::set_sleeping(false);
+		Settings::set_touch_kill(true);
 	}
 
 	thread consumr_thr (consumer_thread);
