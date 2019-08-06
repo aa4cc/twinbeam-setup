@@ -681,7 +681,7 @@ void print_thread(){
 				cycles = 0;
 				mtx.lock();
 				cudaMemcpy(tempArray, maximaGreen, sizeof(float)*Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT], cudaMemcpyDeviceToDevice);
-				cudaMemcpy(tempArray2, outputArray, sizeof(float)*Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT], cudaMemcpyDeviceToDevice);
+				cudaMemcpy(tempArray2, doubleTemporary, sizeof(float)*Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT], cudaMemcpyDeviceToDevice);
 				mtx.unlock();
 				cudaMemcpy(output, tempArray, sizeof(float)*Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT], cudaMemcpyDeviceToHost);
 				cudaMemcpy(output2, tempArray2, sizeof(float)*Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT], cudaMemcpyDeviceToHost);
@@ -809,10 +809,7 @@ int main(int argc, char* argv[]){
 	
 	consumr_thr.join();
 	print_thr.join();
-	// input_thr.join();
 	output_thr.join();
-	// keyboard_thr.join();
-
 
 	return 0;
 }
