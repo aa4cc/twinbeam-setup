@@ -580,7 +580,8 @@ void consumer_thread(){
 
 				
 				numBlocks = (Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT]/2 +BLOCKSIZE -1)/BLOCKSIZE;
-				yuv2bgr<<<numBlocks, BLOCKSIZE>>>(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT], Settings::values[STG_OFFSET_X], Settings::values[STG_OFFSET_Y], G, R);
+				yuv2bgr<<<numBlocks, BLOCKSIZE>>>(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT],
+												Settings::values[STG_OFFSET_X], Settings::values[STG_OFFSET_Y], G, R);
 				auto test = std::chrono::system_clock::now();
 				u16ToDouble<<<numBlocks, BLOCKSIZE>>>(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT], G, doubleTemporary);
 				u16ToDouble<<<numBlocks, BLOCKSIZE>>>(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT], R, redConverted);
@@ -690,8 +691,8 @@ void print_thread(){
 				const cv::Mat img2_trans(cv::Size(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]), CV_32F);
 				const cv::Mat img_trans(cv::Size(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]), CV_32F);
 
-				cv::flip(img2, img2_trans, -1);
-				cv::transpose(img2_trans, img2);
+				//cv::flip(img2, img2_trans, -1);
+				//cv::transpose(img2_trans, img2);
 				cv::flip(img, img_trans, -1);
 				cv::transpose(img_trans, img);
 
