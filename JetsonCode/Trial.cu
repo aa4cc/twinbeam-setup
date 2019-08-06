@@ -487,7 +487,7 @@ void consumer_thread(){
 			UniqueObj<OutputStreamSettings> streamSettings(iCaptureSession->createOutputStreamSettings());
 			IOutputStreamSettings *iStreamSettings = interface_cast<IOutputStreamSettings>(streamSettings);
 			iStreamSettings->setPixelFormat(PIXEL_FMT_YCbCr_420_888);
-			iStreamSettings->setResolution(Size2D<uint32_t>(Settings::values[STG_WIDTH],Settings::values[STG_HEIGHT]));
+			iStreamSettings->setResolution(Size2D<uint32_t>(WIDTH,HEIGHT));
 			
 			// Creating an Output stream. This should already create a producer.
 			UniqueObj<OutputStream> outputStream(iCaptureSession->createOutputStream(streamSettings.get()));
@@ -681,7 +681,7 @@ void print_thread(){
 				cycles = 0;
 				mtx.lock();
 				cudaMemcpy(tempArray, maximaGreen, sizeof(float)*Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT], cudaMemcpyDeviceToDevice);
-				cudaMemcpy(tempArray2, doubleTemporary, sizeof(float)*Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT], cudaMemcpyDeviceToDevice);
+				cudaMemcpy(tempArray2, outputArray, sizeof(float)*Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT], cudaMemcpyDeviceToDevice);
 				mtx.unlock();
 				cudaMemcpy(output, tempArray, sizeof(float)*Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT], cudaMemcpyDeviceToHost);
 				cudaMemcpy(output2, tempArray2, sizeof(float)*Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT], cudaMemcpyDeviceToHost);
