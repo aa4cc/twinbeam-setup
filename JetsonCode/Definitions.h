@@ -20,6 +20,7 @@ enum MESSAGE_TYPE{
 	MSG_REQUEST, // request on sending the backpropagated image
 	MSG_REQUEST_RAW_G, // request on sending the unprocessed green channel
 	MSG_REQUEST_RAW_R, // request on sending the unprocessed red channel
+	MSG_COORDS,
 	MSG_UNKNOWN_TYPE
 };
 
