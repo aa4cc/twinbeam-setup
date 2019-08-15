@@ -61,8 +61,6 @@ int* redPointsLast;
 int* greenPointsLast;
 int* current_index;
 
-bool requested_image;
-REQUEST_TYPE requested_type;
 int client;
 
 // Options
@@ -86,16 +84,6 @@ const textureReference* yTex;
 
 texture<unsigned char, 2, cudaReadModeElementType> yTexRef;
 texture<uchar2, 2, cudaReadModeElementType> uvTexRef;
-
-struct is_zero
-{
-  __host__ __device__
-  bool operator()(const int &x)
-  {
-    return (x == 0);
-  }
-};
-
 
 // cxxopts.hpp related definitions
 cxxopts::ParseResult
@@ -152,8 +140,7 @@ parse(int argc, char* argv[])
   }
 }
 
-
-int processPoints(float* inputPoints, int* outputArray){
+int processPoints(float* greenInputPoints, float* redInputPoints, int* outputArray){
 	int* positions;
 	int* positionsSorted;
 	int* counter;
@@ -168,9 +155,9 @@ int processPoints(float* inputPoints, int* outputArray){
 	cudaMallocHost(&counting,sizeof(int));
     memset(counting, 0, sizeof(int));
 	
-	cudaMemcpy(points, inputPoints, sizeof(float)*Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT], cudaMemcpyDeviceToDevice);
+	cudaMemcpy(points, greenInputPoints, sizeof(float)*Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT], cudaMemcpyDeviceToDevice);
 	findPoints<<<numBlocks, BLOCKSIZE>>>(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT], points, positions, counter);
-	stupidSort<<<numBlocks, BLOCKSIZE>>>(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT],positions, positionsSorted, counting);
+	stupidSort<<<numBlocks, BLOCKSIZE>>>(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT], positions, positionsSorted, counting);
 	cudaMemcpy(counting, counter, sizeof(int), cudaMemcpyDeviceToHost);
 	temp = (int*)malloc(sizeof(int)*counting[0]);
 	cudaMemcpy(temp, positionsSorted, sizeof(int)*counting[0], cudaMemcpyDeviceToHost);
@@ -213,15 +200,10 @@ __global__ void yuv2bgr(int width, int height, int offset_x, int offset_y,
         }
 
 void transformKernel(int M, int N, int kernelDim, float* kernel, cufftComplex* outputKernel){
-	
 	kernelToImage<<<numBlocks, BLOCKSIZE>>>(M, N, kernelDim, kernel, outputKernel);
-   
     cufftHandle plan;
-    
     cufftPlan2d(&plan, N,M, CUFFT_C2C);
-    
     cufftExecC2C(plan, outputKernel, outputKernel, CUFFT_FORWARD);
-    
     cufftDestroy(plan);
 }
 
@@ -415,19 +397,19 @@ void input_thread(){
 					break;
 				}
 				case MSG_REQUEST:
-					requested_image = true;
-					requested_type = BACKPROPAGATED;
+					Settings::set_requested_image(true);
+					Settings::set_requested_type(BACKPROPAGATED);
 					break;
 				case MSG_REQUEST_RAW_G:
-					requested_image = true;
-					requested_type = RAW_G;
+					Settings::set_requested_image(true);
+					Settings::set_requested_type(RAW_G);
 					break;
 				case MSG_REQUEST_RAW_R:
-					requested_image = true;
-					requested_type = RAW_R;
+					Settings::set_requested_image(true);
+					Settings::set_requested_type(RAW_R);
 					break;
 				case MSG_COORDS:
-					requested_coords = true;
+					Settings::set_requested_coords(true);
 					break;
 				case MSG_HELLO:
 				{
@@ -475,9 +457,9 @@ void consumer_thread(){
 	cudaEglFrame eglFrame;		
 	cudaArray_t yArray;
 	cudaArray_t uvArray;
-	
 	cudaChannelFormatDesc yChannelDesc;
 	cudaChannelFormatDesc uvChannelDesc;
+
 	while(!Settings::force_exit){
 		while(Settings::connected && !Settings::force_exit){
 			while(Settings::sleeping && Settings::connected && !Settings::force_exit){}
@@ -509,8 +491,7 @@ void consumer_thread(){
 			cudaMalloc(&G, Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT]*sizeof(uint16_t));
 			cudaMalloc(&R, Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT]*sizeof(uint16_t));
 			cudaMalloc(&positionsGreen, Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT]*sizeof(float));
-			cudaMalloc(&positionsRed, Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT]*sizeof(float));
-			
+			cudaMalloc(&positionsRed, Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT]*sizeof(float));		
 			
 			cudaMalloc(&convolutionMaskGreen, CONVO_DIM_GREEN*CONVO_DIM_GREEN*sizeof(float));
 			cudaMalloc(&convolutionMaskRed, CONVO_DIM_RED*CONVO_DIM_RED*sizeof(float));
@@ -608,7 +589,7 @@ void consumer_thread(){
 				elapsed_seconds = end-start;
 				elapsed_seconds_average +=elapsed_seconds;
 				final_count++;
-				Settings::send_points = true;
+				Settings::sent_coords = false;
 				
 				if(opt_verbose) {
 					std::cout << "This cycle took: " << elapsed_seconds.count() << "s\n";
@@ -673,9 +654,9 @@ void output_thread(){
 		char* buffer = (char*)malloc(Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT]*sizeof(float));
 		
 		while(Settings::connected && !Settings::sleeping){
-			if(requested_image){
+			if(Settings::requested_image){
 				mtx.lock();
-				switch (requested_type){
+				switch (Settings::requested_type){
 					case BACKPROPAGATED:
 						cudaMemcpy(temporary, outputArray, sizeof(float)*Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT], cudaMemcpyDeviceToDevice);
 						break;
@@ -691,21 +672,21 @@ void output_thread(){
 				cudaMemcpy(buffer, temporary, sizeof(float)*Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT], cudaMemcpyDeviceToHost);
 				send(client, buffer, sizeof(float)*Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT], 0);
 				printf("Image sent!\n");
-				requested_image = false;
+				Settings::set_requested_image(false);
 			}
-			if(Settings::send_points){
+			if(!Settings::sent_coords && Settings::requested_coords){
 				auto test3 = std::chrono::system_clock::now();
 				outputMtx.lock();
 				cudaMemcpy(temporary_green_positions, maximaGreen, sizeof(int)*Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT], cudaMemcpyDeviceToHost);
 				cudaMemcpy(temporary_red_positions, maximaGreen, sizeof(int)*Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT], cudaMemcpyDeviceToHost);
 				outputMtx.unlock();
-				int greenCount = processPoints(temporary_green_positions, sorted_green_positions);
-				int redCount = processPoints(temporary_red_positions, sorted_red_positions);
-				//send(client, buffer, sizeof(float)*Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT], 0);
+				int count = processPoints(temporary_green_positions, temporary_red_positions, sorted_positions);
 				//send(client, buffer, sizeof(float)*Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT], 0);
 				// printf("%d; %d\n", redCount, greenCount);
-				Settings::set_send_points(false);
 				auto test4 = std::chrono::system_clock::now();
+
+				Settings::set_sent_coords(true);
+				Settings::set_requested_coords(false);
 			}
 
 			usleep(1000);
@@ -741,7 +722,13 @@ void print_thread(){
      	cv::setMouseCallback("Basic Visualization", CallBackFunc, NULL);
 
 		while(!Settings::initialized && Settings::connected && !Settings::force_exit){}
-		if (Settings::force_exit) break;
+		if (Settings::force_exit){
+			cudaFree(tempArray);
+			cudaFree(tempArray2);
+			free(output);
+			free(output2);
+			break;
+		} 
 
 		while(!Settings::sleeping && Settings::connected){
 			if(cycles >= 3){
@@ -785,7 +772,6 @@ void print_thread(){
 
 
 int main(int argc, char* argv[]){
-	// cxxopt.h initialization
 	for(int i = 0 ; i < STG_NUMBER_OF_SETTINGS; i++){
 		printf("%d\n", Settings::values[i]);
 	}
