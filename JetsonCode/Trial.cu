@@ -77,14 +77,10 @@ mutex mtx;
 mutex outputMtx;
 
 int numBlocks;
-
 short cycles;
-
 std::chrono::duration<double> elapsed_seconds_average;
 
-
 EGLStreamKHR eglStream;
-
 const textureReference* uvTex;
 const textureReference* yTex;
 
@@ -429,6 +425,9 @@ void input_thread(){
 				case MSG_REQUEST_RAW_R:
 					requested_image = true;
 					requested_type = RAW_R;
+					break;
+				case MSG_COORDS:
+					requested_coords = true;
 					break;
 				case MSG_HELLO:
 				{
