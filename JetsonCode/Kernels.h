@@ -34,7 +34,7 @@ __global__ void findExtremes(int M, int N, float* input, float* extremes);
 __global__ void normalize(int M, int N, float* input, float* extremes); // input is also output
 __global__ void getLocalMaxima(int M, int N, float* input, float* output);
 __global__ void kernelToImage(int M, int N, int kernelDim, float* kernel, cufftComplex* outputKernel);
-__global__ void findPoints(int M, int N, float* input, int* output, int* counter);
+__global__ void findPoints(int M, int N, float* input, int* output);
 __global__ void stupidSort(int M, int N, int* input, int* output, int* currentIndex);
 
 #endif
