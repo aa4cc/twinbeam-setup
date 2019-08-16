@@ -722,6 +722,7 @@ void print_thread(){
 	while(true){
 		while(Settings::sleeping && Settings::connected && !Settings::force_exit){}
 		if (Settings::force_exit) break;
+		printf("Current set width: %d\n", STG_WIDTH);
 			
 		cudaMalloc(&tempArray, sizeof(float)*Settings::get_area());
 		cudaMalloc(&tempArray2, sizeof(float)*Settings::get_area());
