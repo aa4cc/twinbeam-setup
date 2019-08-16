@@ -12,7 +12,7 @@ bool Settings::force_exit = false;
 bool Settings::touch_kill = false;
 bool Settings::sent_coords = false;
 bool Settings::requested_coords = false;
-REQUEST_TYPE Settings::requested_type = MSG_REQUEST;
+REQUEST_TYPE Settings::requested_type = BACKPROPAGATED;
 bool Settings::requested_image = false;
 
 void Settings::set_setting(int index, const int new_setting){
