@@ -48,13 +48,13 @@ void Settings::set_requested_type(const REQUEST_TYPE value){
 }
 
 void Settings::set_requested_image(const bool value){
-	Settings::set_requested_image = value;
+	Settings::requested_image = value;
 }
 
 void Settings::set_requested_coords(const bool value){
-	Settings::set_requested_coords = value;
+	Settings::requested_coords = value;
 }
 
 int Settings::get_area(){
-	return Settings::values[STG_WIDTH]*Settings::values[STH_HEIGHT];
+	return Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT];
 }
