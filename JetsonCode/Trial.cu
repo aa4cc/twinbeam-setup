@@ -142,7 +142,7 @@ parse(int argc, char* argv[])
   }
 }
 
-int processPoints(float* greenInputPoints, float* redInputPoints, int* outputArray){
+int* processPoints(float* greenInputPoints, float* redInputPoints, int* outputArray){
 	float* points;
 
 	int* greenCoords;
@@ -656,8 +656,7 @@ void output_thread(){
 	float *temporary;
 	float *temporary_red_positions;
 	float *temporary_green_positions;
-	int *sorted_red_positions;
-	int *sorted_green_positions;
+	int *sorted_positions;
 	while(true){
 		while(Settings::sleeping && !Settings::force_exit){}
 		if (Settings::force_exit) break;
