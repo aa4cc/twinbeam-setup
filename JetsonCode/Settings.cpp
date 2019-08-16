@@ -1,4 +1,5 @@
 #include "Settings.h"
+#include "Definitions.h"
 
 using namespace std;
 
@@ -11,7 +12,7 @@ bool Settings::force_exit = false;
 bool Settings::touch_kill = false;
 bool Settings::sent_coords = false;
 bool Settings::requested_coords = false;
-bool Settings::requested_type = false;
+REQUEST_TYPE Settings::requested_type = MSG_REQUEST;
 bool Settings::requested_image = false;
 
 void Settings::set_setting(int index, const int new_setting){
