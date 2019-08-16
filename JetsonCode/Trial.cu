@@ -744,6 +744,7 @@ void print_thread(){
 		while(!Settings::sleeping && Settings::connected){
 			if(cycles >= 3){
 				cycles = 0;
+				printf("Current set width: %d\n", STG_WIDTH);
 				mtx.lock();
 				cudaMemcpy(tempArray, maximaGreen, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 				cudaMemcpy(tempArray2, outputArray, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
