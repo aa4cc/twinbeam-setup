@@ -750,7 +750,7 @@ void print_thread(){
 				mtx.unlock();
 				cudaMemcpy(output, tempArray, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToHost);
 				cudaMemcpy(output2, tempArray2, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToHost);
-				const cv::Mat img(cv::Size(STG_WIDTH, STG_HEIGHT), CV_32F, output);
+				const cv::Mat img(cv::Size((const int)STG_WIDTH, (const int)STG_HEIGHT), CV_32F, output);
 				const cv::Mat img2(cv::Size(STG_WIDTH, STG_HEIGHT), CV_32F, output2);
 
 				const cv::Mat img2_trans(cv::Size(STG_WIDTH, STG_HEIGHT), CV_32F);
@@ -760,7 +760,6 @@ void print_thread(){
 				cv::transpose(img2_trans, img2);
 				cv::flip(img, img_trans, -1);
 				cv::transpose(img_trans, img);
-
 
 				const cv::Mat result = img2+img;
 				cv::imshow("Basic Visualization", result);

@@ -111,7 +111,7 @@ classdef twinbeam
         
         function coords = positions(obj)
             write(obj.connection, uint('g'));
-            num_of_coords = typecast(read(obj.connection, 4), 'int32');
+            num_of_coords = 0;%typecast(read(obj.connection, 4), 'int32');
             if num_of_coords == 0
                 coords = 0;
                 disp("No coordinates found");
