@@ -27,8 +27,8 @@
 #include "Misc.h"
 #include "Settings.h"
 
-#define STG_WIDTH STG_WIDTH
-#define STG_HEIGHT STG_HEIGHT
+#define STG_WIDTH Settings::values[STG_WIDTH]
+#define STG_HEIGHT Settings::values[STG_HEIGHT]
 
 static const int    DEFAULT_FPS        = 30;
 
@@ -722,7 +722,6 @@ void print_thread(){
 	while(true){
 		while(Settings::sleeping && Settings::connected && !Settings::force_exit){}
 		if (Settings::force_exit) break;
-		printf("Current set width: %d\n", STG_WIDTH);
 			
 		cudaMalloc(&tempArray, sizeof(float)*Settings::get_area());
 		cudaMalloc(&tempArray2, sizeof(float)*Settings::get_area());
@@ -745,14 +744,13 @@ void print_thread(){
 		while(!Settings::sleeping && Settings::connected){
 			if(cycles >= 3){
 				cycles = 0;
-				printf("Current set width: %d\n", STG_WIDTH);
 				mtx.lock();
 				cudaMemcpy(tempArray, maximaGreen, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 				cudaMemcpy(tempArray2, outputArray, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 				mtx.unlock();
 				cudaMemcpy(output, tempArray, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToHost);
 				cudaMemcpy(output2, tempArray2, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToHost);
-				const cv::Mat img(cv::Size((const int)STG_WIDTH, (const int)STG_HEIGHT), CV_32F, output);
+				const cv::Mat img(cv::Size(STG_WIDTH, STG_HEIGHT), CV_32F, output);
 				const cv::Mat img2(cv::Size(STG_WIDTH, STG_HEIGHT), CV_32F, output2);
 
 				const cv::Mat img2_trans(cv::Size(STG_WIDTH, STG_HEIGHT), CV_32F);
