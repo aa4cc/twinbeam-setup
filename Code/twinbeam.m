@@ -109,20 +109,31 @@ classdef twinbeam
             write(obj.connection, uint8('q'));
         end
         
-        function coords = positions(obj)
+        function [greenCoords, redCoords] = positions(obj)
             write(obj.connection, uint8('g'));
-            num_of_coords = 0;%typecast(read(obj.connection, 4), 'int32');
+            num_of_coords = typecast(read(obj.connection, 4), 'int32')
             if num_of_coords == 0
-                coords = 0;
-                disp("No coordinates found");
+                greenCoords = 0;
+                disp("No green coordinates found");
             else
                 indeces = typecast(read(obj.connection, num_of_coords*4), 'int32');
-                coords = zeroes(num_of_coords,2);
+                greenCoords = zeros(num_of_coords,2);
                 for i = 1:num_of_coords
-                    coords(i,1) = indeces(i)/obj.height;
-                    coords(i,2) = indeces(i)/obj.width;
+                    greenCoords(i,1) = indeces(i);
                 end
-                disp(coords);
+                disp(greenCoords);
+            end
+            num_of_coords = typecast(read(obj.connection, 4), 'int32')
+            if num_of_coords == 0
+                redCoords = 0;
+                disp("No red coordinates found");
+            else
+                indeces = typecast(read(obj.connection, num_of_coords*4), 'int32');
+                redCoords = zeros(num_of_coords,2);
+                for i = 1:num_of_coords
+                    redCoords(i,1) = indeces(i);
+                end
+                disp(redCoords);
             end
         end
         

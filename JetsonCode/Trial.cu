@@ -703,7 +703,9 @@ void output_thread(){
 				cudaMemcpy(&buffer[sizeof(int)], &sorted_positions[0], count[0]*sizeof(int), cudaMemcpyDeviceToHost);
 				memcpy(&buffer[sizeof(int)*(1+count[0])], &count[1], sizeof(int));
 				cudaMemcpy(&buffer[sizeof(int)*(2+count[0])], &sorted_positions[count[0]], count[1]*sizeof(int), cudaMemcpyDeviceToHost);
-
+				for(int i = 0; i < count[0]; i++){
+					printf("%d\n", sorted_positions[i]);
+				}
 				send(client, buffer, sizeof(int)*(2+count[0]+count[1]), 0);
 				free(buffer);
 				printf("%d; %d\n", count[0], count[1]);
