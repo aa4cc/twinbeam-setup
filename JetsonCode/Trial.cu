@@ -666,8 +666,6 @@ void output_thread(){
 		cudaMalloc(&temporary_red_positions, Settings::get_area()*sizeof(float));
 		cudaMalloc(&temporary_green_positions, Settings::get_area()*sizeof(float));
 		
-		char* buffer = (char*)malloc(Settings::get_area()*sizeof(float));
-		
 		while(Settings::connected && !Settings::sleeping){
 			if(Settings::requested_image){
 				mtx.lock();
@@ -700,7 +698,7 @@ void output_thread(){
 
 				int* count = processPoints(temporary_green_positions, temporary_red_positions, sorted_positions);
 				buffer = (char*)malloc(sizeof(int)*(2+count[0]+count[1]));
-				
+
 				memcpy(&buffer[0], &count[0], sizeof(int));
 				cudaMemcpy(&buffer[sizeof(int)], &sorted_positions[0], count[0]*sizeof(int), cudaMemcpyDeviceToHost);
 				memcpy(&buffer[sizeof(int)*(1+count[0])], &count[1], sizeof(int));
