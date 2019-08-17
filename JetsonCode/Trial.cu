@@ -174,6 +174,10 @@ int* processPoints(float* greenInputPoints, float* redInputPoints, int* outputAr
 
 	temp = (int*)malloc(sizeof(int)*(h_count[0]+h_count[1]));
 	cudaMemcpy(temp, sortedGreenCoords, sizeof(int)*h_count[0], cudaMemcpyDeviceToHost);
+	printf("In process points function\n");
+	for(int i = 0 ; i < h_count[0]; i++){
+		printf("%d\n", temp[i]);
+	}
 	cudaMemcpy(&temp[h_count[0]], sortedRedCoords, sizeof(int)*h_count[1], cudaMemcpyDeviceToHost);
 
 	cudaDeviceSynchronize();
