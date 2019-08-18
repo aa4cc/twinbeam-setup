@@ -408,8 +408,8 @@ __global__ void stupidSort(int M, int N, int* input, int* output, int *currentIn
 		int count = N*M;
 		for(int i = index; i < count; i += stride){
 			if(input[i] > 0){
-				atomicAdd(currentIndex, 1); 
-				output[*currentIndex] = input[i];
+				atomicAdd(currentIndex[0], 1); 
+				output[currentIndex[0]] = input[i];
 			}
 		}
 	
