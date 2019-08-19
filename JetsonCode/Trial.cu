@@ -162,7 +162,7 @@ int* processPoints(float* greenInputPoints, float* redInputPoints, int* outputAr
 	int* redCoords;
 	int* sortedRedCoords;
 
-	int h_count[2];
+	int* h_count;
 	int* temp;
 	
 	cudaMalloc(&points, 2*Settings::get_area()*sizeof(float));
@@ -170,6 +170,7 @@ int* processPoints(float* greenInputPoints, float* redInputPoints, int* outputAr
 	cudaMalloc(&redCoords, Settings::get_area()*sizeof(int));
 	cudaMalloc(&sortedGreenCoords, Settings::get_area()*sizeof(int));
 	cudaMalloc(&sortedRedCoords, Settings::get_area()*sizeof(int));
+	temp = (int*)malloc(sizeof(int)*2);
 
 	/*
 	cudaMallocHost(&h_count, sizeof(int)*2);
