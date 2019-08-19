@@ -155,8 +155,8 @@ parse(int argc, char* argv[])
 }
 
 void processPoints(float* greenInputPoints, float* redInputPoints, int* outputArray, int* h_count){
+	
 	float* points;
-
 	int* greenCoords;
 	int* sortedGreenCoords;
 	int* redCoords;
@@ -187,7 +187,7 @@ void processPoints(float* greenInputPoints, float* redInputPoints, int* outputAr
 	h_count[0] = (int)(endGreenPointer - sortedGreenCoordsPtr);
 	h_count[1] = (int)(endRedPointer - sortedRedCoordsPtr);
 
-	cudaMalloc(&temp, sizeof(float)*(h_count[0]+h_count[1]));
+	temp = (int*)malloc(sizeof(int)*(h_count[0]+h_count[1]));
 	cudaMemcpy(temp, sortedGreenCoords, sizeof(int)*h_count[0], cudaMemcpyDeviceToHost);
 	cudaMemcpy(&temp[h_count[0]], sortedRedCoords, sizeof(int)*h_count[1], cudaMemcpyDeviceToHost);
 
