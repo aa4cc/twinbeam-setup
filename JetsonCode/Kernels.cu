@@ -402,6 +402,7 @@ __global__ void findPoints(int M, int N, float* input, int* output){
 	
 	}
 
+/*
 __global__ void stupidSort(int M, int N, int* input, int* output, int *currentIndex){
 		int index = blockIdx.x * blockDim.x + threadIdx.x;
 		int stride = blockDim.x * gridDim.x;
@@ -415,3 +416,4 @@ __global__ void stupidSort(int M, int N, int* input, int* output, int *currentIn
 	
 	}
 
+*/
