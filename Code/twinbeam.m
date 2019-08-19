@@ -110,7 +110,7 @@ classdef twinbeam
         end
         
         function coords = positions(obj)
-            write(obj.connection, uint('g'));
+            write(obj.connection, uint8('g'));
             num_of_coords = typecast(read(obj.connection, 4), 'int32');
             if num_of_coords == 0
                 coords = 0;
