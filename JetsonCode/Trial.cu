@@ -733,6 +733,7 @@ void output_thread(){
 				}
 				send(client, buffer, sizeof(int)*(2+count[0]+count[1]), 0);
 				free(buffer);
+				free(count);
 				printf("%d; %d\n", count[0], count[1]);
 
 				Settings::set_sent_coords(true);
