@@ -154,7 +154,7 @@ parse(int argc, char* argv[])
   }
 }
 
-int* processPoints(float* greenInputPoints, float* redInputPoints, int* outputArray){
+void processPoints(float* greenInputPoints, float* redInputPoints, int* outputArray, int* h_count){
 	float* points;
 
 	int* greenCoords;
@@ -162,7 +162,6 @@ int* processPoints(float* greenInputPoints, float* redInputPoints, int* outputAr
 	int* redCoords;
 	int* sortedRedCoords;
 
-	int* h_count;
 	int* temp;
 	
 	cudaMalloc(&points, 2*Settings::get_area()*sizeof(float));
@@ -170,7 +169,6 @@ int* processPoints(float* greenInputPoints, float* redInputPoints, int* outputAr
 	cudaMalloc(&redCoords, Settings::get_area()*sizeof(int));
 	cudaMalloc(&sortedGreenCoords, Settings::get_area()*sizeof(int));
 	cudaMalloc(&sortedRedCoords, Settings::get_area()*sizeof(int));
-	temp = (int*)malloc(sizeof(int)*2);
 
 	/*
 	cudaMallocHost(&h_count, sizeof(int)*2);
@@ -208,7 +206,6 @@ int* processPoints(float* greenInputPoints, float* redInputPoints, int* outputAr
 	cudaFree(sortedGreenCoords);
 	
 	outputArray = temp;
-	return h_count;
 }
 
 //#region
@@ -721,19 +718,25 @@ void output_thread(){
 				cudaMemcpy(temporary_red_positions, maximaGreen, sizeof(int)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 				mtx.unlock();
 
-				int* count = processPoints(temporary_green_positions, temporary_red_positions, sorted_positions);
+				int* count = (int*)malloc(sizeof(int)*2);
+
+				processPoints(temporary_green_positions, temporary_red_positions, sorted_positions, count);
 				buffer = (char*)malloc(sizeof(int)*(2+count[0]+count[1]));
 
 				memcpy(&buffer[0], &count[0], sizeof(int));
 				cudaMemcpy(&buffer[sizeof(int)], &sorted_positions[0], count[0]*sizeof(int), cudaMemcpyDeviceToHost);
 				memcpy(&buffer[sizeof(int)*(1+count[0])], &count[1], sizeof(int));
 				cudaMemcpy(&buffer[sizeof(int)*(2+count[0])], &sorted_positions[count[0]], count[1]*sizeof(int), cudaMemcpyDeviceToHost);
+				
 				for(int i = 0; i < count[0]; i++){
 					printf("%d\n", sorted_positions[i]);
 				}
+
 				send(client, buffer, sizeof(int)*(2+count[0]+count[1]), 0);
+
 				free(buffer);
 				free(count);
+
 				printf("%d; %d\n", count[0], count[1]);
 
 				Settings::set_sent_coords(true);
