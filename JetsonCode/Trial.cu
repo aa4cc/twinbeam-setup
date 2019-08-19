@@ -170,12 +170,6 @@ void processPoints(float* greenInputPoints, float* redInputPoints, int* outputAr
 	cudaMalloc(&sortedGreenCoords, Settings::get_area()*sizeof(int));
 	cudaMalloc(&sortedRedCoords, Settings::get_area()*sizeof(int));
 
-	/*
-	cudaMallocHost(&h_count, sizeof(int)*2);
-    memset(&h_count[0], 0, sizeof(int));
-    memset(&h_count[1], 0, sizeof(int));
-	*/
-
 	cudaMemcpy(points, greenInputPoints, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 	cudaMemcpy(&points[Settings::get_area()], redInputPoints, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 	findPoints<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, points, greenCoords);
@@ -196,8 +190,6 @@ void processPoints(float* greenInputPoints, float* redInputPoints, int* outputAr
 	cudaMalloc(&temp, sizeof(float)*(h_count[0]+h_count[1]));
 	cudaMemcpy(temp, sortedGreenCoords, sizeof(int)*h_count[0], cudaMemcpyDeviceToHost);
 	cudaMemcpy(&temp[h_count[0]], sortedRedCoords, sizeof(int)*h_count[1], cudaMemcpyDeviceToHost);
-
-	cudaDeviceSynchronize();
 
 	cudaFree(points);
 	cudaFree(greenCoords);
@@ -721,6 +713,7 @@ void output_thread(){
 				int* count = (int*)malloc(sizeof(int)*2);
 
 				processPoints(temporary_green_positions, temporary_red_positions, sorted_positions, count);
+
 				buffer = (char*)malloc(sizeof(int)*(2+count[0]+count[1]));
 
 				memcpy(&buffer[0], &count[0], sizeof(int));
