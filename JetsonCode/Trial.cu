@@ -154,7 +154,7 @@ parse(int argc, char* argv[])
   }
 }
 
-void processPoints(float* greenInputPoints, float* redInputPoints, int* outputArray, int* h_count){
+void processPoints(float* greenInputPoints, float* redInputPoints, int* outputGreenCoords, int* outputRedCoords, int* h_count){
 	
 	float* points;
 	int* greenCoords;
@@ -162,7 +162,8 @@ void processPoints(float* greenInputPoints, float* redInputPoints, int* outputAr
 	int* redCoords;
 	int* sortedRedCoords;
 
-	int* temp;
+	int* temp_green;
+	int* temp_red;
 	
 	cudaMalloc(&points, 2*Settings::get_area()*sizeof(float));
 	cudaMalloc(&greenCoords, Settings::get_area()*sizeof(int));
@@ -188,9 +189,10 @@ void processPoints(float* greenInputPoints, float* redInputPoints, int* outputAr
 	h_count[1] = (int)(endRedPointer - sortedRedCoordsPtr);
 	printf("Got through thrust\n");
 
-	temp = (int*)malloc(sizeof(int)*(h_count[0]+h_count[1]));
-	cudaMemcpy(temp, sortedGreenCoords, sizeof(int)*h_count[0], cudaMemcpyDeviceToHost);
-	cudaMemcpy(&temp[h_count[0]], sortedRedCoords, sizeof(int)*h_count[1], cudaMemcpyDeviceToHost);
+	temp_green = (int*)malloc(sizeof(int)*h_count[0]);
+	temp_red = (int*)malloc(sizeof(int)*h_count[1]);
+	cudaMemcpy(temp_green, sortedGreenCoords, sizeof(int)*h_count[0], cudaMemcpyDeviceToHost);
+	cudaMemcpy(temp_red, sortedRedCoords, sizeof(int)*h_count[1], cudaMemcpyDeviceToHost);
 
 	cudaFree(points);
 	cudaFree(greenCoords);
@@ -198,7 +200,8 @@ void processPoints(float* greenInputPoints, float* redInputPoints, int* outputAr
 	cudaFree(sortedRedCoords);
 	cudaFree(sortedGreenCoords);
 	
-	outputArray = temp;
+	outputGreenCoords = temp_green;
+	outputRedCoords = temp_red;
 }
 
 //#region
@@ -671,7 +674,6 @@ void output_thread(){
 	float *temporary;
 	float *temporary_red_positions;
 	float *temporary_green_positions;
-	int *sorted_positions;
 	char* buffer;
 	while(true){
 		while(Settings::sleeping && !Settings::force_exit){}
@@ -706,6 +708,9 @@ void output_thread(){
 				Settings::set_requested_image(false);
 			}
 			if(!Settings::sent_coords && Settings::requested_coords){
+				int* sorted_green_positions;
+				int* sorted_red_positions;
+
 				mtx.lock();
 				cudaMemcpy(temporary_green_positions, maximaGreen, sizeof(int)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 				cudaMemcpy(temporary_red_positions, maximaGreen, sizeof(int)*Settings::get_area(), cudaMemcpyDeviceToDevice);
@@ -713,26 +718,28 @@ void output_thread(){
 
 				int* count = (int*)malloc(sizeof(int)*2);
 
-				processPoints(temporary_green_positions, temporary_red_positions, sorted_positions, count);
+				processPoints(temporary_green_positions, temporary_red_positions, sorted_green_positions, sorted_red_positions, count);
 
 				buffer = (char*)malloc(sizeof(int)*(2+count[0]+count[1]));
 				printf("Got out of function\n");
 
 				memcpy(&buffer[0], &count[0], sizeof(int));
-				memcpy(&buffer[sizeof(int)], &sorted_positions[0], count[0]*sizeof(int));
+				memcpy(&buffer[sizeof(int)], sorted_green_positions, count[0]*sizeof(int));
 				printf("%d; %d\n", count[0], count[1]);
 				memcpy(&buffer[sizeof(int)*(1+count[0])], &count[1], sizeof(int));
-				memcpy(&buffer[sizeof(int)*(2+count[0])], &sorted_positions[count[0]], count[1]*sizeof(int));
+				memcpy(&buffer[sizeof(int)*(2+count[0])], sorted_red_positions, count[1]*sizeof(int));
 				printf("%d; %d\n", count[0], count[1]);
 				
 				for(int i = 0; i < count[0]; i++){
-					printf("%d\n", sorted_positions[i]);
+					printf("%d\n", sorted_green_positions[i]);
 				}
 
 				send(client, buffer, sizeof(int)*(2+count[0]+count[1]), 0);
 
 				free(buffer);
 				free(count);
+				free(sorted_green_positions);
+				free(sorted_red_positions);
 				printf("Got to the end\n");
 
 				Settings::set_sent_coords(true);
