@@ -128,7 +128,8 @@ classdef twinbeam
                 red = 0;
                 disp("No red coordinates found");
             else
-                indeces = typecast(read(obj.connection, num_of_coords*4), 'int32');
+                indeces = typecast(read(obj.c
+                onnection, num_of_coords*4), 'int32');
                 red = zeros(num_of_coords,2);
                 for i = 1:num_of_coords
                     red(i,1) = indeces(i);

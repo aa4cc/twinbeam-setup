@@ -2,6 +2,9 @@
 #include "cufft.h"
 #include "cudaEGL.h"
 #include "cuda_egl_interop.h"
+#include "thrust/copy.h"
+#include "thrust/execution_policy.h"
+#include "thrust/device_ptr.h"
 #include "Argus/Argus.h"
 #include "EGLStream/EGLStream.h"
 #include "stdio.h"
@@ -87,6 +90,15 @@ const textureReference* yTex;
 texture<unsigned char, 2, cudaReadModeElementType> yTexRef;
 texture<uchar2, 2, cudaReadModeElementType> uvTexRef;
 
+struct is_not_zero
+{
+	__host__ __device__
+	bool operator()(const int x)
+	{
+		return x != 0;
+	}
+};
+
 // cxxopts.hpp related definitions
 cxxopts::ParseResult
 parse(int argc, char* argv[])
@@ -150,42 +162,50 @@ int* processPoints(float* greenInputPoints, float* redInputPoints, int* outputAr
 	int* redCoords;
 	int* sortedRedCoords;
 
-	int* h_count;
+	int h_count[2];
 	int* temp;
 	
 	cudaMalloc(&points, 2*Settings::get_area()*sizeof(float));
-
 	cudaMalloc(&greenCoords, Settings::get_area()*sizeof(int));
-	cudaMalloc(&sortedGreenCoords, Settings::get_area()*sizeof(int));
 	cudaMalloc(&redCoords, Settings::get_area()*sizeof(int));
+	cudaMalloc(&sortedGreenCoords, Settings::get_area()*sizeof(int));
 	cudaMalloc(&sortedRedCoords, Settings::get_area()*sizeof(int));
 
+	/*
 	cudaMallocHost(&h_count, sizeof(int)*2);
     memset(&h_count[0], 0, sizeof(int));
     memset(&h_count[1], 0, sizeof(int));
+	*/
 
 	cudaMemcpy(points, greenInputPoints, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 	cudaMemcpy(&points[Settings::get_area()], redInputPoints, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
-
 	findPoints<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, points, greenCoords);
 	findPoints<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, &points[Settings::get_area()], redCoords);
-	stupidSort<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, greenCoords, sortedGreenCoords, &h_count[0]);
-	stupidSort<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, redCoords, sortedRedCoords, &h_count[1]);
+	
+	thrust::device_ptr<int> greenCoordsPtr(greenCoords);
+	thrust::device_ptr<int> redCoordsPtr(redCoords);
 
-	temp = (int*)malloc(sizeof(int)*(h_count[0]+h_count[1]));
+	thrust::device_ptr<int> sortedGreenCoordsPtr(sortedGreenCoords);
+	thrust::device_ptr<int> sortedRedCoordsPtr(sortedRedCoords);
+
+	auto endGreenPointer = thrust::copy_if(thrust::device, greenCoordsPtr, greenCoordsPtr+Settings::get_area(), sortedGreenCoordsPtr, is_not_zero());
+	auto endRedPointer = thrust::copy_if(thrust::device, redCoordsPtr, redCoordsPtr+Settings::get_area(), sortedRedCoordsPtr, is_not_zero());
+
+	h_count[0] = (int)(endGreenPointer - sortedGreenCoordsPtr);
+	h_count[1] = (int)(endRedPointer - sortedRedCoordsPtr);
+
+	cudaMalloc(&temp, sizeof(float)*(h_count[0]+h_count[1]));
 	cudaMemcpy(temp, sortedGreenCoords, sizeof(int)*h_count[0], cudaMemcpyDeviceToHost);
-	printf("In process points function\n");
-	for(int i = 0 ; i < h_count[0]; i++){
-		printf("%d\n", temp[i]);
-	}
 	cudaMemcpy(&temp[h_count[0]], sortedRedCoords, sizeof(int)*h_count[1], cudaMemcpyDeviceToHost);
 
 	cudaDeviceSynchronize();
+
 	cudaFree(points);
 	cudaFree(greenCoords);
 	cudaFree(redCoords);
 	cudaFree(sortedRedCoords);
 	cudaFree(sortedGreenCoords);
+	
 	outputArray = temp;
 	return h_count;
 }
