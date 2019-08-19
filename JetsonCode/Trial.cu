@@ -717,11 +717,12 @@ void output_thread(){
 
 				buffer = (char*)malloc(sizeof(int)*(2+count[0]+count[1]));
 				printf("Got out of function\n");
+				printf("%d; %d\n", count[0], count[1]);
 
 				memcpy(&buffer[0], &count[0], sizeof(int));
-				cudaMemcpy(&buffer[sizeof(int)], &sorted_positions[0], count[0]*sizeof(int), cudaMemcpyDeviceToHost);
+				memcpy(&buffer[sizeof(int)], &sorted_positions[0], count[0]*sizeof(int));
 				memcpy(&buffer[sizeof(int)*(1+count[0])], &count[1], sizeof(int));
-				cudaMemcpy(&buffer[sizeof(int)*(2+count[0])], &sorted_positions[count[0]], count[1]*sizeof(int), cudaMemcpyDeviceToHost);
+				memcpy(&buffer[sizeof(int)*(2+count[0])], &sorted_positions[count[0]], count[1]*sizeof(int));
 				
 				for(int i = 0; i < count[0]; i++){
 					printf("%d\n", sorted_positions[i]);
@@ -732,8 +733,6 @@ void output_thread(){
 				free(buffer);
 				free(count);
 				printf("Got to the end\n");
-
-				printf("%d; %d\n", count[0], count[1]);
 
 				Settings::set_sent_coords(true);
 				Settings::set_requested_coords(false);
