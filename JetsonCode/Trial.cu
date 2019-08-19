@@ -717,12 +717,13 @@ void output_thread(){
 
 				buffer = (char*)malloc(sizeof(int)*(2+count[0]+count[1]));
 				printf("Got out of function\n");
-				printf("%d; %d\n", count[0], count[1]);
 
 				memcpy(&buffer[0], &count[0], sizeof(int));
 				memcpy(&buffer[sizeof(int)], &sorted_positions[0], count[0]*sizeof(int));
+				printf("%d; %d\n", count[0], count[1]);
 				memcpy(&buffer[sizeof(int)*(1+count[0])], &count[1], sizeof(int));
 				memcpy(&buffer[sizeof(int)*(2+count[0])], &sorted_positions[count[0]], count[1]*sizeof(int));
+				printf("%d; %d\n", count[0], count[1]);
 				
 				for(int i = 0; i < count[0]; i++){
 					printf("%d\n", sorted_positions[i]);
