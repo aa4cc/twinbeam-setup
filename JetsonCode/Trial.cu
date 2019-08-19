@@ -174,7 +174,7 @@ void processPoints(float* greenInputPoints, float* redInputPoints, int* outputAr
 	cudaMemcpy(&points[Settings::get_area()], redInputPoints, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 	findPoints<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, points, greenCoords);
 	findPoints<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, &points[Settings::get_area()], redCoords);
-	
+	printf("Got through allocation\n");
 	thrust::device_ptr<int> greenCoordsPtr(greenCoords);
 	thrust::device_ptr<int> redCoordsPtr(redCoords);
 
@@ -186,6 +186,7 @@ void processPoints(float* greenInputPoints, float* redInputPoints, int* outputAr
 
 	h_count[0] = (int)(endGreenPointer - sortedGreenCoordsPtr);
 	h_count[1] = (int)(endRedPointer - sortedRedCoordsPtr);
+	printf("Got through thrust\n");
 
 	temp = (int*)malloc(sizeof(int)*(h_count[0]+h_count[1]));
 	cudaMemcpy(temp, sortedGreenCoords, sizeof(int)*h_count[0], cudaMemcpyDeviceToHost);
@@ -715,6 +716,7 @@ void output_thread(){
 				processPoints(temporary_green_positions, temporary_red_positions, sorted_positions, count);
 
 				buffer = (char*)malloc(sizeof(int)*(2+count[0]+count[1]));
+				printf("Got out of function\n");
 
 				memcpy(&buffer[0], &count[0], sizeof(int));
 				cudaMemcpy(&buffer[sizeof(int)], &sorted_positions[0], count[0]*sizeof(int), cudaMemcpyDeviceToHost);
@@ -729,6 +731,7 @@ void output_thread(){
 
 				free(buffer);
 				free(count);
+				printf("Got to the end\n");
 
 				printf("%d; %d\n", count[0], count[1]);
 
