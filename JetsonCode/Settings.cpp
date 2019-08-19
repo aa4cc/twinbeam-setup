@@ -1,4 +1,5 @@
 #include "Settings.h"
+#include "Definitions.h"
 
 using namespace std;
 
@@ -11,7 +12,7 @@ bool Settings::force_exit = false;
 bool Settings::touch_kill = false;
 bool Settings::sent_coords = false;
 bool Settings::requested_coords = false;
-bool Settings::requested_type = false;
+REQUEST_TYPE Settings::requested_type = BACKPROPAGATED;
 bool Settings::requested_image = false;
 
 void Settings::set_setting(int index, const int new_setting){
@@ -47,9 +48,13 @@ void Settings::set_requested_type(const REQUEST_TYPE value){
 }
 
 void Settings::set_requested_image(const bool value){
-	Settings::set_requested_image = value;
+	Settings::requested_image = value;
 }
 
 void Settings::set_requested_coords(const bool value){
-	Settings::set_requested_coords = value;
+	Settings::requested_coords = value;
+}
+
+int Settings::get_area(){
+	return Settings::values[STG_WIDTH]*Settings::values[STG_HEIGHT];
 }

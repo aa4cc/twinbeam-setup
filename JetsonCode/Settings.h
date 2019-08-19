@@ -30,6 +30,8 @@ public:
 	static void set_requested_image(const bool value);
 	static void set_requested_coords(const bool value);
 
+	static int get_area();
+
 };
 
 #endif

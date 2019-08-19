@@ -390,14 +390,13 @@ __global__ void kernelToImage(int M, int N, int kernelDim, float* kernel, cufftC
             }
 	}
 	
-__global__ void findPoints(int M, int N, float* input, int* output, int* counter){
+__global__ void findPoints(int M, int N, float* input, int* output){
 		int index = blockIdx.x * blockDim.x + threadIdx.x;
 		int stride = blockDim.x * gridDim.x;
 		int count = N*M;
 		for(int i = index; i < count; i += stride){
 			if(input[i] > 0){
 				output[i] = i;
-				counter[0] += 1;
 			}
 		}
 	
@@ -409,8 +408,8 @@ __global__ void stupidSort(int M, int N, int* input, int* output, int *currentIn
 		int count = N*M;
 		for(int i = index; i < count; i += stride){
 			if(input[i] > 0){
-				atomicAdd(currentIndex, 1); 
-				output[*currentIndex] = input[i];
+				atomicAdd(currentIndex[0], 1); 
+				output[currentIndex[0]] = input[i];
 			}
 		}
 	
