@@ -161,9 +161,6 @@ void processPoints(float* greenInputPoints, float* redInputPoints, int* outputGr
 	int* sortedGreenCoords;
 	int* redCoords;
 	int* sortedRedCoords;
-
-	int* temp_green;
-	int* temp_red;
 	
 	cudaMalloc(&points, 2*Settings::get_area()*sizeof(float));
 	cudaMalloc(&greenCoords, Settings::get_area()*sizeof(int));
@@ -189,19 +186,14 @@ void processPoints(float* greenInputPoints, float* redInputPoints, int* outputGr
 	h_count[1] = (int)(endRedPointer - sortedRedCoordsPtr);
 	printf("Got through thrust\n");
 
-	temp_green = (int*)malloc(sizeof(int)*h_count[0]);
-	temp_red = (int*)malloc(sizeof(int)*h_count[1]);
-	cudaMemcpy(temp_green, sortedGreenCoords, sizeof(int)*h_count[0], cudaMemcpyDeviceToHost);
-	cudaMemcpy(temp_red, sortedRedCoords, sizeof(int)*h_count[1], cudaMemcpyDeviceToHost);
+	cudaMemcpy(outputGreenCoords, sortedGreenCoords, sizeof(int)*h_count[0], cudaMemcpyDeviceToHost);
+	cudaMemcpy(outputRedCoords, sortedRedCoords, sizeof(int)*h_count[1], cudaMemcpyDeviceToHost);
 
 	cudaFree(points);
 	cudaFree(greenCoords);
 	cudaFree(redCoords);
 	cudaFree(sortedRedCoords);
 	cudaFree(sortedGreenCoords);
-	
-	outputGreenCoords = temp_green;
-	outputRedCoords = temp_red;
 }
 
 //#region
@@ -708,9 +700,8 @@ void output_thread(){
 				Settings::set_requested_image(false);
 			}
 			if(!Settings::sent_coords && Settings::requested_coords){
-				int* sorted_green_positions;
-				int* sorted_red_positions;
-
+				int* sorted_green_positions = (int*)malloc(sizeof(int)*Settings::get_area());
+				int* sorted_red_positions = (int*)malloc(sizeof(int)*Settings::get_area());
 				mtx.lock();
 				cudaMemcpy(temporary_green_positions, maximaGreen, sizeof(int)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 				cudaMemcpy(temporary_red_positions, maximaGreen, sizeof(int)*Settings::get_area(), cudaMemcpyDeviceToDevice);
@@ -724,10 +715,10 @@ void output_thread(){
 				printf("Got out of function\n");
 
 				memcpy(&buffer[0], &count[0], sizeof(int));
-				memcpy(&buffer[sizeof(int)], sorted_green_positions, count[0]*sizeof(int));
+				memcpy(&buffer[4], sorted_green_positions, count[0]*sizeof(int));
 				printf("%d; %d\n", count[0], count[1]);
-				memcpy(&buffer[sizeof(int)*(1+count[0])], &count[1], sizeof(int));
-				memcpy(&buffer[sizeof(int)*(2+count[0])], sorted_red_positions, count[1]*sizeof(int));
+				memcpy(&buffer[4*(1+count[0])], &count[1], sizeof(int));
+				memcpy(&buffer[4*(2+count[0])], sorted_red_positions, count[1]*sizeof(int));
 				printf("%d; %d\n", count[0], count[1]);
 				
 				for(int i = 0; i < count[0]; i++){
