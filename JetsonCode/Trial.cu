@@ -510,6 +510,8 @@ void consumer_thread(){
 			iSourceSettings->setFrameDurationRange(Range<uint64_t>(1e9/DEFAULT_FPS));
 			iSourceSettings->setExposureTimeRange(Range<uint64_t>(Settings::values[STG_EXPOSURE],Settings::values[STG_EXPOSURE]));
 			iSourceSettings->setGainRange(Range<float>(1.0,1.0));
+			iSourceSettings->setOpticalBlackEnable(true);
+			iSourceSettings->setOpticalBlack(0.9);
 
 			cudaMalloc(&G, Settings::get_area()*sizeof(uint16_t));
 			cudaMalloc(&R, Settings::get_area()*sizeof(uint16_t));
