@@ -119,12 +119,11 @@ classdef twinbeam
                 indeces = typecast(read(obj.connection, num_of_coords*4), 'int32');
                 green = zeros(num_of_coords,2);
                 for i = 1:num_of_coords
-                    green(i,1) = indeces(i);
+                    green(i,1) = indeces(i)/obj.width;
+                    green(i,2) = mod(indeces(i),obj.width);
                 end
-                
-                disp(green);
             end
-            num_of_coords = typecast(read(obj.connection, 4), 'int32')
+            num_of_coords = typecast(read(obj.connection, 4), 'int32');
             if num_of_coords == 0
                 red = 0;
                 disp("No red coordinates found");
@@ -135,7 +134,6 @@ classdef twinbeam
                     red(i,1) = indeces(i)/obj.width;
                     red(i,2) = mod(indeces(i),obj.width);
                 end
-                disp(red);
             end
         end
         
