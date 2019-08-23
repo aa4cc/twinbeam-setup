@@ -513,6 +513,10 @@ void consumer_thread(){
 			iSourceSettings->setOpticalBlackEnable(true);
 			iSourceSettings->setOpticalBlack(0.01);
 
+			IAutoControlSettings *iAutoSettings = interface_cast<IAutoControlSettings>(iRequest->getAutoControlSettings());
+			iAutoSettings->setExposureCompensation(0);
+			iAutoSettings->setIspDigitalGainRange(Range<float>(0,0));
+
 			cudaMalloc(&G, Settings::get_area()*sizeof(uint16_t));
 			cudaMalloc(&R, Settings::get_area()*sizeof(uint16_t));
 			cudaMalloc(&positionsGreen, Settings::get_area()*sizeof(float));
