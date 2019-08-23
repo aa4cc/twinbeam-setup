@@ -510,8 +510,8 @@ void consumer_thread(){
 			iSourceSettings->setFrameDurationRange(Range<uint64_t>(1e9/DEFAULT_FPS));
 			iSourceSettings->setExposureTimeRange(Range<uint64_t>(Settings::values[STG_EXPOSURE],Settings::values[STG_EXPOSURE]));
 			iSourceSettings->setGainRange(Range<float>(1.0,1.0));
-			//iSourceSettings->setOpticalBlackEnable(true);
-			//iSourceSettings->setOpticalBlack(0.01);
+			iSourceSettings->setOpticalBlackEnable(true);
+			iSourceSettings->setOpticalBlack(0.01);
 
 			IAutoControlSettings *iAutoSettings = interface_cast<IAutoControlSettings>(iRequest->getAutoControlSettings());
 			iAutoSettings->setExposureCompensation(0);
@@ -791,7 +791,7 @@ void print_thread(){
 				cv::flip(img, img_trans, -1);
 				cv::transpose(img_trans, img);
 
-				const cv::Mat result = img2+img;
+				const cv::Mat result = img2;
 				cv::imshow("Basic Visualization", result);
 				cv::waitKey(1);
 			}
