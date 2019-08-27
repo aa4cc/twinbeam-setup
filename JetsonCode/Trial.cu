@@ -785,9 +785,9 @@ void print_thread(){
 				cudaMemcpy(tempArray2, outputArray, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 				mtx.unlock();
 
-				printf("%f\n", tempArray2[STG_HEIGHT**2/2 + STG_WIDTH]);
 				cudaMemcpy(output, tempArray, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToHost);
 				cudaMemcpy(output2, tempArray2, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToHost);
+				printf("%f\n", output2[STG_HEIGHT**2/2 + STG_WIDTH]);
 				const cv::Mat img(cv::Size(STG_WIDTH, STG_HEIGHT), CV_32F, output);
 				const cv::Mat img2(cv::Size(STG_WIDTH, STG_HEIGHT), CV_32F, output2);
 
