@@ -516,7 +516,7 @@ void consumer_thread(){
 			IAutoControlSettings *iAutoSettings = interface_cast<IAutoControlSettings>(iRequest->getAutoControlSettings());
 			iAutoSettings->setExposureCompensation(0);
 			iAutoSettings->setIspDigitalGainRange(Range<float>(0,0));
-			iAutoSettings->setWbGains(Range<float>(0,1));
+			iAutoSettings->setWbGains(1);
 			iAutoSettings->setColorSaturation(1.0);
 			iAutoSettings->setColorSaturationBias(1.0);
 			iAutoSettings->setColorSaturationEnable(true);
