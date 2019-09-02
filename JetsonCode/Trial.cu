@@ -521,7 +521,7 @@ void consumer_thread(){
 			iAutoSettings->setColorSaturationBias(1.0);
 			iAutoSettings->setColorSaturationEnable(true);
 			iAutoSettings->setAwbLock(true);
-			iAutoSettings->setAeLock(true);
+			iAutoSettings->setAeLock(false);
 
 			cudaMalloc(&G, Settings::get_area()*sizeof(uint16_t));
 			cudaMalloc(&R, Settings::get_area()*sizeof(uint16_t));
