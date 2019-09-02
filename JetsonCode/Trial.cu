@@ -508,14 +508,14 @@ void consumer_thread(){
 			
 			ISourceSettings *iSourceSettings = interface_cast<ISourceSettings>(iRequest->getSourceSettings());
 			iSourceSettings->setFrameDurationRange(Range<uint64_t>(1e9/DEFAULT_FPS));
-			iSourceSettings->setExposureTimeRange(Range<uint64_t>(Settings::values[STG_EXPOSURE],Settings::values[STG_EXPOSURE]));
+			//iSourceSettings->setExposureTimeRange(Range<uint64_t>(Settings::values[STG_EXPOSURE],Settings::values[STG_EXPOSURE]));
 			iSourceSettings->setGainRange(Range<float>(1.0,1.0));
 			//iSourceSettings->setOpticalBlackEnable(true);
 			//iSourceSettings->setOpticalBlack(0.01);
 
 			IAutoControlSettings *iAutoSettings = interface_cast<IAutoControlSettings>(iRequest->getAutoControlSettings());
 			iAutoSettings->setExposureCompensation(0);
-			iAutoSettings->setIspDigitalGainRange(Range<float>(0,1));
+			iAutoSettings->setIspDigitalGainRange(Range<float>(0,0));
 			iAutoSettings->setWbGains(0);
 			iAutoSettings->setColorSaturation(1.0);
 			iAutoSettings->setColorSaturationBias(1.0);
