@@ -515,6 +515,9 @@ void consumer_thread(){
 			iAutoSettings->setExposureCompensation(0);
 			iAutoSettings->setIspDigitalGainRange(Range<float>(0,0));
 			iAutoSettings->setWbGains(100);
+			iAutoSettings->setColorSaturation(1.0);
+			iAutoSettings->setColorSaturationBias(1.0);
+			iAutoSettings->setColorSaturationEnable(true);
 			iAutoSettings->setAwbLock(true);
 			iAutoSettings->setAeAntibandingMode(AE_ANTIBANDING_MODE_AUTO);
 			iAutoSettings->setAeLock(true);
