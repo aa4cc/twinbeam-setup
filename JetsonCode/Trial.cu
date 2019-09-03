@@ -509,7 +509,7 @@ void consumer_thread(){
 			ISourceSettings *iSourceSettings = interface_cast<ISourceSettings>(iRequest->getSourceSettings());
 			iSourceSettings->setFrameDurationRange(Range<uint64_t>(1e9/DEFAULT_FPS));
 			iSourceSettings->setExposureTimeRange(Range<uint64_t>(Settings::values[STG_EXPOSURE],Settings::values[STG_EXPOSURE]));
-			iSourceSettings->setGainRange(Range<float>(0.5,0.5));
+			iSourceSettings->setGainRange(Range<float>(0.5,1.5));
 
 			IAutoControlSettings *iAutoSettings = interface_cast<IAutoControlSettings>(iRequest->getAutoControlSettings());
 			iAutoSettings->setExposureCompensation(0);
