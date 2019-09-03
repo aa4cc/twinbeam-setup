@@ -519,7 +519,7 @@ void consumer_thread(){
 			iAutoSettings->setColorSaturationBias(1.0);
 			iAutoSettings->setColorSaturationEnable(true);
 			iAutoSettings->setAwbLock(true);
-			iAutoSettings->setAeAntibandingMode(AE_ANTIBANDING_MODE_AUTO);
+			iAutoSettings->setAeAntibandingMode(AE_ANTIBANDING_MODE_OFF);
 			iAutoSettings->setAeLock(true);
 
 			cudaMalloc(&G, Settings::get_area()*sizeof(uint16_t));
