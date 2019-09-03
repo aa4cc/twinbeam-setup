@@ -507,19 +507,17 @@ void consumer_thread(){
 			iRequest->enableOutputStream(outputStream.get());
 			
 			ISourceSettings *iSourceSettings = interface_cast<ISourceSettings>(iRequest->getSourceSettings());
-			//iSourceSettings->setFrameDurationRange(Range<uint64_t>(1e9/DEFAULT_FPS));
-			//iSourceSettings->setExposureTimeRange(Range<uint64_t>(Settings::values[STG_EXPOSURE],Settings::values[STG_EXPOSURE]));
+			iSourceSettings->setFrameDurationRange(Range<uint64_t>(1e9/DEFAULT_FPS));
+			iSourceSettings->setExposureTimeRange(Range<uint64_t>(Settings::values[STG_EXPOSURE],Settings::values[STG_EXPOSURE]));
 			iSourceSettings->setGainRange(Range<float>(1.0,1.0));
 
 			IAutoControlSettings *iAutoSettings = interface_cast<IAutoControlSettings>(iRequest->getAutoControlSettings());
 			iAutoSettings->setExposureCompensation(0);
 			iAutoSettings->setIspDigitalGainRange(Range<float>(0,0));
 			iAutoSettings->setWbGains(100);
-			iAutoSettings->setColorSaturation(1.0);
-			iAutoSettings->setColorSaturationBias(1.0);
-			iAutoSettings->setColorSaturationEnable(true);
 			iAutoSettings->setAwbLock(true);
-			iAutoSettings->setAeLock(false);
+			iAutoSettings->setAeAntibandingMode(AE_ANTIBANDING_MODE_50HZ);
+			iAutoSettings->setAeLock(true);
 
 			cudaMalloc(&G, Settings::get_area()*sizeof(uint16_t));
 			cudaMalloc(&R, Settings::get_area()*sizeof(uint16_t));
