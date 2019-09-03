@@ -516,7 +516,7 @@ void consumer_thread(){
 			iAutoSettings->setIspDigitalGainRange(Range<float>(0,0));
 			iAutoSettings->setWbGains(100);
 			iAutoSettings->setAwbLock(true);
-			iAutoSettings->setAeAntibandingMode(AE_ANTIBANDING_MODE_60HZ);
+			iAutoSettings->setAeAntibandingMode(AE_ANTIBANDING_MODE_AUTO);
 			iAutoSettings->setAeLock(true);
 
 			cudaMalloc(&G, Settings::get_area()*sizeof(uint16_t));
