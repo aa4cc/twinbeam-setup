@@ -596,9 +596,9 @@ void consumer_thread(){
 				yuv2bgr<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT,
 												Settings::values[STG_OFFSET_X], Settings::values[STG_OFFSET_Y], G, R);
 				auto test = std::chrono::system_clock::now();
-				mtx.lock();
 				u16ToDouble<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, G, doubleTemporary);
 				u16ToDouble<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, R, redConverted);
+				mtx.lock();
 				h_backPropagate(STG_WIDTH, STG_HEIGHT, LAMBDA_GREEN, (float)Settings::values[STG_Z_GREEN]/(float)1000000,
 						doubleTemporary, kernelGreen, outputArray, maximaGreen, true);		
 				h_backPropagate(STG_WIDTH,STG_HEIGHT, LAMBDA_RED, (float)Settings::values[STG_Z_RED]/(float)1000000,
@@ -780,7 +780,7 @@ void print_thread(){
 				cycles = 0;
 				mtx.lock();
 				cudaMemcpy(tempArray, maximaGreen, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
-				cudaMemcpy(tempArray2, doubleTemporary, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+				cudaMemcpy(tempArray2, outputArray, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 				mtx.unlock();
 
 				cudaMemcpy(output, tempArray, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToHost);
@@ -797,7 +797,7 @@ void print_thread(){
 				cv::flip(img, img_trans, -1);
 				cv::transpose(img_trans, img);
 
-				const cv::Mat result = img2 / 256;
+				const cv::Mat result = img2;
 				cv::imshow("Basic Visualization", result);
 				cv::waitKey(1);
 			}
