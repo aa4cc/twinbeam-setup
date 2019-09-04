@@ -53,6 +53,8 @@ float* redConverted;
 float* convolutionMaskGreen;
 float* convolutionMaskRed;
 float* convoOutputArrayGreen;
+float* convoBlur;
+cufftComplex* kernelBlur;
 
 float* maximaRed;
 float* maximaGreen;
@@ -231,7 +233,7 @@ void transformKernel(int M, int N, int kernelDim, float* kernel, cufftComplex* o
 }
 
 
-void h_backPropagate(int M, int N, float lambda, float z, float* input,
+void h_backPropagate(int M, int N, float lambda, float z, float* input, cufftComplex* kernelBlur,
 		cufftComplex* kernel, float* output, float* output2, bool display)
 {
     cufftComplex* doubleComplexArray;
@@ -250,6 +252,7 @@ void h_backPropagate(int M, int N, float lambda, float z, float* input,
     cudaMalloc(&extremes, sizeof(float));
 
     convertToComplex<<<numBlocks, BLOCKSIZE>>>(N*M, input, image);
+    elMultiplication<<<numBlocks, BLOCKSIZE>>>(M, N, kernelBlur, image);
     // Declaring the FFT plan
     cufftPlan2d(&plan, N,M, CUFFT_C2C);
     // Execute forward FFT on the green channel
@@ -449,6 +452,7 @@ void input_thread(){
 }
 
 void consumer_thread(){
+	float tempBlur[0] = {1/9};
 	printf("consumer_thread: started\n");
 	//Initializing LibArgus according to the tutorial for a sample project.
 	// First we create a CameraProvider, necessary for each project.
@@ -535,6 +539,11 @@ void consumer_thread(){
 			cudaMalloc(&kernelGreen, Settings::get_area()*sizeof(cufftComplex));
 			cudaMalloc(&kernelRed, Settings::get_area()*sizeof(cufftComplex));
 			
+			cudaMalloc(&convoBlur, 9*sizeof(float));
+			cudaMalloc(&kernelBlur, Settings::get_area()*sizeof(cufftComplex));
+			cudaMemcpy(convoBlur, tempBlur, 9*sizeof(float), cudaMemcpyHostToDevice);
+			
+			transformKernel(STG_WIDTH, STG_HEIGHT, 3, convoBlur, kernelBlur);
 			transformKernel(STG_WIDTH, STG_HEIGHT, CONVO_DIM_GREEN, convolutionMaskGreen, kernelGreen);
 			transformKernel(STG_WIDTH, STG_HEIGHT, CONVO_DIM_RED, convolutionMaskRed, kernelRed);
 			
@@ -600,9 +609,9 @@ void consumer_thread(){
 				u16ToDouble<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, R, redConverted);
 				mtx.lock();
 				h_backPropagate(STG_WIDTH, STG_HEIGHT, LAMBDA_GREEN, (float)Settings::values[STG_Z_GREEN]/(float)1000000,
-						doubleTemporary, kernelGreen, outputArray, maximaGreen, true);		
+						doubleTemporary, kernelBlur, kernelGreen, outputArray, maximaGreen, true);		
 				h_backPropagate(STG_WIDTH,STG_HEIGHT, LAMBDA_RED, (float)Settings::values[STG_Z_RED]/(float)1000000,
-						redConverted, kernelRed, convoOutputArray, maximaRed, false);
+						redConverted, kernelBlur, kernelRed, convoOutputArray, maximaRed, false);
 				mtx.unlock();
 				
 				
@@ -644,8 +653,10 @@ void consumer_thread(){
 			cudaFree(convolutionMaskGreen);
 			cudaFree(convolutionMaskRed);
 			cudaFree(convoOutputArrayRed);
+			cudaFree(convoBlur);
 			cudaFree(kernelGreen);
 			cudaFree(kernelRed);
+			cudaFree(kernelBlur);
 			
 			cudaEGLStreamConsumerDisconnect(&conn);
 			iStream->disconnect();
