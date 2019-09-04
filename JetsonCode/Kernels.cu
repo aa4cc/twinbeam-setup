@@ -411,7 +411,7 @@ __global__ void generateBlurFilter(int M, int N, cufftComplex* filter){
         }
         else{
             filter[i].x = 1;
-            filter[i].y = 0;
+            filter[i].y = 1;
         }
     }
 }
