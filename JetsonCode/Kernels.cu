@@ -74,7 +74,6 @@ __global__ void absoluteValue(int N, int M, cufftComplex* storageArray, float* o
         }
         
 __global__ void cutAndConvert(int N, int M, cufftComplex* input, float* output){
-            cufftComplex temp;
             float floatTemp;
             int index = blockIdx.x * blockDim.x + threadIdx.x;
             int stride = blockDim.x * gridDim.x;
@@ -406,7 +405,7 @@ __global__ void generateBlurFilter(int M, int N, cufftComplex* filter){
     int stride = blockDim.x * gridDim.x;
     int count = N*M;
     for(int i = index; i < count; i += stride){
-        if(i % M < 3 || i / M < 3 || i / M > N-3 || i % M > M-3){
+        if(i % M < 2 || i / M < 2 || i / M > N-2 || i % M > M-2){
             filter[i].x = 0;
             filter[i].y = 0;
         }
