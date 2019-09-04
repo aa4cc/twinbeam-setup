@@ -67,6 +67,8 @@ int* redPointsLast;
 int* greenPointsLast;
 int* current_index;
 
+cufftComplex* convolutionFilterBlur;
+
 int client;
 
 // Options
@@ -258,6 +260,7 @@ void h_backPropagate(int M, int N, float lambda, float z, float* input,
     calculate<<<numBlocks, BLOCKSIZE>>>(N,M, z, PIXEL_DX, REFRACTION_INDEX, lambda, Hq);
     // Element-wise multiplication of Hq matrix and the image
 	elMultiplication<<<numBlocks, BLOCKSIZE>>>(M, N, Hq, image);
+	elMultiplication<<<numBlocks, BLOCKSIZE>>>(M, N, convolutionFilterBlur, image);
 	elMultiplication2<<<numBlocks, BLOCKSIZE>>>(M, N, image, kernel, kernelizedImage);
     if(display){
 		// Executing inverse FFT
@@ -522,8 +525,8 @@ void consumer_thread(){
 			iAutoSettings->setAeAntibandingMode(AE_ANTIBANDING_MODE_OFF);
 
 			IDenoiseSettings *iDenoiseSettings = interface_cast<IDenoiseSettings>(request);	
-			iDenoiseSettings->setDenoiseMode(DENOISE_MODE_HIGH_QUALITY);
-			iDenoiseSettings->setDenoiseStrength(0.5);
+			iDenoiseSettings->setDenoiseMode(DENOISE_MODE_FAST);
+			iDenoiseSettings->setDenoiseStrength(1.0);
 
 			cudaMalloc(&G, Settings::get_area()*sizeof(uint16_t));
 			cudaMalloc(&R, Settings::get_area()*sizeof(uint16_t));
@@ -538,6 +541,9 @@ void consumer_thread(){
 			
 			cudaMalloc(&kernelGreen, Settings::get_area()*sizeof(cufftComplex));
 			cudaMalloc(&kernelRed, Settings::get_area()*sizeof(cufftComplex));
+
+			cudaMalloc(&convolutionFilterBlur, Settings::get_area()*sizeof(cufftComplex));
+			generateBlurFilter<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, convolutionFilterBlur);
 			
 			transformKernel(STG_WIDTH, STG_HEIGHT, CONVO_DIM_GREEN, convolutionMaskGreen, kernelGreen);
 			transformKernel(STG_WIDTH, STG_HEIGHT, CONVO_DIM_RED, convolutionMaskRed, kernelRed);

@@ -391,29 +391,28 @@ __global__ void kernelToImage(int M, int N, int kernelDim, float* kernel, cufftC
 	}
 	
 __global__ void findPoints(int M, int N, float* input, int* output){
-		int index = blockIdx.x * blockDim.x + threadIdx.x;
-		int stride = blockDim.x * gridDim.x;
-		int count = N*M;
-		for(int i = index; i < count; i += stride){
-			if(input[i] > 0){
-				output[i] = i;
-			}
+	int index = blockIdx.x * blockDim.x + threadIdx.x;
+	int stride = blockDim.x * gridDim.x;
+	int count = N*M;
+	for(int i = index; i < count; i += stride){
+		if(input[i] > 0){
+			output[i] = i;
 		}
-	
 	}
+}
 
-/*
-__global__ void stupidSort(int M, int N, int* input, int* output, int *currentIndex){
-		int index = blockIdx.x * blockDim.x + threadIdx.x;
-		int stride = blockDim.x * gridDim.x;
-		int count = N*M;
-		for(int i = index; i < count; i += stride){
-			if(input[i] > 0){
-				atomicAdd(currentIndex[0], 1); 
-				output[currentIndex[0]] = input[i];
-			}
-		}
-	
-	}
-
-*/
+__global__ void generateBlurFilter(int M, int N, cufftComplex* filter){
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+    int count = N*M;
+    for(int i = index; i < count; i += stride){
+        if(i % M < 3 || i / M < 3 || i / M > N-3 || i % M > M-3){
+            output[i].x = 0;
+            output[i].y = 0;
+        }
+        else{
+            output[i].x = 1;
+            output[i].y = 0;
+        }
+    }
+}
