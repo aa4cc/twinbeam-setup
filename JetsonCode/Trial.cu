@@ -260,7 +260,7 @@ void h_backPropagate(int M, int N, float lambda, float z, float* input,
     calculate<<<numBlocks, BLOCKSIZE>>>(N,M, z, PIXEL_DX, REFRACTION_INDEX, lambda, Hq);
     // Element-wise multiplication of Hq matrix and the image
 	elMultiplication<<<numBlocks, BLOCKSIZE>>>(M, N, Hq, image);
-	elMultiplication<<<numBlocks, BLOCKSIZE>>>(M, N, convolutionFilterBlur, image);
+	blurFilter<<<numBlocks, BLOCKSIZE>>>(M, N, 3, image);
 	elMultiplication2<<<numBlocks, BLOCKSIZE>>>(M, N, image, kernel, kernelizedImage);
     if(display){
 		// Executing inverse FFT

@@ -36,5 +36,6 @@ __global__ void getLocalMaxima(int M, int N, float* input, float* output);
 __global__ void kernelToImage(int M, int N, int kernelDim, float* kernel, cufftComplex* outputKernel);
 __global__ void findPoints(int M, int N, float* input, int* output);
 __global__ void generateBlurFilter(int M, int N, cufftComplex* filter);
+__global__ void blurFilter(int M, int N, int margin, cufftComplex* input)
 
 #endif
