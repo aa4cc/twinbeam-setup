@@ -407,12 +407,12 @@ __global__ void generateBlurFilter(int M, int N, cufftComplex* filter){
     int count = N*M;
     for(int i = index; i < count; i += stride){
         if(i % M < 3 || i / M < 3 || i / M > N-3 || i % M > M-3){
-            output[i].x = 0;
-            output[i].y = 0;
+            filter[i].x = 0;
+            filter[i].y = 0;
         }
         else{
-            output[i].x = 1;
-            output[i].y = 0;
+            filter[i].x = 1;
+            filter[i].y = 0;
         }
     }
 }
