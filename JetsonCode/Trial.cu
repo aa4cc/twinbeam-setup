@@ -522,9 +522,9 @@ void consumer_thread(){
 			iAutoSettings->setAwbLock(true);
 			iAutoSettings->setAeAntibandingMode(AE_ANTIBANDING_MODE_OFF);
 
-			//IDenoiseSettings *iDenoiseSettings = interface_cast<IDenoiseSettings>(request);	
-			//iDenoiseSettings->setDenoiseMode(DENOISE_MODE_FAST);
-			//iDenoiseSettings->setDenoiseStrength(1.0);
+			IDenoiseSettings *iDenoiseSettings = interface_cast<IDenoiseSettings>(request);	
+			iDenoiseSettings->setDenoiseMode(DENOISE_MODE_FAST);
+			iDenoiseSettings->setDenoiseStrength(1.0);
 
 			cudaMalloc(&G, Settings::get_area()*sizeof(uint16_t));
 			cudaMalloc(&R, Settings::get_area()*sizeof(uint16_t));
