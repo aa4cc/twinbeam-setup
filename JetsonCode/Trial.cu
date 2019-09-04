@@ -53,8 +53,6 @@ float* redConverted;
 float* convolutionMaskGreen;
 float* convolutionMaskRed;
 float* convoOutputArrayGreen;
-float* convoBlur;
-cufftComplex* kernelBlur;
 
 float* maximaRed;
 float* maximaGreen;
@@ -452,8 +450,6 @@ void input_thread(){
 }
 
 void consumer_thread(){
-	float tempBlur[9];
-	fill_n(tempBlur, 9, 1.0f/9.0f);
 	printf("consumer_thread: started\n");
 	//Initializing LibArgus according to the tutorial for a sample project.
 	// First we create a CameraProvider, necessary for each project.
@@ -543,10 +539,6 @@ void consumer_thread(){
 			
 			cudaMalloc(&kernelGreen, Settings::get_area()*sizeof(cufftComplex));
 			cudaMalloc(&kernelRed, Settings::get_area()*sizeof(cufftComplex));
-			
-			cudaMalloc(&convoBlur, 9*sizeof(float));
-			cudaMalloc(&kernelBlur, Settings::get_area()*sizeof(cufftComplex));
-			cudaMemcpy(convoBlur, tempBlur, 9*sizeof(float), cudaMemcpyHostToDevice);
 			
 			transformKernel(STG_WIDTH, STG_HEIGHT, 3, convoBlur, kernelBlur);
 			transformKernel(STG_WIDTH, STG_HEIGHT, CONVO_DIM_GREEN, convolutionMaskGreen, kernelGreen);
@@ -658,10 +650,8 @@ void consumer_thread(){
 			cudaFree(convolutionMaskGreen);
 			cudaFree(convolutionMaskRed);
 			cudaFree(convoOutputArrayRed);
-			cudaFree(convoBlur);
 			cudaFree(kernelGreen);
 			cudaFree(kernelRed);
-			cudaFree(kernelBlur);
 			
 			cudaEGLStreamConsumerDisconnect(&conn);
 			iStream->disconnect();
@@ -796,7 +786,7 @@ void print_thread(){
 				cycles = 0;
 				mtx.lock();
 				cudaMemcpy(tempArray, maximaGreen, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
-				cudaMemcpy(tempArray2, outputArray, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+				cudaMemcpy(tempArray2, doubleTemporary, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 				mtx.unlock();
 
 				cudaMemcpy(output, tempArray, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToHost);
