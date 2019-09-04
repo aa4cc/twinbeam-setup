@@ -452,7 +452,8 @@ void input_thread(){
 }
 
 void consumer_thread(){
-	float tempBlur[9] = {1/9};
+	float tempBlur[9];
+	fill_n(tempBlur, 9, 1/9);
 	printf("consumer_thread: started\n");
 	//Initializing LibArgus according to the tutorial for a sample project.
 	// First we create a CameraProvider, necessary for each project.
