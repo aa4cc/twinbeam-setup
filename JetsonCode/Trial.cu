@@ -252,19 +252,19 @@ void h_backPropagate(int M, int N, float lambda, float z, float* input, cufftCom
     cudaMalloc(&extremes, sizeof(float));
 
     convertToComplex<<<numBlocks, BLOCKSIZE>>>(N*M, input, image);
-    elMultiplication<<<numBlocks, BLOCKSIZE>>>(M, N, kernelBlur, image);
+    //elMultiplication<<<numBlocks, BLOCKSIZE>>>(M, N, kernelBlur, image);
     // Declaring the FFT plan
-    //cufftPlan2d(&plan, N,M, CUFFT_C2C);
+    cufftPlan2d(&plan, N,M, CUFFT_C2C);
     // Execute forward FFT on the green channel
-    //cufftExecC2C(plan, image, image, CUFFT_FORWARD);
+    cufftExecC2C(plan, image, image, CUFFT_FORWARD);
     // Calculating the Hq matrix according to the equations in the original .m file.
-    //calculate<<<numBlocks, BLOCKSIZE>>>(N,M, z, PIXEL_DX, REFRACTION_INDEX, lambda, Hq);
+    calculate<<<numBlocks, BLOCKSIZE>>>(N,M, z, PIXEL_DX, REFRACTION_INDEX, lambda, Hq);
     // Element-wise multiplication of Hq matrix and the image
-	//elMultiplication<<<numBlocks, BLOCKSIZE>>>(M, N, Hq, image);
+	elMultiplication<<<numBlocks, BLOCKSIZE>>>(M, N, Hq, image);
 	elMultiplication2<<<numBlocks, BLOCKSIZE>>>(M, N, image, kernel, kernelizedImage);
     if(display){
 		// Executing inverse FFT
-		//cufftExecC2C(plan, image, image, CUFFT_INVERSE);
+		cufftExecC2C(plan, image, image, CUFFT_INVERSE);
 		// Conversion of result matrix to a real double matrix
 		absoluteValue<<<numBlocks, BLOCKSIZE>>>(M,N, image, output);
 
@@ -525,6 +525,10 @@ void consumer_thread(){
 			iAutoSettings->setColorSaturationEnable(true);
 			iAutoSettings->setAwbLock(true);
 			iAutoSettings->setAeAntibandingMode(AE_ANTIBANDING_MODE_OFF);
+
+			IDenoiseSettings *iDenoiseSettings = interface_cast<iDenoiseSettings>(request);	
+			iDenoiseSettings->setDenoiseMode(FAST);
+			iDenoiseSettings->setDenoiseStrength(1.0);
 
 			cudaMalloc(&G, Settings::get_area()*sizeof(uint16_t));
 			cudaMalloc(&R, Settings::get_area()*sizeof(uint16_t));
