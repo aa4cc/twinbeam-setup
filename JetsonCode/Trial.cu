@@ -264,7 +264,7 @@ void h_backPropagate(int M, int N, float lambda, float z, float* input, cufftCom
 	elMultiplication2<<<numBlocks, BLOCKSIZE>>>(M, N, image, kernel, kernelizedImage);
     if(display){
 		// Executing inverse FFT
-		cufftExecC2C(plan, image, image, CUFFT_INVERSE);
+		//cufftExecC2C(plan, image, image, CUFFT_INVERSE);
 		// Conversion of result matrix to a real double matrix
 		absoluteValue<<<numBlocks, BLOCKSIZE>>>(M,N, image, output);
 
@@ -792,7 +792,7 @@ void print_thread(){
 				cycles = 0;
 				mtx.lock();
 				cudaMemcpy(tempArray, maximaGreen, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
-				cudaMemcpy(tempArray2, kernelGreen, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+				cudaMemcpy(tempArray2, outputArray, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 				mtx.unlock();
 
 				cudaMemcpy(output, tempArray, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToHost);
