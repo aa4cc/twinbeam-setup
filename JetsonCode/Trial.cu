@@ -540,7 +540,6 @@ void consumer_thread(){
 			cudaMalloc(&kernelGreen, Settings::get_area()*sizeof(cufftComplex));
 			cudaMalloc(&kernelRed, Settings::get_area()*sizeof(cufftComplex));
 			
-			transformKernel(STG_WIDTH, STG_HEIGHT, 3, convoBlur, kernelBlur);
 			transformKernel(STG_WIDTH, STG_HEIGHT, CONVO_DIM_GREEN, convolutionMaskGreen, kernelGreen);
 			transformKernel(STG_WIDTH, STG_HEIGHT, CONVO_DIM_RED, convolutionMaskRed, kernelRed);
 			
