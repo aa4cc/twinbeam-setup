@@ -233,7 +233,7 @@ void transformKernel(int M, int N, int kernelDim, float* kernel, cufftComplex* o
 }
 
 
-void h_backPropagate(int M, int N, float lambda, float z, float* input, cufftComplex* kernelBlur,
+void h_backPropagate(int M, int N, float lambda, float z, float* input,
 		cufftComplex* kernel, float* output, float* output2, bool display)
 {
     cufftComplex* doubleComplexArray;
@@ -526,9 +526,9 @@ void consumer_thread(){
 			iAutoSettings->setAwbLock(true);
 			iAutoSettings->setAeAntibandingMode(AE_ANTIBANDING_MODE_OFF);
 
-			IDenoiseSettings *iDenoiseSettings = interface_cast<IDenoiseSettings>(request);	
-			iDenoiseSettings->setDenoiseMode(DENOISE_MODE_FAST);
-			iDenoiseSettings->setDenoiseStrength(1.0);
+			//IDenoiseSettings *iDenoiseSettings = interface_cast<IDenoiseSettings>(request);	
+			//iDenoiseSettings->setDenoiseMode(DENOISE_MODE_FAST);
+			//iDenoiseSettings->setDenoiseStrength(1.0);
 
 			cudaMalloc(&G, Settings::get_area()*sizeof(uint16_t));
 			cudaMalloc(&R, Settings::get_area()*sizeof(uint16_t));
@@ -614,9 +614,9 @@ void consumer_thread(){
 				u16ToDouble<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, R, redConverted);
 				mtx.lock();
 				h_backPropagate(STG_WIDTH, STG_HEIGHT, LAMBDA_GREEN, (float)Settings::values[STG_Z_GREEN]/(float)1000000,
-						doubleTemporary, kernelBlur, kernelGreen, outputArray, maximaGreen, true);		
+						doubleTemporary, kernelGreen, outputArray, maximaGreen, true);		
 				h_backPropagate(STG_WIDTH,STG_HEIGHT, LAMBDA_RED, (float)Settings::values[STG_Z_RED]/(float)1000000,
-						redConverted, kernelBlur, kernelRed, convoOutputArray, maximaRed, false);
+						redConverted, kernelRed, convoOutputArray, maximaRed, false);
 				mtx.unlock();
 				
 				
