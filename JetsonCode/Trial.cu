@@ -250,7 +250,6 @@ void h_backPropagate(int M, int N, float lambda, float z, float* input,
     cudaMalloc(&extremes, sizeof(float));
 
     convertToComplex<<<numBlocks, BLOCKSIZE>>>(N*M, input, image);
-    //elMultiplication<<<numBlocks, BLOCKSIZE>>>(M, N, kernelBlur, image);
     // Declaring the FFT plan
     cufftPlan2d(&plan, N,M, CUFFT_C2C);
     // Execute forward FFT on the green channel
@@ -523,7 +522,7 @@ void consumer_thread(){
 			iAutoSettings->setAeAntibandingMode(AE_ANTIBANDING_MODE_OFF);
 
 			IDenoiseSettings *iDenoiseSettings = interface_cast<IDenoiseSettings>(request);	
-			iDenoiseSettings->setDenoiseMode(DENOISE_MODE_HIGH_QUALITY);
+			iDenoiseSettings->setDenoiseMode(DENOISE_MODE_FAST);
 			iDenoiseSettings->setDenoiseStrength(1.0);
 
 			cudaMalloc(&G, Settings::get_area()*sizeof(uint16_t));
@@ -785,7 +784,7 @@ void print_thread(){
 				cycles = 0;
 				mtx.lock();
 				cudaMemcpy(tempArray, maximaGreen, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
-				cudaMemcpy(tempArray2, doubleTemporary, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+				cudaMemcpy(tempArray2, outputArray, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 				mtx.unlock();
 
 				cudaMemcpy(output, tempArray, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToHost);
