@@ -263,10 +263,10 @@ void h_backPropagate(int M, int N, float lambda, float z, float* input,
 	elMultiplication2<<<numBlocks, BLOCKSIZE>>>(M, N, image, kernel, kernelizedImage);
     if(display){
 		// Executing inverse FFT
-		//blurFilter<<<numBlocks, BLOCKSIZE>>>(M, N, 3, image);
-		//cufftExecC2C(plan, image, image, CUFFT_INVERSE);
+		blurFilter<<<numBlocks, BLOCKSIZE>>>(M, N, 3, image);
+		cufftExecC2C(plan, image, image, CUFFT_INVERSE);
 		// Conversion of result matrix to a real double matrix
-		absoluteValue<<<numBlocks, BLOCKSIZE>>>(M,N, image, output);
+		real<<<numBlocks, BLOCKSIZE>>>(M,N, image, output);
 
 		findExtremes<<<numBlocks, BLOCKSIZE>>>(M,N, output, extremes);
 		normalize<<<numBlocks, BLOCKSIZE>>>(M,N, output, extremes);
@@ -807,7 +807,7 @@ void print_thread(){
 				cv::flip(img, img_trans, -1);
 				cv::transpose(img_trans, img);
 
-				const cv::Mat result = img2*20;
+				const cv::Mat result = img2;
 				cv::imshow("Basic Visualization", result);
 				cv::waitKey(1);
 			}
