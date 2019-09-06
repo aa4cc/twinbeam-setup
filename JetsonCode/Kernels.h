@@ -38,5 +38,6 @@ __global__ void findPoints(int M, int N, float* input, int* output);
 __global__ void generateBlurFilter(int M, int N, cufftComplex* filter);
 __global__ void blurFilter(int M, int N, int margin, cufftComplex* input);
 __global__ void real(int M, int N, cufftComplex* input, float* output);
+__global__ void imaginary(int M, int N, cufftComplex* input, float* output);
 
 #endif

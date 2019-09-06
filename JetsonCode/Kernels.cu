@@ -436,3 +436,12 @@ __global__ void real(int M, int N, cufftComplex* input, float* output){
         output[i] = input[i].x;
     }
 }
+
+__global__ void imaginary(int M, int N, cufftComplex* input, float* output){
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+    int count = N*M;
+    for(int i = index; i < count; i += stride){
+        output[i] = input[i].y;
+    }
+}
