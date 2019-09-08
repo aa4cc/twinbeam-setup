@@ -391,7 +391,8 @@ void input_thread(){
 				printf("ERROR: Did not properly receive data.\n");
 			}
 
-			printf("DEBUG: Received %d bytes.\n", msg_len);
+			if(opt_debug)
+				printf("DEBUG: Received %d bytes.\n", msg_len);
 
 			response = parseMessage(buf);
 			switch(response){
@@ -545,7 +546,7 @@ void consumer_thread(){
 			cudaMalloc(&kernelRed, Settings::get_area()*sizeof(cufftComplex));
 
 			cudaMalloc(&convolutionFilterBlur, Settings::get_area()*sizeof(cufftComplex));
-			generateBlurFilter<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, 2, convolutionFilterBlur);
+			generateBlurFilter<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, 3, convolutionFilterBlur);
 			
 			transformKernel(STG_WIDTH, STG_HEIGHT, CONVO_DIM_GREEN, convolutionMaskGreen, kernelGreen);
 			transformKernel(STG_WIDTH, STG_HEIGHT, CONVO_DIM_RED, convolutionMaskRed, kernelRed);
@@ -830,8 +831,11 @@ void print_thread(){
 
 
 int main(int argc, char* argv[]){
-	for(int i = 0 ; i < STG_NUMBER_OF_SETTINGS; i++){
-		printf("%d\n", Settings::values[i]);
+	if(opt_debug){
+		printf("DEBUG: Initial settings:");
+		for(int i = 0 ; i < STG_NUMBER_OF_SETTINGS; i++){
+			printf("%d\n", Settings::values[i]);
+		}
 	}
   	auto result = parse(argc, argv);
 	
