@@ -260,13 +260,13 @@ void h_backPropagate(int M, int N, float lambda, float z, float* input,
     calculate<<<numBlocks, BLOCKSIZE>>>(N,M, z, PIXEL_DX, REFRACTION_INDEX, lambda, Hq);
     // Element-wise multiplication of Hq matrix and the image
 	elMultiplication<<<numBlocks, BLOCKSIZE>>>(M, N, Hq, image);
+	blurFilter<<<numBlocks, BLOCKSIZE>>>(M, N, 3, image);
 	elMultiplication2<<<numBlocks, BLOCKSIZE>>>(M, N, image, kernel, kernelizedImage);
     if(display){
 		// Executing inverse FFT
-		blurFilter<<<numBlocks, BLOCKSIZE>>>(M, N, 3, image);
 		cufftExecC2C(plan, image, image, CUFFT_INVERSE);
 		// Conversion of result matrix to a real double matrix
-		imaginary<<<numBlocks, BLOCKSIZE>>>(M,N, image, output);
+		absoluteValue<<<numBlocks, BLOCKSIZE>>>(M,N, image, output);
 
 		findExtremes<<<numBlocks, BLOCKSIZE>>>(M,N, output, extremes);
 		normalize<<<numBlocks, BLOCKSIZE>>>(M,N, output, extremes);
@@ -795,7 +795,6 @@ void print_thread(){
 
 				cudaMemcpy(output, tempArray, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToHost);
 				cudaMemcpy(output2, tempArray2, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToHost);
-				printf("%g \n", output2[STG_HEIGHT*STG_HEIGHT/2 + STG_WIDTH]);
 				const cv::Mat img(cv::Size(STG_WIDTH, STG_HEIGHT), CV_32F, output);
 				const cv::Mat img2(cv::Size(STG_WIDTH, STG_HEIGHT), CV_32F, output2);
 
