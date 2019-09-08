@@ -44,7 +44,6 @@ cudaError_t res;
 float* doubleArray;
 float* outputArray;
 float* convoOutputArray;
-float* convoOutputArrayRed;
 cufftComplex* kernelGreen;
 cufftComplex* kernelRed;
 
@@ -52,7 +51,6 @@ float* redConverted;
 
 float* convolutionMaskGreen;
 float* convolutionMaskRed;
-float* convoOutputArrayGreen;
 
 float* maximaRed;
 float* maximaGreen;
@@ -65,7 +63,6 @@ int* positionsRed;
 
 int* redPointsLast;
 int* greenPointsLast;
-int* current_index;
 
 cufftComplex* convolutionFilterBlur;
 
@@ -239,17 +236,19 @@ void h_backPropagate(int M, int N, float lambda, float z, float* input,
     cufftComplex* doubleComplexArray;
     cufftComplex* Hq;
     cufftComplex* image;
-    cufftComplex* kernelizedImage;
+    cufftComplex* convolutedImage;
+	float* filterOutput;
     float* temporary;
     float* extremes;
     cufftHandle plan;
 
+	cudaMalloc(&filterOutput, Settings::get_area()*sizeof(float));
     cudaMalloc(&doubleComplexArray, 3*N*M*sizeof(cufftComplex));
     Hq = &doubleComplexArray[0];
     image = &doubleComplexArray[N*M];
-    kernelizedImage = &doubleComplexArray[2*N*M];
+    convolutedImage = &doubleComplexArray[2*N*M];
     cudaMalloc(&temporary, N*M*sizeof(float));
-    cudaMalloc(&extremes, sizeof(float));
+    cudaMalloc(&extremes, sizeof(float)*2);
 
     convertToComplex<<<numBlocks, BLOCKSIZE>>>(N*M, input, image);
     // Declaring the FFT plan
@@ -261,7 +260,7 @@ void h_backPropagate(int M, int N, float lambda, float z, float* input,
     // Element-wise multiplication of Hq matrix and the image
 	elMultiplication<<<numBlocks, BLOCKSIZE>>>(M, N, Hq, image);
 	elMultiplication<<<numBlocks, BLOCKSIZE>>>(M, N, convolutionFilterBlur, image);
-	elMultiplication2<<<numBlocks, BLOCKSIZE>>>(M, N, image, kernel, kernelizedImage);
+	elMultiplication2<<<numBlocks, BLOCKSIZE>>>(M, N, image, kernel, convolutedImage);
     if(display){
 		// Executing inverse FFT
 		cufftExecC2C(plan, image, image, CUFFT_INVERSE);
@@ -271,19 +270,22 @@ void h_backPropagate(int M, int N, float lambda, float z, float* input,
 		findExtremes<<<numBlocks, BLOCKSIZE>>>(M,N, output, extremes);
 		normalize<<<numBlocks, BLOCKSIZE>>>(M,N, output, extremes);
 	}
-	cufftExecC2C(plan, kernelizedImage, kernelizedImage, CUFFT_INVERSE);
-	cutAndConvert<<<numBlocks, BLOCKSIZE>>>(M,N,kernelizedImage, convoOutputArrayGreen);
+	cufftExecC2C(plan, convolutedImage, convolutedImage, CUFFT_INVERSE);
+	cutAndConvert<<<numBlocks, BLOCKSIZE>>>(M,N,convolutedImage, output);
+
     cudaFree(extremes);
-    cudaMalloc(&extremes, sizeof(float));
-	findExtremes<<<numBlocks, BLOCKSIZE>>>(M,N, convoOutputArrayGreen, extremes);
-	normalize<<<numBlocks, BLOCKSIZE>>>(M,N, convoOutputArrayGreen, extremes);
-	getLocalMaxima<<<numBlocks, BLOCKSIZE>>>(M,N,convoOutputArrayGreen,output2);
-	// Freeing the memory of FFT plan
+    cudaMalloc(&extremes, sizeof(float)*2);
+
+	findExtremes<<<numBlocks, BLOCKSIZE>>>(M, N, filterOutput, extremes);
+	normalize<<<numBlocks, BLOCKSIZE>>>(M, N, filterOutput, extremes);
+	getLocalMaxima<<<numBlocks, BLOCKSIZE>>>(M, N, filterOutput,output2);
+
 	cufftDestroy(plan);
 
     cudaFree(extremes);
     cudaFree(doubleComplexArray);
     cudaFree(temporary);
+    cudaFree(filterOutput);
 }
 
 void keyboard_thread(){
@@ -457,14 +459,14 @@ void consumer_thread(){
 	// First we create a CameraProvider, necessary for each project.
 	UniqueObj<CameraProvider> cameraProvider(CameraProvider::create());
 	ICameraProvider* iCameraProvider = interface_cast<ICameraProvider>(cameraProvider);
-	if(!iCameraProvider){
+	if(!iCameraProvider && (opt_verbose || opt_debug)){
 		printf("Failed to establish libargus connection\n");
 	}
 	
 	// Second we select a device from which to receive pictures (camera)
 	std::vector<CameraDevice*> cameraDevices;
 	iCameraProvider->getCameraDevices(&cameraDevices);
-	if (cameraDevices.size() == 0){
+	if (cameraDevices.size() == 0 && (opt_verbose || opt_debug)){
 		printf("No camera devices available\n");
 	}
 	CameraDevice *selectedDevice = cameraDevices[0];
@@ -472,7 +474,7 @@ void consumer_thread(){
 	// We create a capture session 
 	UniqueObj<CaptureSession> captureSession(iCameraProvider->createCaptureSession(selectedDevice));
 	ICaptureSession *iCaptureSession = interface_cast<ICaptureSession>(captureSession);
-	if (!iCaptureSession){
+	if (!iCaptureSession && (opt_verbose || opt_debug)){
  		printf("Failed to create CaptureSession\n");
 	}
 	
@@ -498,7 +500,7 @@ void consumer_thread(){
 			// Creating an Output stream. This should already create a producer.
 			UniqueObj<OutputStream> outputStream(iCaptureSession->createOutputStream(streamSettings.get()));
 			IStream* iStream = interface_cast<IStream>(outputStream);
-			if (!iStream){
+			if (!iStream && (opt_verbose || opt_debug)){
 				printf("Failed to create OutputStream\n");
 			}
 			eglStream = iStream->getEGLStream();
@@ -548,9 +550,6 @@ void consumer_thread(){
 			transformKernel(STG_WIDTH, STG_HEIGHT, CONVO_DIM_GREEN, convolutionMaskGreen, kernelGreen);
 			transformKernel(STG_WIDTH, STG_HEIGHT, CONVO_DIM_RED, convolutionMaskRed, kernelRed);
 			
-			cudaMalloc(&convoOutputArrayGreen, Settings::get_area()*sizeof(float));
-			cudaMalloc(&convoOutputArrayRed, Settings::get_area()*sizeof(float));
-			cudaMallocManaged(&current_index, sizeof(int));
 			mtx.lock();
 			cudaMalloc(&maximaGreen, Settings::get_area()*sizeof(float));
 			cudaMalloc(&maximaRed, Settings::get_area()*sizeof(float));
@@ -653,7 +652,6 @@ void consumer_thread(){
 			cudaFree(maximaRed);
 			cudaFree(convolutionMaskGreen);
 			cudaFree(convolutionMaskRed);
-			cudaFree(convoOutputArrayRed);
 			cudaFree(kernelGreen);
 			cudaFree(kernelRed);
 			

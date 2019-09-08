@@ -337,6 +337,8 @@ __global__ void findExtremes(int M, int N, float* input, float* extremes){
     for(int i = index; i < count; i += stride){
         if(input[i] > extremes[0])
             extremes[0] = input[i];
+        if(input[i] < extremes[1])
+            extremes[1] = input[i];
     } 
 }
 
