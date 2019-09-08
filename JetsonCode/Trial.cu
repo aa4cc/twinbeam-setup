@@ -697,7 +697,7 @@ void output_thread(){
 				mtx.lock();
 				switch (Settings::requested_type){
 					case BACKPROPAGATED:
-						cudaMemcpy(temporary, greenOutputArray, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+						cudaMemcpy(temporary, redOutputArray, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 						break;
 					case RAW_G:
 						cudaMemcpy(temporary, doubleTemporary, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
