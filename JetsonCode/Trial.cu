@@ -271,7 +271,7 @@ void h_backPropagate(int M, int N, float lambda, float z, float* input,
 		normalize<<<numBlocks, BLOCKSIZE>>>(M,N, output, extremes);
 	}
 	cufftExecC2C(plan, convolutedImage, convolutedImage, CUFFT_INVERSE);
-	cutAndConvert<<<numBlocks, BLOCKSIZE>>>(M,N,convolutedImage, output);
+	cutAndConvert<<<numBlocks, BLOCKSIZE>>>(M,N,convolutedImage, filterOutput);
 
     cudaFree(extremes);
     cudaMalloc(&extremes, sizeof(float)*2);
