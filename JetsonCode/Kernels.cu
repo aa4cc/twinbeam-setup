@@ -266,7 +266,6 @@ __global__ void desample(int M, int N, float* input, float* output){
             int count = N*M/4;
             for(int i = index; i < count; i += stride){
                 output[i] = input[i*2 + M*((i*2)/M) ];
-                //lol
             }
 }
 

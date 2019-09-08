@@ -47,7 +47,7 @@ float* convoOutputArray;
 cufftComplex* kernelGreen;
 cufftComplex* kernelRed;
 
-float* redConverted;
+float* redDouble;
 
 float* convolutionMaskGreen;
 float* convolutionMaskRed;
@@ -289,22 +289,22 @@ void h_backPropagate(int M, int N, float lambda, float z, float* input,
 }
 
 void keyboard_thread(){
-	printf("keyboard_thread: started\n");
+	printf("INFO: keyboard_thread: started\n");
 
 	char input;
 	while(!Settings::force_exit){
 		input = getchar();
 		if(input == 's'){
-			printf("Putting the process to sleep\n");
+			printf("INFO: Putting the process to sleep.\n");
 			Settings::set_sleeping(true);
 			Settings::set_initialized(false);
 		}
 		else if(input == 'c'){
-			printf("Connected the main manipulation computer\n");
+			printf("INFO: Simulating connection to main computation unit.\n");
 			Settings::set_connected(true);
 		}
 		else if(input == 'w'){
-			printf("Starting the program from keyboard\n");
+			printf("INFO: Starting the program from keyboard.\n");
 			Settings::set_initialized(true);
 			Settings::set_sleeping(false);
 		}
@@ -318,7 +318,7 @@ void keyboard_thread(){
 		}		
 	}
 
-	printf("keyboard_thread: ended\n");
+	printf("INFO: keyboard_thread: ended\n");
 }
 
 void changeSettings(char* buf){
@@ -348,7 +348,7 @@ void changeSettings(char* buf){
 }
 
 void input_thread(){
-	printf("input_thread: started\n");
+	printf("INFO: input_thread: started\n");
 
 	std::string text;
 	sockaddr_in sockName;
@@ -360,7 +360,7 @@ void input_thread(){
 	
 	mainSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if(mainSocket == -1)
-		printf("Couldn't create socket!\n");
+		printf("ERROR: Couldn't create socket!\n");
 	sockName.sin_family = AF_INET;
 	sockName.sin_port =	htons(PORT);
 	sockName.sin_addr.s_addr = INADDR_ANY;
@@ -377,7 +377,7 @@ void input_thread(){
 		
 		addrlen = sizeof(clientInfo);
 		client = accept(mainSocket, (sockaddr*)&clientInfo, &addrlen);
-		cout << "Got a connection from " << inet_ntoa((in_addr)clientInfo.sin_addr) << endl;
+		cout << "INFO: Got a connection from " << inet_ntoa((in_addr)clientInfo.sin_addr) << endl;
 		if (client != -1)
 		 {
 			 Settings::set_connected(true);
@@ -388,10 +388,10 @@ void input_thread(){
 
 			if (msg_len == -1)
 			{
-				printf("Error while receiving data\n");
+				printf("ERROR: Did not properly receive data.\n");
 			}
 
-			printf("Received bytes: %d\n", msg_len);
+			printf("DEBUG: Received %d bytes.\n", msg_len);
 
 			response = parseMessage(buf);
 			switch(response){
@@ -410,10 +410,10 @@ void input_thread(){
 				case MSG_SETTINGS:
 				{
 					if(!Settings::sleeping)
-						printf("Can't change settings while the loop is running\n");
+						printf("WARN: Can't change settings while the loop is running\n");
 					else{
 						changeSettings(buf);
-						printf("Changed settings\n");
+						printf("INFO: Changed settings\n");
 					}
 					break;
 				}
@@ -450,32 +450,32 @@ void input_thread(){
 	}
 	close(mainSocket);
 
-	printf("input_thread: ended\n");
+	printf("INFO: input_thread: ended\n");
 }
 
 void consumer_thread(){
-	printf("consumer_thread: started\n");
+	printf("INFO: consumer_thread: started\n");
 	//Initializing LibArgus according to the tutorial for a sample project.
 	// First we create a CameraProvider, necessary for each project.
 	UniqueObj<CameraProvider> cameraProvider(CameraProvider::create());
 	ICameraProvider* iCameraProvider = interface_cast<ICameraProvider>(cameraProvider);
-	if(!iCameraProvider && (opt_verbose || opt_debug)){
-		printf("Failed to establish libargus connection\n");
+	if(!iCameraProvider && (opt_debug)){
+		printf("ERROR: Failed to establish libargus connection\n");
 	}
 	
 	// Second we select a device from which to receive pictures (camera)
 	std::vector<CameraDevice*> cameraDevices;
 	iCameraProvider->getCameraDevices(&cameraDevices);
-	if (cameraDevices.size() == 0 && (opt_verbose || opt_debug)){
-		printf("No camera devices available\n");
+	if (cameraDevices.size() == 0 && (opt_debug)){
+		printf("ERROR: No camera devices available\n");
 	}
 	CameraDevice *selectedDevice = cameraDevices[0];
 
 	// We create a capture session 
 	UniqueObj<CaptureSession> captureSession(iCameraProvider->createCaptureSession(selectedDevice));
 	ICaptureSession *iCaptureSession = interface_cast<ICaptureSession>(captureSession);
-	if (!iCaptureSession && (opt_verbose || opt_debug)){
- 		printf("Failed to create CaptureSession\n");
+	if (!iCaptureSession && (opt_debug)){
+ 		printf("ERROR: Failed to create CaptureSession\n");
 	}
 	
 	//CUDA variable declarations
@@ -500,8 +500,8 @@ void consumer_thread(){
 			// Creating an Output stream. This should already create a producer.
 			UniqueObj<OutputStream> outputStream(iCaptureSession->createOutputStream(streamSettings.get()));
 			IStream* iStream = interface_cast<IStream>(outputStream);
-			if (!iStream && (opt_verbose || opt_debug)){
-				printf("Failed to create OutputStream\n");
+			if (!iStream && (opt_debug)){
+				printf("ERROR: Failed to create OutputStream\n");
 			}
 			eglStream = iStream->getEGLStream();
 			cudaEGLStreamConsumerConnect(&conn, eglStream);
@@ -557,7 +557,7 @@ void consumer_thread(){
 			doubleTemporary = &doubleArray[0];
 			outputArray = &doubleArray[Settings::get_area()];
 			cudaMalloc(&convoOutputArray, Settings::get_area()*sizeof(float));
-			cudaMalloc(&redConverted, Settings::get_area()*sizeof(float));
+			cudaMalloc(&redDouble, Settings::get_area()*sizeof(float));
 			mtx.unlock();
 
 			yTexRef.normalized = 0;
@@ -606,20 +606,19 @@ void consumer_thread(){
 												Settings::values[STG_OFFSET_X], Settings::values[STG_OFFSET_Y], G, R);
 				auto test = std::chrono::system_clock::now();
 				u16ToDouble<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, G, doubleTemporary);
-				u16ToDouble<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, R, redConverted);
+				u16ToDouble<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, R, redDouble);
 				mtx.lock();
 				h_backPropagate(STG_WIDTH, STG_HEIGHT, LAMBDA_GREEN, (float)Settings::values[STG_Z_GREEN]/(float)1000000,
 						doubleTemporary, kernelGreen, outputArray, maximaGreen, true);		
 				h_backPropagate(STG_WIDTH,STG_HEIGHT, LAMBDA_RED, (float)Settings::values[STG_Z_RED]/(float)1000000,
-						redConverted, kernelRed, convoOutputArray, maximaRed, false);
+						redDouble, kernelRed, convoOutputArray, maximaRed, false);
 				mtx.unlock();
-				
 				
 				auto test2 = std::chrono::system_clock::now();
 				std::chrono::duration<double> elapsed_seconds = test2-test;
 				
 				if(opt_verbose) {
-					std::cout << "Converting the image format took: " << elapsed_seconds.count() << "s\n";
+					std::cout << "TRACE: Converting the image format took: " << elapsed_seconds.count() << "s\n";
 				}
 
 				cudaUnbindTexture(yTex);
@@ -634,12 +633,12 @@ void consumer_thread(){
 				Settings::sent_coords = false;
 				
 				if(opt_verbose) {
-					std::cout << "This cycle took: " << elapsed_seconds.count() << "s\n";
+					std::cout << "TRACE: This cycle took: " << elapsed_seconds.count() << "s\n";
 				}
 
 				cycles++;				
 			}
-			std::cout << "average complete: " << elapsed_seconds_average.count()/final_count << "s\n";
+			std::cout << "INFO: Average time to complete a cycle: " << elapsed_seconds_average.count()/final_count << "s\n";
 			iCaptureSession->waitForIdle();
 			
 			cudaFree(G);
@@ -647,7 +646,7 @@ void consumer_thread(){
 			
 			cudaFree(doubleArray);
 			cudaFree(convoOutputArray);
-			cudaFree(redConverted);
+			cudaFree(redDouble);
 			cudaFree(maximaGreen);
 			cudaFree(maximaRed);
 			cudaFree(convolutionMaskGreen);
@@ -661,7 +660,7 @@ void consumer_thread(){
 		}
 	}
 
-	printf("consumer_thread: ended\n");
+	printf("INFO: consumer_thread: ended\n");
 }
 
 void CallBackFunc(int event, int x, int y, int flags, void* userdata)
@@ -669,7 +668,8 @@ void CallBackFunc(int event, int x, int y, int flags, void* userdata)
 	// https://www.opencv-srf.com/2011/11/mouse-events.html
 	if ( event == CV_EVENT_MOUSEMOVE )
      {
-        cout << "Mouse move over the window - position (" << x << ", " << y << ")" << endl;
+     	if(opt_debug)
+        	cout << "DEBUG: Mouse move over the window - position (" << x << ", " << y << ")" << endl;
         if (Settings::touch_kill) {
         	Settings::set_force_exit(true);
       	}
@@ -677,7 +677,7 @@ void CallBackFunc(int event, int x, int y, int flags, void* userdata)
 }
 
 void output_thread(){
-	printf("output_thread: started\n");
+	printf("INFO: output_thread: started\n");
 
 	float *temporary;
 	float *temporary_red_positions;
@@ -702,7 +702,7 @@ void output_thread(){
 						cudaMemcpy(temporary, doubleTemporary, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 						break;
 					case RAW_R:
-						cudaMemcpy(temporary, redConverted, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+						cudaMemcpy(temporary, redDouble, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 						break;
 				}	
 
@@ -712,7 +712,7 @@ void output_thread(){
 				cudaMemcpy(buffer, temporary, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToHost);
 				send(client, buffer, sizeof(float)*Settings::get_area(), 0);
 				free(buffer);
-				printf("Image sent!\n");
+				printf("INFO: Image sent.\n");
 				Settings::set_requested_image(false);
 			}
 			if(!Settings::sent_coords && Settings::requested_coords){
@@ -729,7 +729,8 @@ void output_thread(){
 
 				buffer = (char*)malloc(sizeof(int)*(2+count[0]+count[1]));
 
-				printf("Count Green : %d ; Count Red : %d", count[0], count[1]);
+				if(opt_debug)
+					printf("DEBUG: Count Green : %d ; Count Red : %d\n", count[0], count[1]);
 
 				memcpy(&buffer[0], &count[0], sizeof(int));
 				memcpy(&buffer[4], sorted_green_positions, count[0]*sizeof(int));
@@ -737,6 +738,8 @@ void output_thread(){
 				memcpy(&buffer[4*(2+count[0])], sorted_red_positions, count[1]*sizeof(int));
 
 				send(client, buffer, sizeof(int)*(2+count[0]+count[1]), 0);
+
+				printf("INFO: Sent the found locations\n");
 
 				free(buffer);
 				free(count);
@@ -755,11 +758,11 @@ void output_thread(){
 		cudaFree(temporary);
 	}
 
-	printf("output_thread: ended\n");
+	printf("INFO: output_thread: ended\n");
 }
 
 void print_thread(){
-	printf("print_thread: started\n");
+	printf("INFO: print_thread: started\n");
 
 	float* tempArray;
 	float* tempArray2;
@@ -822,7 +825,7 @@ void print_thread(){
 		free(output2);
 	}
 
-	printf("print_thread: ended\n");
+	printf("INFO: print_thread: ended\n");
 }
 
 
