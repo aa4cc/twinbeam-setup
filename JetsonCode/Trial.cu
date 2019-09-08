@@ -546,7 +546,7 @@ void consumer_thread(){
 			cudaMalloc(&kernelRed, Settings::get_area()*sizeof(cufftComplex));
 
 			cudaMalloc(&convolutionFilterBlur, Settings::get_area()*sizeof(cufftComplex));
-			generateBlurFilter<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, 4, convolutionFilterBlur);
+			generateBlurFilter<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, 3, convolutionFilterBlur);
 			
 			transformKernel(STG_WIDTH, STG_HEIGHT, CONVO_DIM_GREEN, convolutionMaskGreen, kernelGreen);
 			transformKernel(STG_WIDTH, STG_HEIGHT, CONVO_DIM_RED, convolutionMaskRed, kernelRed);
