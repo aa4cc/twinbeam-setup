@@ -460,14 +460,14 @@ void consumer_thread(){
 	// First we create a CameraProvider, necessary for each project.
 	UniqueObj<CameraProvider> cameraProvider(CameraProvider::create());
 	ICameraProvider* iCameraProvider = interface_cast<ICameraProvider>(cameraProvider);
-	if(!iCameraProvider && (opt_debug)){
+	if(!iCameraProvider){
 		printf("ERROR: Failed to establish libargus connection\n");
 	}
 	
 	// Second we select a device from which to receive pictures (camera)
 	std::vector<CameraDevice*> cameraDevices;
 	iCameraProvider->getCameraDevices(&cameraDevices);
-	if (cameraDevices.size() == 0 && (opt_debug)){
+	if (cameraDevices.size() == 0){
 		printf("ERROR: No camera devices available\n");
 	}
 	CameraDevice *selectedDevice = cameraDevices[0];
@@ -475,7 +475,7 @@ void consumer_thread(){
 	// We create a capture session 
 	UniqueObj<CaptureSession> captureSession(iCameraProvider->createCaptureSession(selectedDevice));
 	ICaptureSession *iCaptureSession = interface_cast<ICaptureSession>(captureSession);
-	if (!iCaptureSession && (opt_debug)){
+	if (!iCaptureSession){
  		printf("ERROR: Failed to create CaptureSession\n");
 	}
 	
@@ -501,7 +501,7 @@ void consumer_thread(){
 			// Creating an Output stream. This should already create a producer.
 			UniqueObj<OutputStream> outputStream(iCaptureSession->createOutputStream(streamSettings.get()));
 			IStream* iStream = interface_cast<IStream>(outputStream);
-			if (!iStream && (opt_debug)){
+			if (!iStream){
 				printf("ERROR: Failed to create OutputStream\n");
 			}
 			eglStream = iStream->getEGLStream();
@@ -546,7 +546,7 @@ void consumer_thread(){
 			cudaMalloc(&kernelRed, Settings::get_area()*sizeof(cufftComplex));
 
 			cudaMalloc(&convolutionFilterBlur, Settings::get_area()*sizeof(cufftComplex));
-			generateBlurFilter<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, 3, convolutionFilterBlur);
+			generateBlurFilter<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, 4, convolutionFilterBlur);
 			
 			transformKernel(STG_WIDTH, STG_HEIGHT, CONVO_DIM_GREEN, convolutionMaskGreen, kernelGreen);
 			transformKernel(STG_WIDTH, STG_HEIGHT, CONVO_DIM_RED, convolutionMaskRed, kernelRed);
