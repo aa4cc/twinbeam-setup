@@ -400,12 +400,12 @@ __global__ void findPoints(int M, int N, float* input, int* output){
 	}
 }
 
-__global__ void generateBlurFilter(int M, int N, cufftComplex* filter){
+__global__ void generateBlurFilter(int M, int N, int margin, cufftComplex* filter){
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     int stride = blockDim.x * gridDim.x;
     int count = N*M;
     for(int i = index; i < count; i += stride){
-        if((i % M) < 2 || (i / M) < 2 || (i / M) > N-2 || (i % M) > M-2){
+        if((i % M) < margin || (i / M) < margin || (i / M) > N-margin || (i % M) > M-margin){
             filter[i].x = 0;
             filter[i].y = 0;
         }
