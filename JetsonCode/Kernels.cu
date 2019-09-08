@@ -422,7 +422,7 @@ __global__ void blurFilter(int M, int N, int margin, cufftComplex* input){
     int count = N*M;
     for(int i = index; i < count; i += stride){
         if((i % M) < margin || (i / M) < margin || (i / M) > N-margin || (i % M) > M-margin){
-            //input[i].x = 0;
+            input[i].y = 0;
             input[i].x = 0;
         }
     }
