@@ -278,7 +278,7 @@ void h_backPropagate(int M, int N, float lambda, float z, float* input,
 
 	findExtremes<<<numBlocks, BLOCKSIZE>>>(M, N, filterOutput, extremes);
 	normalize<<<numBlocks, BLOCKSIZE>>>(M, N, filterOutput, extremes);
-	getLocalMaxima<<<numBlocks, BLOCKSIZE>>>(M, N, filterOutput,output2);
+	getLocalMaxima<<<numBlocks, BLOCKSIZE>>>(M, N, filterOutput, output2);
 
 	cufftDestroy(plan);
 

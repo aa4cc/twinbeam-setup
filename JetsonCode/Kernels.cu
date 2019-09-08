@@ -361,14 +361,15 @@ __global__ void getLocalMaxima(int M, int N, float* input, float* output){
         output[i] = 0;
         if( i % M != 0 && input[i-1] > input[i] )
             passable = false;
-        if( i / M != 0 && input[i-M] > input[i] )
+        else if( i / M != 0 && input[i-M] > input[i] )
             passable = false;
-        if( i % M != M-1 && input[i+1] > input[i] )
+        else if( i % M != M-1 && input[i+1] > input[i] )
             passable = false;
-        if( i / M != M-1 && input[i+M] > input[i] )
+        else if( i / M != M-1 && input[i+M] > input[i] )
             passable = false;
-        if( passable == true )
+        if( passable == true && input[i] > 0.85){
             output[i] = input[i];
+        }
     }
 }
 
