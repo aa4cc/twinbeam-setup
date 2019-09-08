@@ -42,8 +42,8 @@ using namespace EGLStream;
 cudaError_t res;
 
 float* doubleArray;
-float* outputArray;
-float* convoOutputArray;
+float* greenOutputArray;
+float* redOutputArray;
 cufftComplex* kernelGreen;
 cufftComplex* kernelRed;
 
@@ -556,8 +556,8 @@ void consumer_thread(){
 			cudaMalloc(&maximaRed, Settings::get_area()*sizeof(float));
 			cudaMalloc(&doubleArray, 2*Settings::get_area()*sizeof(float));
 			doubleTemporary = &doubleArray[0];
-			outputArray = &doubleArray[Settings::get_area()];
-			cudaMalloc(&convoOutputArray, Settings::get_area()*sizeof(float));
+			greenOutputArray = &doubleArray[Settings::get_area()];
+			cudaMalloc(&redOutputArray, Settings::get_area()*sizeof(float));
 			cudaMalloc(&redDouble, Settings::get_area()*sizeof(float));
 			mtx.unlock();
 
@@ -610,9 +610,9 @@ void consumer_thread(){
 				u16ToDouble<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, R, redDouble);
 				mtx.lock();
 				h_backPropagate(STG_WIDTH, STG_HEIGHT, LAMBDA_GREEN, (float)Settings::values[STG_Z_GREEN]/(float)1000000,
-						doubleTemporary, kernelGreen, outputArray, maximaGreen, true);		
+						doubleTemporary, kernelGreen, greenOutputArray, maximaGreen, true);		
 				h_backPropagate(STG_WIDTH,STG_HEIGHT, LAMBDA_RED, (float)Settings::values[STG_Z_RED]/(float)1000000,
-						redDouble, kernelRed, convoOutputArray, maximaRed, false);
+						redDouble, kernelRed, redOutputArray, maximaRed, true);
 				mtx.unlock();
 				
 				auto test2 = std::chrono::system_clock::now();
@@ -646,7 +646,7 @@ void consumer_thread(){
 			cudaFree(R);
 			
 			cudaFree(doubleArray);
-			cudaFree(convoOutputArray);
+			cudaFree(redOutputArray);
 			cudaFree(redDouble);
 			cudaFree(maximaGreen);
 			cudaFree(maximaRed);
@@ -697,7 +697,7 @@ void output_thread(){
 				mtx.lock();
 				switch (Settings::requested_type){
 					case BACKPROPAGATED:
-						cudaMemcpy(temporary, outputArray, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+						cudaMemcpy(temporary, greenOutputArray, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 						break;
 					case RAW_G:
 						cudaMemcpy(temporary, doubleTemporary, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
@@ -765,14 +765,14 @@ void output_thread(){
 void print_thread(){
 	printf("INFO: print_thread: started\n");
 
-	float* tempArray;
-	float* tempArray2;
+	float* positionsToDisplay;
+	float* imageToDisplay;
 	while(true){
 		while(Settings::sleeping && Settings::connected && !Settings::force_exit){}
 		if (Settings::force_exit) break;
 			
-		cudaMalloc(&tempArray, sizeof(float)*Settings::get_area());
-		cudaMalloc(&tempArray2, sizeof(float)*Settings::get_area());
+		cudaMalloc(&positionsToDisplay, sizeof(float)*Settings::get_area());
+		cudaMalloc(&imageToDisplay, sizeof(float)*Settings::get_area());
 		float* output = (float*)malloc(sizeof(float)*Settings::get_area());
 		float* output2 = (float*)malloc(sizeof(float)*Settings::get_area());
 		cv::namedWindow("Basic Visualization", CV_WINDOW_NORMAL);
@@ -782,8 +782,8 @@ void print_thread(){
 
 		while(!Settings::initialized && Settings::connected && !Settings::force_exit){}
 		if (Settings::force_exit){
-			cudaFree(tempArray);
-			cudaFree(tempArray2);
+			cudaFree(positionsToDisplay);
+			cudaFree(imageToDisplay);
 			free(output);
 			free(output2);
 			break;
@@ -793,12 +793,12 @@ void print_thread(){
 			if(cycles >= 3){
 				cycles = 0;
 				mtx.lock();
-				cudaMemcpy(tempArray, maximaGreen, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
-				cudaMemcpy(tempArray2, outputArray, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+				cudaMemcpy(positionsToDisplay, maximaGreen, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+				cudaMemcpy(imageToDisplay, redOutputArray, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 				mtx.unlock();
 
-				cudaMemcpy(output, tempArray, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToHost);
-				cudaMemcpy(output2, tempArray2, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToHost);
+				cudaMemcpy(output, positionsToDisplay, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToHost);
+				cudaMemcpy(output2, imageToDisplay, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToHost);
 				const cv::Mat img(cv::Size(STG_WIDTH, STG_HEIGHT), CV_32F, output);
 				const cv::Mat img2(cv::Size(STG_WIDTH, STG_HEIGHT), CV_32F, output2);
 
@@ -820,8 +820,8 @@ void print_thread(){
 
 			if (Settings::force_exit) break;
 		}
-		cudaFree(tempArray);
-		cudaFree(tempArray2);
+		cudaFree(positionsToDisplay);
+		cudaFree(imageToDisplay);
 		free(output);
 		free(output2);
 	}
