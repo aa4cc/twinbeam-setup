@@ -729,6 +729,8 @@ void output_thread(){
 
 				buffer = (char*)malloc(sizeof(int)*(2+count[0]+count[1]));
 
+				printf("Count Green : %d ; Count Red : %d", count[0], count[1]);
+
 				memcpy(&buffer[0], &count[0], sizeof(int));
 				memcpy(&buffer[4], sorted_green_positions, count[0]*sizeof(int));
 				memcpy(&buffer[4*(1+count[0])], &count[1], sizeof(int));
