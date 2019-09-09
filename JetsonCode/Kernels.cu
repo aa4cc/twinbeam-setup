@@ -42,17 +42,17 @@ __global__ void calculate(int N, int M, float z, float dx, float n, float lambda
 /*
     Element-wise multiplication of two (already transposed) matrices.
 */
-__global__ void elMultiplication(int N, int M, cufftComplex*  Hq, cufftComplex*  Bq){
+__global__ void multiplyInPlace(int N, int M, cufftComplex*  input, cufftComplex*  output){
             cufftComplex temp;
             int index = blockIdx.x * blockDim.x + threadIdx.x;
             int stride = blockDim.x * gridDim.x;
             for(int i = index; i < N*M; i += stride){
-                temp = make_cuFloatComplex(Bq[i].x/(float)(N*M), Bq[i].y/(float)(N*M));
-                Bq[i] = cuCmulf(Hq[i], temp);
+                temp = make_cuFloatComplex(output[i].x/(float)(N*M), output[i].y/(float)(N*M));
+                output[i] = cuCmulf(input[i], temp);
             }
         }
         
-__global__ void elMultiplication2(int N, int M, cufftComplex*  input, cufftComplex*  kernel, cufftComplex* output){
+__global__ void multiply(int N, int M, cufftComplex*  input, cufftComplex*  kernel, cufftComplex* output){
             int index = blockIdx.x * blockDim.x + threadIdx.x;
             int stride = blockDim.x * gridDim.x;
             for(int i = index; i < N*M; i += stride){
@@ -132,7 +132,6 @@ __global__ void desample(int M, int N, float* input, float* output){
             int count = N*M/4;
             for(int i = index; i < count; i += stride){
                 output[i] = input[i*2 + M*((i*2)/M) ];
-                //lol
             }
 }
 
@@ -145,7 +144,7 @@ __global__ void generateConvoMaskRed(int m, int n, float* convoMask){
             for(int i = index; i < count; i += stride){
                 temp = sqrt((double)(SQUARE((double)((i%m) - (double)(m/2))) + SQUARE((double)((i/m) - (double)(m/2)))));
                 convoMask[i] = 0;
-                if( temp <= 24 ){
+                if( temp <= 27 ){
                     convoMask[i] = -0.5;
                 }
                 else if(temp > 27 && temp <= 30){
@@ -203,6 +202,8 @@ __global__ void findExtremes(int M, int N, float* input, float* extremes){
     for(int i = index; i < count; i += stride){
         if(input[i] > extremes[0])
             extremes[0] = input[i];
+        if(input[i] < extremes[1])
+            extremes[1] = input[i];
     } 
 }
 
@@ -225,14 +226,15 @@ __global__ void getLocalMaxima(int M, int N, float* input, float* output){
         output[i] = 0;
         if( i % M != 0 && input[i-1] > input[i] )
             passable = false;
-        if( i / M != 0 && input[i-M] > input[i] )
+        else if( i / M != 0 && input[i-M] > input[i] )
             passable = false;
-        if( i % M != M-1 && input[i+1] > input[i] )
+        else if( i % M != M-1 && input[i+1] > input[i] )
             passable = false;
-        if( i / M != M-1 && input[i+M] > input[i] )
+        else if( i / M != M-1 && input[i+M] > input[i] )
             passable = false;
-        if( passable == true )
+        if( passable == true && input[i] > 0.85){
             output[i] = input[i];
+        }
     }
 }
 
@@ -255,29 +257,59 @@ __global__ void kernelToImage(int M, int N, int kernelDim, float* kernel, cufftC
             }
 	}
 	
-__global__ void findPoints(int M, int N, float* input, int* output, int* counter){
-		int index = blockIdx.x * blockDim.x + threadIdx.x;
-		int stride = blockDim.x * gridDim.x;
-		int count = N*M;
-		for(int i = index; i < count; i += stride){
-			if(input[i] > 0){
-				output[i] = i;
-				counter[0] += 1;
-			}
+__global__ void findPoints(int M, int N, float* input, int* output){
+	int index = blockIdx.x * blockDim.x + threadIdx.x;
+	int stride = blockDim.x * gridDim.x;
+	int count = N*M;
+	for(int i = index; i < count; i += stride){
+		if(input[i] > 0){
+			output[i] = i;
 		}
-	
 	}
+}
 
-__global__ void stupidSort(int M, int N, int* input, int* output, int *currentIndex){
-		int index = blockIdx.x * blockDim.x + threadIdx.x;
-		int stride = blockDim.x * gridDim.x;
-		int count = N*M;
-		for(int i = index; i < count; i += stride){
-			if(input[i] > 0){
-				atomicAdd(currentIndex, 1); 
-				output[*currentIndex] = input[i];
-			}
-		}
-	
-	}
+__global__ void generateBlurFilter(int M, int N, int margin, cufftComplex* filter){
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+    int count = N*M;
+    for(int i = index; i < count; i += stride){
+        if((i % M) < margin || (i / M) < margin || (i / M) > N-margin || (i % M) > M-margin){
+            filter[i].x = 0;
+            filter[i].y = 0;
+        }
+        else{
+            filter[i].x = 1;
+            filter[i].y = 1;
+        }
+    }
+}
 
+__global__ void blurFilter(int M, int N, int margin, cufftComplex* input){
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+    int count = N*M;
+    for(int i = index; i < count; i += stride){
+        if((i % M) < margin || (i / M) < margin || (i / M) > N-margin || (i % M) > M-margin){
+            input[i].y = 0;
+            input[i].x = 0;
+        }
+    }
+}
+
+__global__ void real(int M, int N, cufftComplex* input, float* output){
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+    int count = N*M;
+    for(int i = index; i < count; i += stride){
+        output[i] = input[i].x;
+    }
+}
+
+__global__ void imaginary(int M, int N, cufftComplex* input, float* output){
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+    int count = N*M;
+    for(int i = index; i < count; i += stride){
+        output[i] = input[i].y;
+    }
+}

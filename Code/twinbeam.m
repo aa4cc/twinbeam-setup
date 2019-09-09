@@ -6,6 +6,7 @@ classdef twinbeam
         connection
         width
         height
+        coordinates
     end
     
     methods
@@ -106,6 +107,34 @@ classdef twinbeam
 
         function stop(obj)
             write(obj.connection, uint8('q'));
+        end
+        
+        function [green, red] = positions(obj)
+            write(obj.connection, uint8('g'));
+            num_of_coords = typecast(read(obj.connection, 4), 'int32');
+            if num_of_coords == 0
+                green = 0;
+                disp("No green coordinates found");
+            else
+                indeces = typecast(read(obj.connection, num_of_coords*4), 'int32');
+                green = zeros(num_of_coords,2);
+                for i = 1:num_of_coords
+                    green(i,1) = indeces(i)/obj.width;
+                    green(i,2) = mod(indeces(i),obj.width);
+                end
+            end
+            num_of_coords = typecast(read(obj.connection, 4), 'int32');
+            if num_of_coords == 0
+                red = 0;
+                disp("No red coordinates found");
+            else
+                indeces = typecast(read(obj.connection, num_of_coords*4), 'int32');
+                red = zeros(num_of_coords,2);
+                for i = 1:num_of_coords
+                    red(i,1) = indeces(i)/obj.width;
+                    red(i,2) = mod(indeces(i),obj.width);
+                end
+            end
         end
         
         function delete(obj)

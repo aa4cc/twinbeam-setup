@@ -24,6 +24,7 @@ enum MESSAGE_TYPE{
 	MSG_REQUEST, // request on sending the backpropagated image
 	MSG_REQUEST_RAW_G, // request on sending the unprocessed green channel
 	MSG_REQUEST_RAW_R, // request on sending the unprocessed red channel
+	MSG_COORDS,
 	MSG_UNKNOWN_TYPE
 };
 
@@ -32,6 +33,17 @@ enum REQUEST_TYPE{
 	BACKPROPAGATED,
 	RAW_G,
 	RAW_R
+};
+
+enum SETTINGS_TYPE{
+	STG_WIDTH,
+	STG_HEIGHT,
+	STG_OFFSET_X,
+	STG_OFFSET_Y,
+	STG_EXPOSURE,
+	STG_Z_RED,
+	STG_Z_GREEN,
+	STG_NUMBER_OF_SETTINGS
 };
 
 #endif

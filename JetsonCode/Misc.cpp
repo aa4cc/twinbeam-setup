@@ -20,6 +20,8 @@ MESSAGE_TYPE parseMessage(char* buf){
 				return MSG_REQUEST_RAW_G;
 			case 'y':
 				return MSG_REQUEST_RAW_R;
+			case 'g':
+				return MSG_COORDS;
 			default:
 				return MSG_UNKNOWN_TYPE;
 		}
