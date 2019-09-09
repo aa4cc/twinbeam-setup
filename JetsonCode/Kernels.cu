@@ -9,6 +9,7 @@
 #include "Kernels.h"
 #include "math.h"
 #include <cmath>
+#include "Definitions.h"
 
 /*
     Calculation of the Hq matrix according to the equations in original .m file
@@ -74,7 +75,6 @@ __global__ void absoluteValue(int N, int M, cufftComplex* storageArray, float* o
         }
         
 __global__ void cutAndConvert(int N, int M, cufftComplex* input, float* output){
-            cufftComplex temp;
             float floatTemp;
             int index = blockIdx.x * blockDim.x + threadIdx.x;
             int stride = blockDim.x * gridDim.x;
@@ -122,141 +122,6 @@ __global__ void convertToFloat(int count , float* output, cufftComplex* input){
             int stride = blockDim.x * gridDim.x;
             for(int i = index; i < count; i += stride){
                 output[i] = cuCabsf(input[i]);
-            }
-        }
-
-/*
-    Bayerization function to transform camera data to a Bayer picture
-*/
-__global__ void bayerize(int M, int N, uint8_t* input, uint16_t* output){
-            int index = blockIdx.x * blockDim.x + threadIdx.x;
-            int stride = blockDim.x * gridDim.x;
-            int count = N*M;
-            int temp;
-            for(int i = index; i < count; i += stride){
-                temp = ((i/M) % 2) == 1 ? count*2 : count;
-                output[i] = (uint16_t)(input[i + temp])*eighth_power(2) + (uint16_t)(input[i]);
-            }
-        }
-
-/*
-    Debayerization function to transform input data into an RGB image.
-
-    Bayer pattern is bggr or 
-
-    B | G | B | G  
-    -   -   -   - 
-    G | R | G | R
-    -   -   -   -
-    B | G | B | G 
-    -   -   -   - 
-    G | R | G | R
-
-    from which we want to demosaic an rbg bitmap picture
-
-    R G B | R G B | R G B | R G B  
-    -----   -----   -----   -----
-    R G B | R G B | R G B | R G B  
-    -----   -----   -----   -----
-    R G B | R G B | R G B | R G B  
-    -----   -----   -----   ----- 
-    R G B | R G B | R G B | R G B  
-*/
-__global__ void demosaic(int M, int N, uint16_t* input, uint16_t* R, uint16_t* G, uint16_t* B){
-            int index = blockIdx.x * blockDim.x + threadIdx.x;
-            int stride = blockDim.x * gridDim.x;
-            int count = N*M;
-            bool evenColumn;
-            bool evenRow;
-            bool firstColumn, lastColumn;
-            bool firstRow, lastRow;
-            for(int i = index; i < count; i += stride){
-                evenColumn = (((i/M) % 2) == 1) ? true : false;
-                evenRow = (((i%M) % 2) == 1) ? true : false;
-                firstColumn = ((i/M) == 0) ? true : false;
-                lastColumn = ((i/M) == (N-1)) ? true : false;
-                firstRow = ((i&M) == 0) ? true : false;
-                lastRow = ((i&M) == (M-1)) ? true : false;
-                if(evenColumn){
-                    if(evenRow){
-                        R[i] = input[i];
-                        if(lastColumn){
-                            if(lastRow){
-                                B[i] = input[i-M-1];
-                                G[i] = (input[i-1] + input[i-M])/2;
-                            }
-                            else{
-                                B[i] = (input[i-M-1] + input[i-M+1])/2;
-                                G[i] = (input[i-1] + input[i+1])/2;
-                            }
-                        }
-                        else{
-                            if(lastRow){
-                                B[i] = (input[i-M-1] + input[i+M-1])/2;
-                                G[i] = (input[i-M] + input[i+M])/2;
-                            }
-                            else{
-                                B[i] = (input[i-M-1] + input[i+M+1] + input[i-M+1] + input[i+M-1])/4;
-                                G[i] = (input[i-1] + input[i+1] + input[i-M] + input[i+M])/4;
-                            }  
-                        }
-                    }
-                    else{
-                        G[i] = input[i];
-                        if(firstRow){
-                            R[i] = input[i+1];
-                        }
-                        else{
-                            R[i] = (input[i+1] + input[i-1])/2;
-                        }
-                        if(lastColumn){
-                            B[i] = input[i-M];
-                        }
-                        else{
-                            B[i] = (input[i+M] + input[i-M])/2;
-                        }
-                    }
-                }
-                else{
-                    if(evenRow){
-                        G[i] = input[i];
-                        if(lastRow){
-                            B[i] = input[i-1];
-                        }
-                        else{
-                            B[i] = (input[i+1] + input[i-1])/2;
-                        }
-                        if(firstColumn){
-                            R[i] = input[i+M];
-                        }
-                        else{
-                            R[i] = (input[i+M] + input[i-M])/2;
-                        }
-                    }
-                    else{
-                        B[i] = input[i];
-                        if(firstColumn){
-                            if(firstRow){
-                                R[i] = input[i+M+1];
-                                G[i] = (input[i+1] + input[i+M])/2;
-                            }
-                            else{
-                                R[i] = (input[i+M+1] + input[i+M-1])/2;
-                                G[i] = (input[i+1] + input[i-1])/2;
-                            }
-                        }
-                        else{
-                            if(firstRow){
-                                R[i] = (input[i+M+1] + input[i-M+1])/2;
-                                G[i] = (input[i-M] + input[i+M])/2;
-                            }
-                            else{
-                                R[i] = (input[i-M-1] + input[i+M+1] + input[i-M+1] + input[i+M-1])/4;
-                                G[i] = (input[i-1] + input[i+1] + input[i-M] + input[i+M])/4;
-                            }  
-                        }
-                    }
-                }
             }
         }
 

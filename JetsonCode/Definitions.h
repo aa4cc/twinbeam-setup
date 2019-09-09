@@ -10,6 +10,10 @@
 #define PIXEL_DX 1.55e-6f
 #define BUFSIZE 1000
 #define PORT 30000
+#define PI 3.14159265358979323846
+#define SQUARE(x) x*x
+#define CONVO_DIM_RED 60
+#define CONVO_DIM_GREEN 160
 
 enum MESSAGE_TYPE{
 	MSG_HELLO,
