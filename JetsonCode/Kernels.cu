@@ -41,7 +41,7 @@ __global__ void calculate(int N, int M, float z, float dx, float n, float lambda
 /*
     Element-wise multiplication of two (already transposed) matrices.
 */
-__global__ void elMultiplication(int N, int M, cufftComplex*  Hq, cufftComplex*  Bq){
+__global__ void multiplyInPlace(int N, int M, cufftComplex*  input, cufftComplex*  output){
             cufftComplex temp;
             int index = blockIdx.x * blockDim.x + threadIdx.x;
             int stride = blockDim.x * gridDim.x;
@@ -51,7 +51,7 @@ __global__ void elMultiplication(int N, int M, cufftComplex*  Hq, cufftComplex* 
             }
         }
         
-__global__ void elMultiplication2(int N, int M, cufftComplex*  input, cufftComplex*  kernel, cufftComplex* output){
+__global__ void multiply(int N, int M, cufftComplex*  input, cufftComplex*  kernel, cufftComplex* output){
             int index = blockIdx.x * blockDim.x + threadIdx.x;
             int stride = blockDim.x * gridDim.x;
             for(int i = index; i < N*M; i += stride){

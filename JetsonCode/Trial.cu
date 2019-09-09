@@ -258,9 +258,9 @@ void h_backPropagate(int M, int N, float lambda, float z, float* input,
     // Calculating the Hq matrix according to the equations in the original .m file.
     calculate<<<numBlocks, BLOCKSIZE>>>(N,M, z, PIXEL_DX, REFRACTION_INDEX, lambda, Hq);
     // Element-wise multiplication of Hq matrix and the image
-	elMultiplication<<<numBlocks, BLOCKSIZE>>>(M, N, Hq, image);
-	elMultiplication<<<numBlocks, BLOCKSIZE>>>(M, N, convolutionFilterBlur, image);
-	elMultiplication2<<<numBlocks, BLOCKSIZE>>>(M, N, image, kernel, convolutedImage);
+	multiplyInPlace<<<numBlocks, BLOCKSIZE>>>(M, N, Hq, image);
+	multiply<<<numBlocks, BLOCKSIZE>>>(M, N, image, kernel, convolutedImage);
+	multiplyInPlace<<<numBlocks, BLOCKSIZE>>>(M, N, convolutionFilterBlur, convolutedImage);
     if(display){
 		// Executing inverse FFT
 		cufftExecC2C(plan, image, image, CUFFT_INVERSE);

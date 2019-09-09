@@ -16,8 +16,8 @@
 
 
 __global__ void calculate(int N, int M, float z, float dx, float n, float lambda, cufftComplex* Hq);
-__global__ void elMultiplication(int N, int M, cufftComplex*  Hq, cufftComplex*  Bq);
-__global__ void elMultiplication2(int N, int M, cufftComplex*  input, cufftComplex*  kernel, cufftComplex* output);
+__global__ void multiplyInPlace(int N, int M, cufftComplex*  input, cufftComplex*  output);
+__global__ void multiply(int N, int M, cufftComplex*  input, cufftComplex*  kernel, cufftComplex* output);
 __global__ void absoluteValue(int N, int M, cufftComplex* storageArray, float* outputArray);
 __global__ void cutAndConvert(int N, int M, cufftComplex* input, float* output);
 __global__ void convertToFloat(int count , float* output, cufftComplex* input);
