@@ -206,7 +206,7 @@ __global__ void yuv2bgr(int width, int height, int offset_x, int offset_y,
             for (int i = index; i < count; i += stride)
             {
             	ty = i/width + offset_y;
-            	ty2 = i/width + offset_y - (512-50);
+            	ty2 = i/width + offset_y - (512);
             	tx = i%width + offset_x;
             	y1 = (float)((tex2D<unsigned char>(yTexRef, (float)tx+0.5f, (float)ty+0.5f) - (float)16) * 1.164383f);
             	y2 = (float)((tex2D<unsigned char>(yTexRef, (float)tx+0.5f, (float)ty2+0.5f) - (float)16) * 1.164383f);
