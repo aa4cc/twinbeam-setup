@@ -810,7 +810,10 @@ void print_thread(){
 				cv::flip(img, img_trans, -1);
 				cv::transpose(img_trans, img);
 
-				const cv::Mat result = img2;
+				if(cv::countNonZero(img) > 0)
+					const cv::Mat result = img2+img;
+				else
+					const cv::Mat result = img2;
 				cv::imshow("Basic Visualization", result);
 				cv::waitKey(1);
 			}
