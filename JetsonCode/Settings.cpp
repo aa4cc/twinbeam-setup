@@ -3,7 +3,7 @@
 
 using namespace std;
 //width, height
-int Settings::values[] = {1024, 1024, 1195, 500, 5000000, 3100, 2750};
+int Settings::values[] = {1024, 1024, 1195, 500, 5000000, 3100, 2650};
 
 bool Settings::connected = false;
 bool Settings::sleeping = true;
