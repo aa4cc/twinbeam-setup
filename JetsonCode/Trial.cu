@@ -810,12 +810,12 @@ void print_thread(){
 				cv::flip(img, img_trans, -1);
 				cv::transpose(img_trans, img);
 
-				cv::Mat temp(cv::Size(STG_WIDTH, STG_HEIGHT), CV_32F, output);
+				cv::Mat temp(cv::Size(STG_WIDTH, STG_HEIGHT), CV_32F);
 				if(cv::countNonZero(img) > 0)
 					temp = img+img2;
 				else
 					temp = img2;
-				const cv::Mat result = img2+img;
+				const cv::Mat result = temp;
 				cv::imshow("Basic Visualization", result);
 				cv::waitKey(1);
 			}
