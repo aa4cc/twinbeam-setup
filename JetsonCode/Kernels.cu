@@ -296,10 +296,10 @@ __global__ void generateConvoMaskGreen(int m, int n, float* convoMask){
             for(int i = index; i < count; i += stride){
                 temp = sqrt((double)(SQUARE((double)((i%m) - (double)(m/2))) + SQUARE((double)((i/m) - (double)(m/2)))));
                 convoMask[i] = 0;
-                if( temp <= 23 ){
+                if( temp <= 15 ){
                     convoMask[i] = 0.78;
                 }
-                else if(temp > 23 && temp <= 28){
+                else if(temp > 15 && temp <= 18){
                     convoMask[i] = -1;
                 }
             }
