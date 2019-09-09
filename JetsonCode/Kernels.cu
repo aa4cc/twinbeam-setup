@@ -278,7 +278,7 @@ __global__ void generateConvoMaskRed(int m, int n, float* convoMask){
             for(int i = index; i < count; i += stride){
                 temp = sqrt((double)(SQUARE((double)((i%m) - (double)(m/2))) + SQUARE((double)((i/m) - (double)(m/2)))));
                 convoMask[i] = 0;
-                if( temp <= 24 ){
+                if( temp <= 27 ){
                     convoMask[i] = -0.5;
                 }
                 else if(temp > 27 && temp <= 30){

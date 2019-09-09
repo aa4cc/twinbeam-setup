@@ -2,7 +2,7 @@
 #include "Definitions.h"
 
 using namespace std;
-
+//width, height
 int Settings::values[] = {1024, 1024, 1195, 500, 5000000, 3100, 2750};
 
 bool Settings::connected = false;
