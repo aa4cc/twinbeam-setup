@@ -46,8 +46,8 @@ __global__ void multiplyInPlace(int N, int M, cufftComplex*  input, cufftComplex
             int index = blockIdx.x * blockDim.x + threadIdx.x;
             int stride = blockDim.x * gridDim.x;
             for(int i = index; i < N*M; i += stride){
-                temp = make_cuFloatComplex(Bq[i].x/(float)(N*M), Bq[i].y/(float)(N*M));
-                Bq[i] = cuCmulf(Hq[i], temp);
+                temp = make_cuFloatComplex(output[i].x/(float)(N*M), output[i].y/(float)(N*M));
+                output[i] = cuCmulf(input[i], temp);
             }
         }
         
