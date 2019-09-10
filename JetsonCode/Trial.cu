@@ -815,7 +815,7 @@ void print_thread(){
 					temp = img+img2;
 				else
 					temp = img2;
-				const cv::Mat result = img;
+				const cv::Mat result = temp;
 				cv::imshow("Basic Visualization", result);
 				cv::waitKey(1);
 			}
