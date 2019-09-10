@@ -79,10 +79,13 @@ __global__ void cutAndConvert(int N, int M, cufftComplex* input, float* output){
             int stride = blockDim.x * gridDim.x;
             for(int i = index; i < N*M; i += stride){
                 floatTemp = cuCabsf(input[i]);
+                /*
                 if(floatTemp > 0 && input[i].x+input[i].y > 0)
 					output[i] = floatTemp;
 				else
 					output[i] = 0;
+                */
+                output[i] = floatTemp;
             }
         }
 
