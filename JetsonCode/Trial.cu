@@ -700,7 +700,7 @@ void output_thread(){
 						cudaMemcpy(temporary, greenOutputArray, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 						break;
 					case RAW_G:
-						cudaMemcpy(temporary, doubleTemporary, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+						cudaMemcpy(temporary, maximaGreen, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 						break;
 					case RAW_R:
 						cudaMemcpy(temporary, redDouble, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
