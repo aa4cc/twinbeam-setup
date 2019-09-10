@@ -85,7 +85,7 @@ __global__ void cutAndConvert(int N, int M, cufftComplex* input, float* output){
 				else
 					output[i] = 0;
                 */
-                output[i] = floatTemp;
+                output[i] = input[i].y;
             }
         }
 
