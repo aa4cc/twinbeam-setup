@@ -265,7 +265,7 @@ void h_backPropagate(int M, int N, float lambda, float z, float* input,
 		// Executing inverse FFT
 		cufftExecC2C(plan, image, image, CUFFT_INVERSE);
 		// Conversion of result matrix to a real double matrix
-		imaginary<<<numBlocks, BLOCKSIZE>>>(M,N, image, output);
+		absoluteValue<<<numBlocks, BLOCKSIZE>>>(M,N, image, output);
 
 		findExtremes<<<numBlocks, BLOCKSIZE>>>(M,N, output, extremes);
 		normalize<<<numBlocks, BLOCKSIZE>>>(M,N, output, extremes);
