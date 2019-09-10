@@ -259,8 +259,8 @@ void h_backPropagate(int M, int N, float lambda, float z, float* input,
     calculate<<<numBlocks, BLOCKSIZE>>>(N,M, z, PIXEL_DX, REFRACTION_INDEX, lambda, Hq);
     // Element-wise multiplication of Hq matrix and the image
 	multiplyInPlace<<<numBlocks, BLOCKSIZE>>>(M, N, Hq, image);
-	multiplyInPlace<<<numBlocks, BLOCKSIZE>>>(M, N, convolutionFilterBlur, image);
 	multiply<<<numBlocks, BLOCKSIZE>>>(M, N, image, kernel, convolutedImage);
+	multiplyInPlace<<<numBlocks, BLOCKSIZE>>>(M, N, convolutionFilterBlur, convolutedImage);
     if(display){
 		// Executing inverse FFT
 		cufftExecC2C(plan, image, image, CUFFT_INVERSE);
