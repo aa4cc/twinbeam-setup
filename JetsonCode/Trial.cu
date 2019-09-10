@@ -276,9 +276,9 @@ void h_backPropagate(int M, int N, float lambda, float z, float* input,
     cudaFree(extremes);
     cudaMalloc(&extremes, sizeof(float)*2);
 
-	//findExtremes<<<numBlocks, BLOCKSIZE>>>(M, N, filterOutput, extremes);
-	//normalize<<<numBlocks, BLOCKSIZE>>>(M, N, filterOutput, extremes);
-	//getLocalMaxima<<<numBlocks, BLOCKSIZE>>>(M, N, filterOutput, output2);
+	findExtremes<<<numBlocks, BLOCKSIZE>>>(M, N, filterOutput, extremes);
+	normalize<<<numBlocks, BLOCKSIZE>>>(M, N, filterOutput, extremes);
+	getLocalMaxima<<<numBlocks, BLOCKSIZE>>>(M, N, filterOutput, output2);
 
 	cufftDestroy(plan);
 
@@ -700,7 +700,7 @@ void output_thread(){
 						cudaMemcpy(temporary, greenOutputArray, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 						break;
 					case RAW_G:
-						cudaMemcpy(temporary, maximaGreen, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+						cudaMemcpy(temporary, doubleTemporary, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 						break;
 					case RAW_R:
 						cudaMemcpy(temporary, redDouble, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
