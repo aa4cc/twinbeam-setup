@@ -271,14 +271,14 @@ void h_backPropagate(int M, int N, float lambda, float z, float* input,
 		normalize<<<numBlocks, BLOCKSIZE>>>(M,N, output, extremes);
 	}
 	cufftExecC2C(plan, convolutedImage, convolutedImage, CUFFT_INVERSE);
-	cutAndConvert<<<numBlocks, BLOCKSIZE>>>(M,N,convolutedImage, filterOutput);
+	cutAndConvert<<<numBlocks, BLOCKSIZE>>>(M,N,convolutedImage, output2);
 
     cudaFree(extremes);
     cudaMalloc(&extremes, sizeof(float)*2);
 
-	findExtremes<<<numBlocks, BLOCKSIZE>>>(M, N, filterOutput, extremes);
-	normalize<<<numBlocks, BLOCKSIZE>>>(M, N, filterOutput, extremes);
-	getLocalMaxima<<<numBlocks, BLOCKSIZE>>>(M, N, filterOutput, output2);
+	//findExtremes<<<numBlocks, BLOCKSIZE>>>(M, N, filterOutput, extremes);
+	//normalize<<<numBlocks, BLOCKSIZE>>>(M, N, filterOutput, extremes);
+	//getLocalMaxima<<<numBlocks, BLOCKSIZE>>>(M, N, filterOutput, output2);
 
 	cufftDestroy(plan);
 
@@ -815,7 +815,7 @@ void print_thread(){
 					temp = img+img2;
 				else
 					temp = img2;
-				const cv::Mat result = temp;
+				const cv::Mat result = img;
 				cv::imshow("Basic Visualization", result);
 				cv::waitKey(1);
 			}
