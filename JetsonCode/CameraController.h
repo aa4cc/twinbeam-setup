@@ -3,7 +3,7 @@
 
 #include "Argus/Argus.h"
 
-using namespace Argus
+using namespace Argus;
 
 class CameraController {
 private:
@@ -33,6 +33,6 @@ public:
 	void Update();
 	bool Stop();
 
-}
+};
 
 #endif

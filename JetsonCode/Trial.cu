@@ -34,7 +34,7 @@
 #define STG_WIDTH Settings::values[STG_WIDTH]
 #define STG_HEIGHT Settings::values[STG_HEIGHT]
 
-static const int    DEFAULT_FPS        = 30;
+static const int DEFAULT_FPS = 30;
 
 using namespace std;
 using namespace Argus;
@@ -845,7 +845,7 @@ int main(int argc, char* argv[]){
 	}
   	auto result = parse(argc, argv);
 
-  	CameraController cameraController();
+  	CameraController::CameraController cameraController();
 	
 	cycles = 0;
 
