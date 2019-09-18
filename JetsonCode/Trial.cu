@@ -456,7 +456,7 @@ void input_thread(){
 
 void consumer_thread(){
 	printf("INFO: consumer_thread: started\n");
-	CameraController cameraController();
+	CameraController::CameraController cameraController();
 	
 	//CUDA variable declarations
 	cudaEglStreamConnection conn;
@@ -788,8 +788,6 @@ int main(int argc, char* argv[]){
 		}
 	}
   	auto result = parse(argc, argv);
-
-  	CameraController::CameraController cameraController();
 	
 	cycles = 0;
 
