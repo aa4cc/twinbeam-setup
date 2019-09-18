@@ -585,7 +585,7 @@ void consumer_thread(){
 				cycles++;				
 			}
 			std::cout << "INFO: Average time to complete a cycle: " << elapsed_seconds_average.count()/final_count << "s\n";
-			iCaptureSession->waitForIdle();
+			
 			
 			cudaFree(G);
 			cudaFree(R);
@@ -601,8 +601,7 @@ void consumer_thread(){
 			cudaFree(kernelRed);
 			
 			cudaEGLStreamConsumerDisconnect(&conn);
-			iStream->disconnect();
-			outputStream.reset();
+			cameraController.Stop();
 		}
 	}
 
