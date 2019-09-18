@@ -5,7 +5,6 @@
 #include "thrust/copy.h"
 #include "thrust/execution_policy.h"
 #include "thrust/device_ptr.h"
-#include "Argus/Argus.h"
 #include "EGLStream/EGLStream.h"
 #include "stdio.h"
 #include "stdlib.h"
@@ -83,7 +82,6 @@ int numBlocks;
 short cycles;
 std::chrono::duration<double> elapsed_seconds_average;
 
-EGLStreamKHR eglStream;
 const textureReference* uvTex;
 const textureReference* yTex;
 
@@ -457,28 +455,7 @@ void input_thread(){
 
 void consumer_thread(){
 	printf("INFO: consumer_thread: started\n");
-	//Initializing LibArgus according to the tutorial for a sample project.
-	// First we create a CameraProvider, necessary for each project.
-	UniqueObj<CameraProvider> cameraProvider(CameraProvider::create());
-	ICameraProvider* iCameraProvider = interface_cast<ICameraProvider>(cameraProvider);
-	if(!iCameraProvider){
-		printf("ERROR: Failed to establish libargus connection\n");
-	}
-	
-	// Second we select a device from which to receive pictures (camera)
-	std::vector<CameraDevice*> cameraDevices;
-	iCameraProvider->getCameraDevices(&cameraDevices);
-	if (cameraDevices.size() == 0){
-		printf("ERROR: No camera devices available\n");
-	}
-	CameraDevice *selectedDevice = cameraDevices[0];
-
-	// We create a capture session 
-	UniqueObj<CaptureSession> captureSession(iCameraProvider->createCaptureSession(selectedDevice));
-	ICaptureSession *iCaptureSession = interface_cast<ICaptureSession>(captureSession);
-	if (!iCaptureSession){
- 		printf("ERROR: Failed to create CaptureSession\n");
-	}
+	CameraController cameraController();
 	
 	//CUDA variable declarations
 	cudaEglStreamConnection conn;
@@ -494,43 +471,9 @@ void consumer_thread(){
 			while(Settings::sleeping && Settings::connected && !Settings::force_exit){}
 			if (Settings::force_exit) break;
 			// Managing the settings for the capture session.
-			UniqueObj<OutputStreamSettings> streamSettings(iCaptureSession->createOutputStreamSettings());
-			IOutputStreamSettings *iStreamSettings = interface_cast<IOutputStreamSettings>(streamSettings);
-			iStreamSettings->setPixelFormat(PIXEL_FMT_YCbCr_420_888);
-			iStreamSettings->setResolution(Size2D<uint32_t>(WIDTH,HEIGHT));
-			
-			// Creating an Output stream. This should already create a producer.
-			UniqueObj<OutputStream> outputStream(iCaptureSession->createOutputStream(streamSettings.get()));
-			IStream* iStream = interface_cast<IStream>(outputStream);
-			if (!iStream){
-				printf("ERROR: Failed to create OutputStream\n");
-			}
-			eglStream = iStream->getEGLStream();
-			cudaEGLStreamConsumerConnect(&conn, eglStream);
-			
-			// Managing requests.
-			UniqueObj<Request> request(iCaptureSession->createRequest());
-			IRequest *iRequest = interface_cast<IRequest>(request);
-			iRequest->enableOutputStream(outputStream.get());
-			
-			ISourceSettings *iSourceSettings = interface_cast<ISourceSettings>(iRequest->getSourceSettings());
-			iSourceSettings->setFrameDurationRange(Range<uint64_t>(1e9/DEFAULT_FPS));
-			iSourceSettings->setExposureTimeRange(Range<uint64_t>(Settings::values[STG_EXPOSURE],Settings::values[STG_EXPOSURE]));
-			iSourceSettings->setGainRange(Range<float>(0.5,1.5));
 
-			IAutoControlSettings *iAutoSettings = interface_cast<IAutoControlSettings>(iRequest->getAutoControlSettings());
-			iAutoSettings->setExposureCompensation(0);
-			iAutoSettings->setIspDigitalGainRange(Range<float>(0,0));
-			iAutoSettings->setWbGains(100);
-			iAutoSettings->setColorSaturation(1.0);
-			iAutoSettings->setColorSaturationBias(1.0);
-			iAutoSettings->setColorSaturationEnable(true);
-			iAutoSettings->setAwbLock(true);
-			iAutoSettings->setAeAntibandingMode(AE_ANTIBANDING_MODE_OFF);
-
-			IDenoiseSettings *iDenoiseSettings = interface_cast<IDenoiseSettings>(request);	
-			iDenoiseSettings->setDenoiseMode(DENOISE_MODE_FAST);
-			iDenoiseSettings->setDenoiseStrength(1.0);
+			cameraController.Start();
+			cudaEGLStreamConsumerConnect(&conn, cameraController.GetEGLStream());
 
 			cudaMalloc(&G, Settings::get_area()*sizeof(uint16_t));
 			cudaMalloc(&R, Settings::get_area()*sizeof(uint16_t));
@@ -587,7 +530,7 @@ void consumer_thread(){
 				auto start = std::chrono::system_clock::now();
 				
 				
-				iCaptureSession->capture(request.get());
+				cameraController.Update();
 				res = cudaEGLStreamConsumerAcquireFrame(&conn, &resource, 0, 5000);
 				if(res != cudaSuccess){
 					continue;
