@@ -27,7 +27,7 @@ private:
 	IDenoiseSettings *iDenoiseSettings;
 
 public:
-	CameraController();
+	bool Initialize();
 	bool Start();
 	EGLStreamKHR GetEGLStream();
 	void Update();

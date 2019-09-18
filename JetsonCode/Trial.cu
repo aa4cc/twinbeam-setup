@@ -34,8 +34,6 @@
 #define STG_WIDTH Settings::values[STG_WIDTH]
 #define STG_HEIGHT Settings::values[STG_HEIGHT]
 
-static const int DEFAULT_FPS = 30;
-
 using namespace std;
 using namespace Argus;
 using namespace EGLStream;
@@ -456,7 +454,8 @@ void input_thread(){
 
 void consumer_thread(){
 	printf("INFO: consumer_thread: started\n");
-	CameraController::CameraController cameraController();
+	CameraController::CameraController cameraController;
+	cameraController.Initialize();
 	
 	//CUDA variable declarations
 	cudaEglStreamConnection conn;

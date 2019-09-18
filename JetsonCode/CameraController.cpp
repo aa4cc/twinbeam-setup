@@ -5,7 +5,7 @@
 
 using namespace Argus;
 
-CameraController::CameraController(){
+CameraController::Initialize(){
 	cameraProvider = UniqueObj<CameraProvider>(CameraProvider::create());
 	iCameraProvider = interface_cast<ICameraProvider>(cameraProvider);
 	if(!iCameraProvider){
@@ -27,56 +27,56 @@ CameraController::CameraController(){
 }
 
 bool CameraController::Start(){
-	CameraController::streamSettings = UniqueObj<OutputStreamSettings>(CameraController::iCaptureSession->createOutputStreamSettings());
-	CameraController::iStreamSettings = interface_cast<IOutputStreamSettings>(CameraController::streamSettings);
-	CameraController::iStreamSettings->setPixelFormat(PIXEL_FMT_YCbCr_420_888);
-	CameraController::iStreamSettings->setResolution(Size2D<uint32_t>(WIDTH,HEIGHT));
+	streamSettings = UniqueObj<OutputStreamSettings>(iCaptureSession->createOutputStreamSettings());
+	iStreamSettings = interface_cast<IOutputStreamSettings>(streamSettings);
+	iStreamSettings->setPixelFormat(PIXEL_FMT_YCbCr_420_888);
+	iStreamSettings->setResolution(Size2D<uint32_t>(WIDTH,HEIGHT));
 
-	CameraController::outputStream = UniqueObj<OutputStream>(CameraController::iCaptureSession->createOutputStream(CameraController::streamSettings.get()));
-	CameraController::iStream = interface_cast<IStream>(CameraController::outputStream);
-	if (!CameraController::iStream){
+	outputStream = UniqueObj<OutputStream>(iCaptureSession->createOutputStream(streamSettings.get()));
+	iStream = interface_cast<IStream>(outputStream);
+	if (!iStream){
 		printf("ERROR: Failed to create OutputStream\n");
 		return false;
 	}
 
-	CameraController::request = UniqueObj<Request>(CameraController::iCaptureSession->createRequest());
-	CameraController::iRequest = interface_cast<IRequest>(CameraController::request);
-	CameraController::iRequest->enableOutputStream(CameraController::outputStream.get());
+	request = UniqueObj<Request>(iCaptureSession->createRequest());
+	iRequest = interface_cast<IRequest>(request);
+	iRequest->enableOutputStream(outputStream.get());
 	
-	CameraController::iSourceSettings = interface_cast<ISourceSettings>(CameraController::iRequest->getSourceSettings());
-	CameraController::iSourceSettings->setFrameDurationRange(Range<uint64_t>(1e9/DEFAULT_FPS));
-	CameraController::iSourceSettings->setExposureTimeRange(Range<uint64_t>(Settings::values[STG_EXPOSURE],Settings::values[STG_EXPOSURE]));
-	CameraController::iSourceSettings->setGainRange(Range<float>(0.5,1.5));
+	iSourceSettings = interface_cast<ISourceSettings>(iRequest->getSourceSettings());
+	iSourceSettings->setFrameDurationRange(Range<uint64_t>(1e9/DEFAULT_FPS));
+	iSourceSettings->setExposureTimeRange(Range<uint64_t>(Settings::values[STG_EXPOSURE],Settings::values[STG_EXPOSURE]));
+	iSourceSettings->setGainRange(Range<float>(0.5,1.5));
 
-	CameraController::iAutoSettings = interface_cast<IAutoControlSettings>(CameraController::iRequest->getAutoControlSettings());
-	CameraController::iAutoSettings->setExposureCompensation(0);
-	CameraController::iAutoSettings->setIspDigitalGainRange(Range<float>(0,0));
-	CameraController::iAutoSettings->setWbGains(100);
-	CameraController::iAutoSettings->setColorSaturation(1.0);
-	CameraController::iAutoSettings->setColorSaturationBias(1.0);
-	CameraController::iAutoSettings->setColorSaturationEnable(true);
-	CameraController::iAutoSettings->setAwbLock(true);
-	CameraController::iAutoSettings->setAeAntibandingMode(AE_ANTIBANDING_MODE_OFF);
+	iAutoSettings = interface_cast<IAutoControlSettings>(iRequest->getAutoControlSettings());
+	iAutoSettings->setExposureCompensation(0);
+	iAutoSettings->setIspDigitalGainRange(Range<float>(0,0));
+	iAutoSettings->setWbGains(100);
+	iAutoSettings->setColorSaturation(1.0);
+	iAutoSettings->setColorSaturationBias(1.0);
+	iAutoSettings->setColorSaturationEnable(true);
+	iAutoSettings->setAwbLock(true);
+	iAutoSettings->setAeAntibandingMode(AE_ANTIBANDING_MODE_OFF);
 
-	CameraController::iDenoiseSettings = interface_cast<IDenoiseSettings>(CameraController::request);	
-	CameraController::iDenoiseSettings->setDenoiseMode(DENOISE_MODE_FAST);
-	CameraController::iDenoiseSettings->setDenoiseStrength(1.0);
+	iDenoiseSettings = interface_cast<IDenoiseSettings>(request);	
+	iDenoiseSettings->setDenoiseMode(DENOISE_MODE_FAST);
+	iDenoiseSettings->setDenoiseStrength(1.0);
 
 	return true;
 }
 
 EGLStreamKHR CameraController::GetEGLStream(){
-	return CameraController::iStream->getEGLStream();
+	return iStream->getEGLStream();
 }
 
 void CameraController::Update(){
-	CameraController::iCaptureSession->capture(CameraController::request.get());
+	iCaptureSession->capture(request.get());
 }
 
 bool CameraController::Stop(){
-	CameraController::iCaptureSession->waitForIdle();
-	CameraController::iStream->disconnect();
-	CameraController::outputStream.reset();
+	iCaptureSession->waitForIdle();
+	iStream->disconnect();
+	outputStream.reset();
 
 	return true;
 }

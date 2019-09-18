@@ -10,6 +10,7 @@
 #define PIXEL_DX 1.55e-6f
 #define BUFSIZE 1000
 #define PORT 30000
+#define DEFAULT_FPS 30
 
 enum MESSAGE_TYPE{
 	MSG_HELLO,
