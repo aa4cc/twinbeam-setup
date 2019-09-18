@@ -29,6 +29,7 @@
 #include "Definitions.h"
 #include "Misc.h"
 #include "Settings.h"
+#include "CameraController.h"
 
 #define STG_WIDTH Settings::values[STG_WIDTH]
 #define STG_HEIGHT Settings::values[STG_HEIGHT]
@@ -843,6 +844,8 @@ int main(int argc, char* argv[]){
 		}
 	}
   	auto result = parse(argc, argv);
+
+  	CameraController cameraController();
 	
 	cycles = 0;
 
