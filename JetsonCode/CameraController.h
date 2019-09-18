@@ -3,6 +3,8 @@
 
 #include "Argus/Argus.h"
 
+using namespace Argus
+
 class CameraController {
 private:
 	UniqueObj<CameraProvider> cameraProvider;
