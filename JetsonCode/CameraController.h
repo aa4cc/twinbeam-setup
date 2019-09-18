@@ -27,7 +27,7 @@ private:
 	IDenoiseSettings *iDenoiseSettings;
 
 public:
-	bool Initialize();
+	void Initialize();
 	bool Start();
 	EGLStreamKHR GetEGLStream();
 	void Update();

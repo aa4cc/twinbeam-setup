@@ -5,7 +5,7 @@
 
 using namespace Argus;
 
-CameraController::Initialize(){
+void CameraController::Initialize(){
 	cameraProvider = UniqueObj<CameraProvider>(CameraProvider::create());
 	iCameraProvider = interface_cast<ICameraProvider>(cameraProvider);
 	if(!iCameraProvider){
