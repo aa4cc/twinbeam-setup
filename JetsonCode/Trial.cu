@@ -39,28 +39,8 @@ using namespace EGLStream;
 
 cudaError_t res;
 
-float* doubleArray;
-float* greenOutputArray;
-float* redOutputArray;
-cufftComplex* kernelGreen;
-cufftComplex* kernelRed;
-
-float* redDouble;
-
 float* convolutionMaskGreen;
 float* convolutionMaskRed;
-
-float* maximaRed;
-float* maximaGreen;
-float* doubleTemporary;
-
-int* greenPoints;
-int* redPoints;
-int* positionsGreen;
-int* positionsRed;
-
-int* redPointsLast;
-int* greenPointsLast;
 
 ColorChannel::ColorChannel greenChannel;
 ColorChannel::ColorChannel redChannel;
@@ -73,9 +53,6 @@ int client;
 bool opt_verbose	= false;
 bool opt_debug		= false;
 bool opt_show		= false;
-
-uint16_t *R;
-uint16_t *G;
 
 mutex mtx;
 
@@ -220,73 +197,6 @@ __global__ void yuv2bgr(int width, int height, int offset_x, int offset_y,
 				R[i] = (uint16_t)(y2+v2+u1/10);
             }
         }
-
-void transformKernel(int M, int N, int kernelDim, float* kernel, cufftComplex* outputKernel){
-	kernelToImage<<<numBlocks, BLOCKSIZE>>>(M, N, kernelDim, kernel, outputKernel);
-    cufftHandle plan;
-    cufftPlan2d(&plan, N,M, CUFFT_C2C);
-    cufftExecC2C(plan, outputKernel, outputKernel, CUFFT_FORWARD);
-    cufftDestroy(plan);
-}
-
-
-void h_backPropagate(int M, int N, float lambda, float z, float* input,
-		cufftComplex* kernel, float* output, float* output2, bool display)
-{
-    cufftComplex* doubleComplexArray;
-    cufftComplex* Hq;
-    cufftComplex* image;
-    cufftComplex* convolutedImage;
-	float* filterOutput;
-    float* temporary;
-    float* extremes;
-    cufftHandle plan;
-
-	cudaMalloc(&filterOutput, Settings::get_area()*sizeof(float));
-    cudaMalloc(&doubleComplexArray, 3*N*M*sizeof(cufftComplex));
-    Hq = &doubleComplexArray[0];
-    image = &doubleComplexArray[N*M];
-    convolutedImage = &doubleComplexArray[2*N*M];
-    cudaMalloc(&temporary, N*M*sizeof(float));
-    cudaMalloc(&extremes, sizeof(float)*2);
-
-    convertToComplex<<<numBlocks, BLOCKSIZE>>>(N*M, input, image);
-    // Declaring the FFT plan
-    cufftPlan2d(&plan, N,M, CUFFT_C2C);
-    // Execute forward FFT on the green channel
-    cufftExecC2C(plan, image, image, CUFFT_FORWARD);
-    // Calculating the Hq matrix according to the equations in the original .m file.
-    calculate<<<numBlocks, BLOCKSIZE>>>(N,M, z, PIXEL_DX, REFRACTION_INDEX, lambda, Hq);
-    // Element-wise multiplication of Hq matrix and the image
-	multiplyInPlace<<<numBlocks, BLOCKSIZE>>>(M, N, Hq, image);
-	multiply<<<numBlocks, BLOCKSIZE>>>(M, N, image, kernel, convolutedImage);
-	multiplyInPlace<<<numBlocks, BLOCKSIZE>>>(M, N, convolutionFilterBlur, convolutedImage);
-    if(display){
-		// Executing inverse FFT
-		cufftExecC2C(plan, image, image, CUFFT_INVERSE);
-		// Conversion of result matrix to a real double matrix
-		absoluteValue<<<numBlocks, BLOCKSIZE>>>(M,N, image, output);
-
-		findExtremes<<<numBlocks, BLOCKSIZE>>>(M,N, output, extremes);
-		normalize<<<numBlocks, BLOCKSIZE>>>(M,N, output, extremes);
-	}
-	cufftExecC2C(plan, convolutedImage, convolutedImage, CUFFT_INVERSE);
-	cutAndConvert<<<numBlocks, BLOCKSIZE>>>(M,N,convolutedImage, output2);
-
-    cudaFree(extremes);
-    cudaMalloc(&extremes, sizeof(float)*2);
-
-	findExtremes<<<numBlocks, BLOCKSIZE>>>(M, N, filterOutput, extremes);
-	normalize<<<numBlocks, BLOCKSIZE>>>(M, N, filterOutput, extremes);
-	getLocalMaxima<<<numBlocks, BLOCKSIZE>>>(M, N, filterOutput, output2);
-
-	cufftDestroy(plan);
-
-    cudaFree(extremes);
-    cudaFree(doubleComplexArray);
-    cudaFree(temporary);
-    cudaFree(filterOutput);
-}
 
 void keyboard_thread(){
 	printf("INFO: keyboard_thread: started\n");
@@ -461,7 +371,7 @@ void consumer_thread(){
 	Kernel::Kernel greenConvolutionKernel;
 	Kernel::Kernel redConvolutionKernel;
 	greenChannel.initialize(true, (float)Settings::values[STG_Z_GREEN]/(float)1000000, LAMBDA_GREEN);
-	redChannel.initialize(true, (float)Settings::values[STG_Z_RED]/(float)1000000, LAMBDA_RED);
+	redChannel.initialize(false, (float)Settings::values[STG_Z_RED]/(float)1000000, LAMBDA_RED);
 	
 	//CUDA variable declarations
 	cudaEglStreamConnection conn;
@@ -485,12 +395,7 @@ void consumer_thread(){
 			redChannel.allocate();
 
 			greenConvolutionKernel.allocate();
-			redConvolutionKernel.allocate();
-
-			cudaMalloc(&G, Settings::get_area()*sizeof(uint16_t));
-			cudaMalloc(&R, Settings::get_area()*sizeof(uint16_t));
-			cudaMalloc(&positionsGreen, Settings::get_area()*sizeof(float));
-			cudaMalloc(&positionsRed, Settings::get_area()*sizeof(float));		
+			redConvolutionKernel.allocate();		
 			
 			cudaMalloc(&convolutionMaskGreen, CONVO_DIM_GREEN*CONVO_DIM_GREEN*sizeof(float));
 			cudaMalloc(&convolutionMaskRed, CONVO_DIM_RED*CONVO_DIM_RED*sizeof(float));
@@ -505,23 +410,6 @@ void consumer_thread(){
 			greenConvolutionKernel.update(convolutionFilterBlur);
 			redConvolutionKernel.setInPhase(CONVO_DIM_RED, convolutionMaskRed);
 			redConvolutionKernel.update(convolutionFilterBlur);
-
-			cudaMalloc(&kernelGreen, Settings::get_area()*sizeof(cufftComplex));
-			cudaMalloc(&kernelRed, Settings::get_area()*sizeof(cufftComplex));
-
-			
-			transformKernel(STG_WIDTH, STG_HEIGHT, CONVO_DIM_GREEN, convolutionMaskGreen, kernelGreen);
-			transformKernel(STG_WIDTH, STG_HEIGHT, CONVO_DIM_RED, convolutionMaskRed, kernelRed);
-			
-			mtx.lock();
-			cudaMalloc(&maximaGreen, Settings::get_area()*sizeof(float));
-			cudaMalloc(&maximaRed, Settings::get_area()*sizeof(float));
-			cudaMalloc(&doubleArray, 2*Settings::get_area()*sizeof(float));
-			doubleTemporary = &doubleArray[0];
-			greenOutputArray = &doubleArray[Settings::get_area()];
-			cudaMalloc(&redOutputArray, Settings::get_area()*sizeof(float));
-			cudaMalloc(&redDouble, Settings::get_area()*sizeof(float));
-			mtx.unlock();
 
 			yTexRef.normalized = 0;
 			yTexRef.filterMode = cudaFilterModePoint;
@@ -566,15 +454,13 @@ void consumer_thread(){
 				
 				numBlocks = (Settings::get_area()/2 +BLOCKSIZE -1)/BLOCKSIZE;
 				yuv2bgr<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT,
-												Settings::values[STG_OFFSET_X], Settings::values[STG_OFFSET_Y], G, R);
+												Settings::values[STG_OFFSET_X], Settings::values[STG_OFFSET_Y], greenChannel.original, redChannel.original);
 				auto test = std::chrono::system_clock::now();
-				u16ToDouble<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, G, doubleTemporary);
-				u16ToDouble<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, R, redDouble);
+				greenChannel.typeCast();
+				redChannel.typeCast();
 				mtx.lock();
-				h_backPropagate(STG_WIDTH, STG_HEIGHT, LAMBDA_GREEN, (float)Settings::values[STG_Z_GREEN]/(float)1000000,
-						doubleTemporary, kernelGreen, greenOutputArray, maximaGreen, true);		
-				h_backPropagate(STG_WIDTH,STG_HEIGHT, LAMBDA_RED, (float)Settings::values[STG_Z_RED]/(float)1000000,
-						redDouble, kernelRed, redOutputArray, maximaRed, false);
+				greenChannel.backpropagate(greenConvolutionKernel.kernel);
+				redChannel.backpropagate(redConvolutionKernel.kernel);
 				mtx.unlock();
 				
 				auto test2 = std::chrono::system_clock::now();
@@ -608,18 +494,8 @@ void consumer_thread(){
 			redConvolutionKernel.deallocate();
 			greenConvolutionKernel.deallocate();
 			
-			cudaFree(G);
-			cudaFree(R);
-			
-			cudaFree(doubleArray);
-			cudaFree(redOutputArray);
-			cudaFree(redDouble);
-			cudaFree(maximaGreen);
-			cudaFree(maximaRed);
 			cudaFree(convolutionMaskGreen);
 			cudaFree(convolutionMaskRed);
-			cudaFree(kernelGreen);
-			cudaFree(kernelRed);
 			
 			cudaEGLStreamConsumerDisconnect(&conn);
 			cameraController.Stop();
@@ -662,13 +538,13 @@ void output_thread(){
 				mtx.lock();
 				switch (Settings::requested_type){
 					case BACKPROPAGATED:
-						cudaMemcpy(temporary, greenOutputArray, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+						cudaMemcpy(temporary, greenChannel.backpropagated, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 						break;
 					case RAW_G:
-						cudaMemcpy(temporary, doubleTemporary, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+						cudaMemcpy(temporary, greenChannel.doubleOriginal, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 						break;
 					case RAW_R:
-						cudaMemcpy(temporary, redDouble, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+						cudaMemcpy(temporary, redChannel.doubleOriginal, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 						break;
 				}	
 
@@ -685,8 +561,8 @@ void output_thread(){
 				int* sorted_green_positions = (int*)malloc(sizeof(int)*Settings::get_area());
 				int* sorted_red_positions = (int*)malloc(sizeof(int)*Settings::get_area());
 				mtx.lock();
-				cudaMemcpy(temporary_green_positions, maximaGreen, sizeof(int)*Settings::get_area(), cudaMemcpyDeviceToDevice);
-				cudaMemcpy(temporary_red_positions, maximaRed, sizeof(int)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+				cudaMemcpy(temporary_green_positions, greenChannel.maxima, sizeof(int)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+				cudaMemcpy(temporary_red_positions, redChannel.maxima, sizeof(int)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 				mtx.unlock();
 
 				int* count = (int*)malloc(sizeof(int)*2);
@@ -758,8 +634,8 @@ void print_thread(){
 			if(cycles >= 3){
 				cycles = 0;
 				mtx.lock();
-				cudaMemcpy(positionsToDisplay, maximaGreen, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
-				cudaMemcpy(imageToDisplay, greenOutputArray, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+				cudaMemcpy(positionsToDisplay, greenChannel.maxima, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+				cudaMemcpy(imageToDisplay, greenChannel.backpropagated, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 				mtx.unlock();
 
 				cudaMemcpy(output, positionsToDisplay, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToHost);
