@@ -1,4 +1,4 @@
-#include "stdlib.h"
+#include <cstdint>
 #include "Kernel.h"
 #include "Settings.h"
 #include "Kernels.h"
