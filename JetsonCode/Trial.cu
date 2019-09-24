@@ -31,9 +31,6 @@
 #include "Settings.h"
 #include "CameraController.h"
 
-#define STG_WIDTH Settings::values[STG_WIDTH]
-#define STG_HEIGHT Settings::values[STG_HEIGHT]
-
 using namespace std;
 using namespace Argus;
 using namespace EGLStream;

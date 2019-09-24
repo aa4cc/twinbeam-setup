@@ -3,6 +3,9 @@
 
 #include "Definitions.h"
 
+#define STG_WIDTH Settings::values[STG_WIDTH]
+#define STG_HEIGHT Settings::values[STG_HEIGHT]
+
 class Settings {
 public:
 	static int values[STG_NUMBER_OF_SETTINGS];
