@@ -29,9 +29,9 @@
 #include "Definitions.h"
 #include "Misc.h"
 #include "Settings.h"
-#include "CameraController.h"
 #include "ColorChannel.h"
 #include "Kernel.h"
+#include "CameraController.h"
 
 using namespace std;
 using namespace Argus;
