@@ -1,3 +1,4 @@
+#include <stdlib>
 #include "Kernel.h"
 #include "Settings.h"
 #include "Kernels.h"
@@ -5,7 +6,7 @@
 #include "cuda.h"
 #include "Definitions.h"
 
-int numBlocks = 
+int numBlocks = (Settings::get_area()/2 +BLOCKSIZE -1)/BLOCKSIZE; 
 
 void Kernel::allocate(){
 	cudaMalloc(&kernel, Settings::get_area()*sizeof(cufftComplex));
