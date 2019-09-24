@@ -368,6 +368,7 @@ void consumer_thread(){
 	printf("INFO: consumer_thread: started\n");
 	CameraController::CameraController cameraController;
 	cameraController.Initialize();
+	printf("got here\n");
 	Kernel::Kernel greenConvolutionKernel;
 	Kernel::Kernel redConvolutionKernel;
 	greenChannel.initialize(true, (float)Settings::values[STG_Z_GREEN]/(float)1000000, LAMBDA_GREEN);
