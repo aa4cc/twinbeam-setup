@@ -5,7 +5,6 @@
 #include "thrust/copy.h"
 #include "thrust/execution_policy.h"
 #include "thrust/device_ptr.h"
-#include "Argus/Argus.h"
 #include "EGLStream/EGLStream.h"
 #include "stdio.h"
 #include "stdlib.h"
