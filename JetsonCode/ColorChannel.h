@@ -1,6 +1,8 @@
 #ifndef COLOR_CHANNEL_H
 #define COLOR_CHANNEL_H
 
+#include "cufft.h"
+
 class ColorChannel {
 
 private:

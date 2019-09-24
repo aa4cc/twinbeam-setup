@@ -7,7 +7,7 @@
 
 int numBlocks = (Settings::get_area()/2 +BLOCKSIZE -1)/BLOCKSIZE; 
 
-void ColorChannel::initialize(bool d, int z, float l){
+void ColorChannel::initialize(bool d, int zi, float l){
 	display = d;
 	z = zi;
 	lambda = l;
@@ -51,7 +51,7 @@ void ColorChannel::backpropagate(cufftComplex* kernel){
     cufftComplex* convolutedImage;
     float* filterOutput;
     float* extremes;
-    cufftHandle t_plan;
+    cufftHandle plan;
 
     cudaMalloc(&filterOutput, Settings::get_area()*sizeof(float));
     cudaMalloc(&extremes, Settings::get_area()*sizeof(float));
