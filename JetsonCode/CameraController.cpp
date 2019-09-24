@@ -2,6 +2,7 @@
 #include "Argus/Argus.h"
 #include "Definitions.h"
 #include "Settings.h"
+#include "cuda.h"
 
 using namespace Argus;
 
