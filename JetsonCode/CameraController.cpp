@@ -7,11 +7,8 @@
 using namespace Argus;
 
 void CameraController::Initialize(){
-	printf("What\n");
 	cameraProvider = UniqueObj<CameraProvider>(CameraProvider::create());
-	printf("What\n");
 	iCameraProvider = interface_cast<ICameraProvider>(cameraProvider);
-	printf("What\n");
 	if(!iCameraProvider){
 		printf("ERROR: Failed to establish libargus connection\n");
 	}
