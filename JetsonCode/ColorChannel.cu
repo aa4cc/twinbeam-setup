@@ -5,7 +5,7 @@
 #include "cufft.h"
 #include "Kernels.h"
 
-int numBlocks = (Settings::get_area()/2 +BLOCKSIZE -1)/BLOCKSIZE; 
+int numBlocksCC = (Settings::get_area()/2 +BLOCKSIZE -1)/BLOCKSIZE; 
 
 void ColorChannel::initialize(bool d, int zi, float l){
 	display = d;
@@ -39,11 +39,11 @@ void ColorChannel::deallocate(){
 }
 
 void ColorChannel::calculateHq(){
-	calculate<<<numBlocks, BLOCKSIZE>>>(STG_HEIGHT, STG_WIDTH, z, PIXEL_DX, REFRACTION_INDEX, lambda, hq);
+	calculate<<<numBlocksCC, BLOCKSIZE>>>(STG_HEIGHT, STG_WIDTH, z, PIXEL_DX, REFRACTION_INDEX, lambda, hq);
 }
 
 void ColorChannel::typeCast(){
-	u16ToDouble<<<numBlocks, BLOCKSIZE>>>(STG_HEIGHT, STG_WIDTH, original, doubleOriginal);
+	u16ToDouble<<<numBlocksCC, BLOCKSIZE>>>(STG_HEIGHT, STG_WIDTH, original, doubleOriginal);
 }
 
 void ColorChannel::backpropagate(cufftComplex* kernel){
@@ -58,30 +58,30 @@ void ColorChannel::backpropagate(cufftComplex* kernel){
     cudaMalloc(&image, Settings::get_area()*sizeof(cufftComplex));
     cudaMalloc(&convolutedImage, 2*sizeof(cufftComplex));
 
-    convertToComplex<<<numBlocks, BLOCKSIZE>>>(Settings::get_area(), doubleOriginal, image);
+    convertToComplex<<<numBlocksCC, BLOCKSIZE>>>(Settings::get_area(), doubleOriginal, image);
     cufftPlan2d(&plan, STG_HEIGHT, STG_WIDTH, CUFFT_C2C);
     cufftExecC2C(plan, image, image, CUFFT_FORWARD);
-	multiplyInPlace<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, hq, image);
-	multiply<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, image, kernel, convolutedImage);
+	multiplyInPlace<<<numBlocksCC, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, hq, image);
+	multiply<<<numBlocksCC, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, image, kernel, convolutedImage);
 	
 	if(display){
 		cufftExecC2C(plan, image, image, CUFFT_INVERSE);
-		absoluteValue<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, image, backpropagated);
-		findExtremes<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, backpropagated, extremes);
-		normalize<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, backpropagated, extremes);
+		absoluteValue<<<numBlocksCC, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, image, backpropagated);
+		findExtremes<<<numBlocksCC, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, backpropagated, extremes);
+		normalize<<<numBlocksCC, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, backpropagated, extremes);
 	}
 
 	//Current version of object position detection, needs to be updated
 
 	cufftExecC2C(plan, convolutedImage, convolutedImage, CUFFT_INVERSE);
-	cutAndConvert<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, convolutedImage, maxima);
+	cutAndConvert<<<numBlocksCC, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, convolutedImage, maxima);
 
     cudaFree(extremes);
     cudaMalloc(&extremes, sizeof(float)*2);
 
-	findExtremes<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, filterOutput, extremes);
-	normalize<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, filterOutput, extremes);
-	getLocalMaxima<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, filterOutput, maxima);
+	findExtremes<<<numBlocksCC, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, filterOutput, extremes);
+	normalize<<<numBlocksCC, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, filterOutput, extremes);
+	getLocalMaxima<<<numBlocksCC, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, filterOutput, maxima);
 
 	cufftDestroy(plan);
     cudaFree(extremes);
