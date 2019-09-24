@@ -7,7 +7,7 @@
 
 int numBlocks = (Settings::get_area()/2 +BLOCKSIZE -1)/BLOCKSIZE; 
 
-ColorChannel::ColorChannel(bool d, int z, float l){
+void ColorChannel::initialize(bool d, int z, float l){
 	display = d;
 	z = zi;
 	lambda = l;
@@ -63,7 +63,6 @@ void ColorChannel::backpropagate(cufftComplex* kernel){
     cufftExecC2C(plan, image, image, CUFFT_FORWARD);
 	multiplyInPlace<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, hq, image);
 	multiply<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, image, kernel, convolutedImage);
-	//multiplyInPlace<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, convolutionFilterBlur, t_convolutedImage);
 	
 	if(display){
 		cufftExecC2C(plan, image, image, CUFFT_INVERSE);
@@ -72,7 +71,9 @@ void ColorChannel::backpropagate(cufftComplex* kernel){
 		normalize<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, backpropagated, extremes);
 	}
 
-	cufftExecC2C(t_plan, t_convolutedImage, t_convolutedImage, CUFFT_INVERSE);
+	//Current version of object position detection, needs to be updated
+
+	cufftExecC2C(plan, convolutedImage, convolutedImage, CUFFT_INVERSE);
 	cutAndConvert<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, convolutedImage, maxima);
 
     cudaFree(extremes);
@@ -89,8 +90,4 @@ void ColorChannel::backpropagate(cufftComplex* kernel){
     cudaFree(filterOutput);
 
 
-}
-
-void ColorChannel::convolve(){
-	
 }

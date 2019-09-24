@@ -13,11 +13,11 @@ private:
 	void convolve();
 
 public:
-	ColorChannel(bool d, int zi, float l);
 	void allocate();
 	void deallocate();
 	void backpropagate(cufftComplex* kernel);
 	void typeCast();
+	void initialize(bool d, int zi, float l);
 
 	uint16_t *original;
 	float *doubleOriginal;

@@ -30,6 +30,8 @@
 #include "Misc.h"
 #include "Settings.h"
 #include "CameraController.h"
+#include "ColorChannel.h"
+#include "Kernel.h"
 
 using namespace std;
 using namespace Argus;
@@ -59,6 +61,9 @@ int* positionsRed;
 
 int* redPointsLast;
 int* greenPointsLast;
+
+ColorChannel::ColorChannel greenChannel;
+ColorChannel::ColorChannel redChannel;
 
 cufftComplex* convolutionFilterBlur;
 
@@ -453,6 +458,10 @@ void consumer_thread(){
 	printf("INFO: consumer_thread: started\n");
 	CameraController::CameraController cameraController;
 	cameraController.Initialize();
+	Kernel::Kernel greenConvolutionKernel;
+	Kernel::Kernel redConvolutionKernel;
+	greenChannel.initialize(true, (float)Settings::values[STG_Z_GREEN]/(float)1000000, LAMBDA_GREEN);
+	redChannel.initialize(true, (float)Settings::values[STG_Z_RED]/(float)1000000, LAMBDA_RED);
 	
 	//CUDA variable declarations
 	cudaEglStreamConnection conn;
@@ -472,6 +481,12 @@ void consumer_thread(){
 			cameraController.Start();
 			cudaEGLStreamConsumerConnect(&conn, cameraController.GetEGLStream());
 
+			greenChannel.allocate();
+			redChannel.allocate();
+
+			greenConvolutionKernel.allocate();
+			redConvolutionKernel.allocate();
+
 			cudaMalloc(&G, Settings::get_area()*sizeof(uint16_t));
 			cudaMalloc(&R, Settings::get_area()*sizeof(uint16_t));
 			cudaMalloc(&positionsGreen, Settings::get_area()*sizeof(float));
@@ -483,11 +498,17 @@ void consumer_thread(){
 			generateConvoMaskGreen<<<numBlocks, BLOCKSIZE>>>(CONVO_DIM_GREEN, CONVO_DIM_GREEN, convolutionMaskGreen);
 			generateConvoMaskRed<<<numBlocks, BLOCKSIZE>>>(CONVO_DIM_RED, CONVO_DIM_RED, convolutionMaskRed);
 			
+			cudaMalloc(&convolutionFilterBlur, Settings::get_area()*sizeof(cufftComplex));
+			generateBlurFilter<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, 5, convolutionFilterBlur);
+			
+			greenConvolutionKernel.setInPhase(CONVO_DIM_GREEN, convolutionMaskGreen);
+			greenConvolutionKernel.update(convolutionFilterBlur);
+			redConvolutionKernel.setInPhase(CONVO_DIM_RED, convolutionMaskRed);
+			redConvolutionKernel.update(convolutionFilterBlur);
+
 			cudaMalloc(&kernelGreen, Settings::get_area()*sizeof(cufftComplex));
 			cudaMalloc(&kernelRed, Settings::get_area()*sizeof(cufftComplex));
 
-			cudaMalloc(&convolutionFilterBlur, Settings::get_area()*sizeof(cufftComplex));
-			generateBlurFilter<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, 5, convolutionFilterBlur);
 			
 			transformKernel(STG_WIDTH, STG_HEIGHT, CONVO_DIM_GREEN, convolutionMaskGreen, kernelGreen);
 			transformKernel(STG_WIDTH, STG_HEIGHT, CONVO_DIM_RED, convolutionMaskRed, kernelRed);
@@ -582,6 +603,10 @@ void consumer_thread(){
 			}
 			std::cout << "INFO: Average time to complete a cycle: " << elapsed_seconds_average.count()/final_count << "s\n";
 			
+			redChannel.deallocate();
+			greenChannel.deallocate();
+			redConvolutionKernel.deallocate();
+			greenConvolutionKernel.deallocate();
 			
 			cudaFree(G);
 			cudaFree(R);
