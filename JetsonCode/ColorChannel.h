@@ -2,6 +2,7 @@
 #define COLOR_CHANNEL_H
 
 #include "cufft.h"
+#include <cstdint>
 
 class ColorChannel {
 
