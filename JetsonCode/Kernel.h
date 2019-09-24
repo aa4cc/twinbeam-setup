@@ -2,6 +2,7 @@
 #define KERNEL_H
 
 #include "cufft.h"
+#include "cuda.h"
 
 class Kernel{
 private:
