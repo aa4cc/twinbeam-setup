@@ -32,7 +32,6 @@ public:
 	EGLStreamKHR GetEGLStream();
 	void Update();
 	bool Stop();
-
 };
 
 #endif

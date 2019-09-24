@@ -395,7 +395,7 @@ void consumer_thread(){
 			redChannel.allocate();
 
 			greenConvolutionKernel.allocate();
-			redConvolutionKernel.allocate();		
+			redConvolutionKernel.allocate();
 			
 			cudaMalloc(&convolutionMaskGreen, CONVO_DIM_GREEN*CONVO_DIM_GREEN*sizeof(float));
 			cudaMalloc(&convolutionMaskRed, CONVO_DIM_RED*CONVO_DIM_RED*sizeof(float));
