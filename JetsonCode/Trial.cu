@@ -44,6 +44,7 @@ float* convolutionMaskRed;
 
 ColorChannel::ColorChannel greenChannel;
 ColorChannel::ColorChannel redChannel;
+CameraController::CameraController cameraController;
 
 cufftComplex* convolutionFilterBlur;
 
@@ -366,7 +367,6 @@ void input_thread(){
 
 void consumer_thread(){
 	printf("INFO: consumer_thread: started\n");
-	CameraController::CameraController cameraController;
 	cameraController.Initialize();
 	printf("got here\n");
 	
