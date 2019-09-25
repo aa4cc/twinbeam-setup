@@ -25,7 +25,7 @@ SET(HEADERS_FOLDER "{CMAKE_CURRENT_SOURCE_DIR}")
 FIND_PACKAGE(OpenCV REQUIRED COMPONENTS core highgui)
 
 include_directories($ENV{HOME}/tegra_multimedia_api/include ${OpenCV_INCLUDE_DIRS} ${HEADERS_FOLDER})
-cuda_add_executable(trial Trial.cu Kernels.cu Misc.cpp Settings.cpp CameraController.cpp ColorChannel.cu Kernel.cu)
+cuda_add_executable(trial Trial.cu Kernels.cu Misc.cpp Settings.cpp ColorChannel.cu Kernel.cu CameraController.cpp)
 target_include_directories(trial PRIVATE ${HEADERS_FOLDER})
 set_property(TARGET trial
 	PROPERTY CUDA_SEPARABLE_COMPILATION ON)
