@@ -7,6 +7,7 @@
 #include "thrust/device_ptr.h"
 #include "Argus/Argus.h"
 #include "EGLStream/EGLStream.h"
+#include "CameraController.h"
 #include "stdio.h"
 #include "stdlib.h"
 #include "EGL/egl.h"
@@ -31,7 +32,6 @@
 #include "Settings.h"
 #include "ColorChannel.h"
 #include "Kernel.h"
-#include "CameraController.h"
 
 using namespace std;
 using namespace Argus;
@@ -373,7 +373,7 @@ void consumer_thread(){
 	greenChannel.initialize(true, (float)Settings::values[STG_Z_GREEN]/(float)1000000, LAMBDA_GREEN);
 	redChannel.initialize(false, (float)Settings::values[STG_Z_RED]/(float)1000000, LAMBDA_RED);
 
-	//cameraController.Initialize();
+	cameraController.Initialize();
 	printf("got here\n");
 	
 	//CUDA variable declarations
