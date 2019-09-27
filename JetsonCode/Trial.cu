@@ -367,13 +367,13 @@ void input_thread(){
 
 void consumer_thread(){
 	printf("INFO: consumer_thread: started\n");
-	
+
 	Kernel::Kernel greenConvolutionKernel;
 	Kernel::Kernel redConvolutionKernel;
 	greenChannel.initialize(true, (float)Settings::values[STG_Z_GREEN]/(float)1000000, LAMBDA_GREEN);
 	redChannel.initialize(false, (float)Settings::values[STG_Z_RED]/(float)1000000, LAMBDA_RED);
 
-	cameraController.Initialize();
+	//cameraController.Initialize();
 	printf("got here\n");
 	
 	//CUDA variable declarations
