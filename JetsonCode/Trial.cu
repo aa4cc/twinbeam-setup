@@ -367,6 +367,12 @@ void input_thread(){
 
 void consumer_thread(){
 	printf("INFO: consumer_thread: started\n");
+	
+	Kernel::Kernel greenConvolutionKernel;
+	Kernel::Kernel redConvolutionKernel;
+	greenChannel.initialize(true, (float)Settings::values[STG_Z_GREEN]/(float)1000000, LAMBDA_GREEN);
+	redChannel.initialize(false, (float)Settings::values[STG_Z_RED]/(float)1000000, LAMBDA_RED);
+
 	cameraController.Initialize();
 	printf("got here\n");
 	
@@ -379,10 +385,6 @@ void consumer_thread(){
 	cudaChannelFormatDesc yChannelDesc;
 	cudaChannelFormatDesc uvChannelDesc;
 
-	Kernel::Kernel greenConvolutionKernel;
-	Kernel::Kernel redConvolutionKernel;
-	greenChannel.initialize(true, (float)Settings::values[STG_Z_GREEN]/(float)1000000, LAMBDA_GREEN);
-	redChannel.initialize(false, (float)Settings::values[STG_Z_RED]/(float)1000000, LAMBDA_RED);
 
 	while(!Settings::force_exit){
 		while(Settings::connected && !Settings::force_exit){
