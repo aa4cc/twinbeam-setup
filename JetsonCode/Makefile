@@ -525,6 +525,33 @@ Misc.cpp.s:
 	$(MAKE) -f CMakeFiles/trial.dir/build.make CMakeFiles/trial.dir/Misc.cpp.s
 .PHONY : Misc.cpp.s
 
+Settings.o: Settings.cpp.o
+
+.PHONY : Settings.o
+
+# target to build an object file
+Settings.cpp.o:
+	$(MAKE) -f CMakeFiles/trial.dir/build.make CMakeFiles/trial.dir/Settings.cpp.o
+.PHONY : Settings.cpp.o
+
+Settings.i: Settings.cpp.i
+
+.PHONY : Settings.i
+
+# target to preprocess a source file
+Settings.cpp.i:
+	$(MAKE) -f CMakeFiles/trial.dir/build.make CMakeFiles/trial.dir/Settings.cpp.i
+.PHONY : Settings.cpp.i
+
+Settings.s: Settings.cpp.s
+
+.PHONY : Settings.s
+
+# target to generate assembly for a file
+Settings.cpp.s:
+	$(MAKE) -f CMakeFiles/trial.dir/build.make CMakeFiles/trial.dir/Settings.cpp.s
+.PHONY : Settings.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -566,6 +593,9 @@ help:
 	@echo "... Misc.o"
 	@echo "... Misc.i"
 	@echo "... Misc.s"
+	@echo "... Settings.o"
+	@echo "... Settings.i"
+	@echo "... Settings.s"
 .PHONY : help
 
 
