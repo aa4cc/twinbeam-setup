@@ -664,7 +664,7 @@ void consumer_thread(){
 	printf("INFO: consumer_thread: ended\n");
 }
 
-void CallBackFunc(int event, int x, int y, int flags, void* userdata)
+void mouseEventCallback(int event, int x, int y, int flags, void* userdata)
 {
 	// https://www.opencv-srf.com/2011/11/mouse-events.html
 	if ( event == CV_EVENT_MOUSEMOVE )
@@ -778,7 +778,7 @@ void print_thread(){
 		cv::namedWindow("Basic Visualization", CV_WINDOW_NORMAL);
 		cv::setWindowProperty("Basic Visualization", CV_WND_PROP_FULLSCREEN, CV_WINDOW_FULLSCREEN);
 		//set the callback function for any mouse event
-     	cv::setMouseCallback("Basic Visualization", CallBackFunc, NULL);
+     	cv::setMouseCallback("Basic Visualization", mouseEventCallback, NULL);
 
 		while(!Settings::initialized && Settings::connected && !Settings::force_exit){}
 		if (Settings::force_exit){
