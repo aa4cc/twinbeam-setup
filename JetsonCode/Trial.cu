@@ -347,8 +347,8 @@ void changeSettings(char* buf){
 	}
 }
 
-void input_thread(){
-	printf("INFO: input_thread: started\n");
+void network_thread(){
+	printf("INFO: network_thread: started\n");
 
 	std::string text;
 	sockaddr_in sockName;
@@ -451,11 +451,11 @@ void input_thread(){
 	}
 	close(mainSocket);
 
-	printf("INFO: input_thread: ended\n");
+	printf("INFO: network_thread: ended\n");
 }
 
-void consumer_thread(){
-	printf("INFO: consumer_thread: started\n");
+void camera_thread(){
+	printf("INFO: camera_thread: started\n");
 	//Initializing LibArgus according to the tutorial for a sample project.
 	// First we create a CameraProvider, necessary for each project.
 	UniqueObj<CameraProvider> cameraProvider(CameraProvider::create());
@@ -661,7 +661,7 @@ void consumer_thread(){
 		}
 	}
 
-	printf("INFO: consumer_thread: ended\n");
+	printf("INFO: camera_thread: ended\n");
 }
 
 void mouseEventCallback(int event, int x, int y, int flags, void* userdata)
@@ -677,8 +677,8 @@ void mouseEventCallback(int event, int x, int y, int flags, void* userdata)
      }
 }
 
-void output_thread(){
-	printf("INFO: output_thread: started\n");
+void datasend_thread(){
+	printf("INFO: datasend_thread: started\n");
 
 	float *temporary;
 	float *temporary_red_positions;
@@ -759,14 +759,15 @@ void output_thread(){
 		cudaFree(temporary);
 	}
 
-	printf("INFO: output_thread: ended\n");
+	printf("INFO: datasend_thread: ended\n");
 }
 
-void print_thread(){
-	printf("INFO: print_thread: started\n");
+void display_thread(){
+	printf("INFO: display_thread: started\n");
 
 	float* positionsToDisplay;
 	float* imageToDisplay;
+	char ret_key;
 	while(true){
 		while(Settings::sleeping && Settings::connected && !Settings::force_exit){}
 		if (Settings::force_exit) break;
@@ -812,7 +813,9 @@ void print_thread(){
 
 				const cv::Mat result = img2;
 				cv::imshow("Basic Visualization", result);
-				cv::waitKey(1);
+				ret_key = (char) cv::waitKey(1);
+
+				if (ret_key == 27 || ret_key == 'x') Settings::set_force_exit(true);  // exit the app if `esc' or 'x' key was pressed.
 			}
 			else{
 				usleep(5000);
@@ -826,7 +829,7 @@ void print_thread(){
 		free(output2);
 	}
 
-	printf("INFO: print_thread: ended\n");
+	printf("INFO: display_thread: ended\n");
 }
 
 
@@ -848,15 +851,15 @@ int main(int argc, char* argv[]){
 		Settings::set_touch_kill(true);
 	}
 
-	thread consumr_thr (consumer_thread);
-	thread print_thr (print_thread);
-	thread input_thr (input_thread);
-	thread output_thr (output_thread);
+	thread camera_thr (camera_thread);
+	thread display_thr (display_thread);
+	thread network_thr (network_thread);
+	thread datasend_thr (datasend_thread);
 	thread keyboard_thr (keyboard_thread);
 	
-	consumr_thr.join();
-	print_thr.join();
-	output_thr.join();
+	camera_thr.join();
+	display_thr.join();
+	datasend_thr.join();
 
 	return 0;
 }
