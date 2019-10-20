@@ -31,8 +31,8 @@
 #include "Settings.h"
 #include "BackPropagator.h"
 
-#define STG_WIDTH Settings::values[STG_WIDTH]
-#define STG_HEIGHT Settings::values[STG_HEIGHT]
+#define dSTG_WIDTH Settings::values[STG_WIDTH]
+#define dSTG_HEIGHT Settings::values[STG_HEIGHT]
 
 static const int    DEFAULT_FPS        = 30;
 
@@ -43,19 +43,19 @@ using namespace EGLStream;
 cudaError_t res;
 
 float* doubleArray;
-float* greenOutputArray;
+float* G_backpropagated;
 float* redOutputArray;
 cufftComplex* kernelGreen;
 cufftComplex* kernelRed;
 
-float* redDouble;
+float* R_double;
 
 float* convolutionMaskGreen;
 float* convolutionMaskRed;
 
 float* maximaRed;
 float* maximaGreen;
-float* doubleTemporary;
+float* G_double;
 
 int* greenPoints;
 int* redPoints;
@@ -73,6 +73,7 @@ int client;
 bool opt_verbose	= false;
 bool opt_debug		= false;
 bool opt_show		= false;
+bool opt_saveimgs	= false;
 
 uint16_t *R;
 uint16_t *G;
@@ -81,6 +82,7 @@ mutex mtx;
 
 int numBlocks;
 short cycles;
+int final_count;
 std::chrono::duration<double> elapsed_seconds_average;
 
 EGLStreamKHR eglStream;
@@ -113,11 +115,12 @@ parse(int argc, char* argv[])
     options
       .add_options()
       ("s,show", "Display the processed image on the display", 	cxxopts::value<bool>(opt_show))
+      ("saveimgs", "Save images", 	cxxopts::value<bool>(opt_saveimgs))
       ("d,debug", "Prints debug information",					cxxopts::value<bool>(opt_debug))
       ("v,verbose", "Prints some additional information",		cxxopts::value<bool>(opt_verbose))
       ("help", "Prints help")
     ;
-
+	
     auto result = options.parse(argc, argv);
 
     if (result.count("help"))
@@ -169,8 +172,8 @@ void processPoints(float* greenInputPoints, float* redInputPoints, int* outputGr
 
 	cudaMemcpy(points, greenInputPoints, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 	cudaMemcpy(&points[Settings::get_area()], redInputPoints, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
-	findPoints<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, points, greenCoords);
-	findPoints<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, &points[Settings::get_area()], redCoords);
+	findPoints<<<numBlocks, BLOCKSIZE>>>(dSTG_WIDTH, dSTG_HEIGHT, points, greenCoords);
+	findPoints<<<numBlocks, BLOCKSIZE>>>(dSTG_WIDTH, dSTG_HEIGHT, &points[Settings::get_area()], redCoords);
 	thrust::device_ptr<int> greenCoordsPtr(greenCoords);
 	thrust::device_ptr<int> redCoordsPtr(redCoords);
 
@@ -228,69 +231,6 @@ void transformKernel(int M, int N, int kernelDim, float* kernel, cufftComplex* o
     cufftPlan2d(&plan, N,M, CUFFT_C2C);
     cufftExecC2C(plan, outputKernel, outputKernel, CUFFT_FORWARD);
     cufftDestroy(plan);
-}
-
-
-void h_backPropagate(int M, int N, float lambda, float z, float* input,
-		cufftComplex* kernel, float* output, float* output2, bool display)
-{
-    cufftComplex* doubleComplexArray;
-    cufftComplex* Hq;
-    cufftComplex* image;
-    cufftComplex* convolutedImage;
-	float* filterOutput;
-    float* temporary;
-    float* extremes;
-    cufftHandle plan;
-
-	cudaMalloc(&filterOutput, Settings::get_area()*sizeof(float));
-    cudaMalloc(&doubleComplexArray, 3*N*M*sizeof(cufftComplex));
-    Hq = &doubleComplexArray[0];
-    image = &doubleComplexArray[N*M];
-    convolutedImage = &doubleComplexArray[2*N*M];
-    cudaMalloc(&temporary, N*M*sizeof(float));
-    cudaMalloc(&extremes, sizeof(float)*2);
-
-    convertToComplex<<<numBlocks, BLOCKSIZE>>>(N*M, input, image);
-    // Declaring the FFT plan
-    cufftPlan2d(&plan, N,M, CUFFT_C2C);
-    // Execute forward FFT on the green channel
-    cufftExecC2C(plan, image, image, CUFFT_FORWARD);
-    // Calculating the Hq matrix according to the equations in the original .m file.
-    calculate<<<numBlocks, BLOCKSIZE>>>(N,M, z, PIXEL_DX, REFRACTION_INDEX, lambda, Hq);
-    // Element-wise multiplication of Hq matrix and the image
-	multiplyInPlace<<<numBlocks, BLOCKSIZE>>>(M, N, Hq, image);
-	multiply<<<numBlocks, BLOCKSIZE>>>(M, N, image, kernel, convolutedImage);
-	multiplyInPlace<<<numBlocks, BLOCKSIZE>>>(M, N, convolutionFilterBlur, convolutedImage);
-    if(display){
-		// Executing inverse FFT
-		cufftExecC2C(plan, image, image, CUFFT_INVERSE);
-		// Conversion of result matrix to a real double matrix
-		imaginary<<<numBlocks, BLOCKSIZE>>>(M,N, image, output);
-
-		findExtremes<<<numBlocks, BLOCKSIZE>>>(M,N, output, extremes);
-		normalize<<<numBlocks, BLOCKSIZE>>>(M,N, output, extremes);
-	}
-	cufftExecC2C(plan, convolutedImage, convolutedImage, CUFFT_INVERSE);
-	cutAndConvert<<<numBlocks, BLOCKSIZE>>>(M,N,convolutedImage, filterOutput);
-
-    cudaFree(extremes);
-    cudaMalloc(&extremes, sizeof(float)*2);
-
-	findExtremes<<<numBlocks, BLOCKSIZE>>>(M, N, filterOutput, extremes);
-	normalize<<<numBlocks, BLOCKSIZE>>>(M, N, filterOutput, extremes);
-	getLocalMaxima<<<numBlocks, BLOCKSIZE>>>(M, N, filterOutput, output2);
-
-	cufftDestroy(plan);
-
-    cudaFree(extremes);
-    cudaFree(doubleComplexArray);
-    cudaFree(temporary);
-    cudaFree(filterOutput);
-}
-
-void allocateMemory() {
-
 }
 
 void keyboard_thread(){
@@ -551,19 +491,19 @@ void camera_thread(){
 			cudaMalloc(&kernelRed, Settings::get_area()*sizeof(cufftComplex));
 
 			cudaMalloc(&convolutionFilterBlur, Settings::get_area()*sizeof(cufftComplex));
-			generateBlurFilter<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, 3, convolutionFilterBlur);
+			generateBlurFilter<<<numBlocks, BLOCKSIZE>>>(dSTG_WIDTH, dSTG_HEIGHT, 3, convolutionFilterBlur);
 			
-			transformKernel(STG_WIDTH, STG_HEIGHT, CONVO_DIM_GREEN, convolutionMaskGreen, kernelGreen);
-			transformKernel(STG_WIDTH, STG_HEIGHT, CONVO_DIM_RED, convolutionMaskRed, kernelRed);
+			transformKernel(dSTG_WIDTH, dSTG_HEIGHT, CONVO_DIM_GREEN, convolutionMaskGreen, kernelGreen);
+			transformKernel(dSTG_WIDTH, dSTG_HEIGHT, CONVO_DIM_RED, convolutionMaskRed, kernelRed);
 			
 			mtx.lock();
 			cudaMalloc(&maximaGreen, Settings::get_area()*sizeof(float));
 			cudaMalloc(&maximaRed, Settings::get_area()*sizeof(float));
 			cudaMalloc(&doubleArray, 2*Settings::get_area()*sizeof(float));
-			doubleTemporary = &doubleArray[0];
-			greenOutputArray = &doubleArray[Settings::get_area()];
+			G_double = &doubleArray[0];
+			G_backpropagated = &doubleArray[Settings::get_area()];
 			cudaMalloc(&redOutputArray, Settings::get_area()*sizeof(float));
-			cudaMalloc(&redDouble, Settings::get_area()*sizeof(float));
+			cudaMalloc(&R_double, Settings::get_area()*sizeof(float));
 			mtx.unlock();
 
 			yTexRef.normalized = 0;
@@ -577,13 +517,16 @@ void camera_thread(){
 			uvTexRef.addressMode[0] = cudaAddressModeClamp;
 			uvTexRef.addressMode[1] = cudaAddressModeClamp;
 			cudaGetTextureReference(&uvTex, &uvTexRef);
+
+			// Initialize the BackPropagator for the green image
+			BackPropagator backprop_G(dSTG_WIDTH, dSTG_HEIGHT, LAMBDA_GREEN, (float)Settings::values[STG_Z_GREEN]/(float)1000000);
 			
 			//CUDA initialization
 			//Main loop
 			auto initializer = std::chrono::system_clock::now();
 			std::chrono::duration<double> elapsed_seconds_average = initializer-initializer;
 
-			int final_count = 0;
+			final_count = 0;
 			while(!Settings::initialized && Settings::connected && !Settings::force_exit){}
 			if (Settings::force_exit) break;
 
@@ -608,16 +551,13 @@ void camera_thread(){
 
 				
 				numBlocks = (Settings::get_area()/2 +BLOCKSIZE -1)/BLOCKSIZE;
-				yuv2bgr<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT,
+				yuv2bgr<<<numBlocks, BLOCKSIZE>>>(dSTG_WIDTH, dSTG_HEIGHT,
 												Settings::values[STG_OFFSET_X], Settings::values[STG_OFFSET_Y], G, R);
 				auto test = std::chrono::system_clock::now();
-				u16ToDouble<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, G, doubleTemporary);
-				u16ToDouble<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, R, redDouble);
+				u16ToDouble<<<numBlocks, BLOCKSIZE>>>(dSTG_WIDTH, dSTG_HEIGHT, G, G_double);
+				u16ToDouble<<<numBlocks, BLOCKSIZE>>>(dSTG_WIDTH, dSTG_HEIGHT, R, R_double);
 				mtx.lock();
-				h_backPropagate(STG_WIDTH, STG_HEIGHT, LAMBDA_GREEN, (float)Settings::values[STG_Z_GREEN]/(float)1000000,
-						doubleTemporary, kernelGreen, greenOutputArray, maximaGreen, true);		
-				h_backPropagate(STG_WIDTH,STG_HEIGHT, LAMBDA_RED, (float)Settings::values[STG_Z_RED]/(float)1000000,
-						redDouble, kernelRed, redOutputArray, maximaRed, false);
+				backprop_G.backprop(G_double, G_backpropagated);
 				mtx.unlock();
 				
 				auto test2 = std::chrono::system_clock::now();
@@ -652,7 +592,7 @@ void camera_thread(){
 			
 			cudaFree(doubleArray);
 			cudaFree(redOutputArray);
-			cudaFree(redDouble);
+			cudaFree(R_double);
 			cudaFree(maximaGreen);
 			cudaFree(maximaRed);
 			cudaFree(convolutionMaskGreen);
@@ -702,13 +642,13 @@ void datasend_thread(){
 				mtx.lock();
 				switch (Settings::requested_type){
 					case BACKPROPAGATED:
-						cudaMemcpy(temporary, greenOutputArray, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+						cudaMemcpy(temporary, G_backpropagated, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 						break;
 					case RAW_G:
-						cudaMemcpy(temporary, doubleTemporary, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+						cudaMemcpy(temporary, G_double, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 						break;
 					case RAW_R:
-						cudaMemcpy(temporary, redDouble, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+						cudaMemcpy(temporary, R_double, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 						break;
 				}	
 
@@ -770,17 +710,16 @@ void datasend_thread(){
 void display_thread(){
 	printf("INFO: display_thread: started\n");
 
-	float* positionsToDisplay;
 	float* imageToDisplay;
 	char ret_key;
+	char filename [50];
+
 	while(true){
 		while(Settings::sleeping && Settings::connected && !Settings::force_exit){}
 		if (Settings::force_exit) break;
 			
-		cudaMalloc(&positionsToDisplay, sizeof(float)*Settings::get_area());
 		cudaMalloc(&imageToDisplay, sizeof(float)*Settings::get_area());
 		float* output = (float*)malloc(sizeof(float)*Settings::get_area());
-		float* output2 = (float*)malloc(sizeof(float)*Settings::get_area());
 		cv::namedWindow("Basic Visualization", CV_WINDOW_NORMAL);
 		cv::setWindowProperty("Basic Visualization", CV_WND_PROP_FULLSCREEN, CV_WINDOW_FULLSCREEN);
 		//set the callback function for any mouse event
@@ -788,10 +727,8 @@ void display_thread(){
 
 		while(!Settings::initialized && Settings::connected && !Settings::force_exit){}
 		if (Settings::force_exit){
-			cudaFree(positionsToDisplay);
 			cudaFree(imageToDisplay);
 			free(output);
-			free(output2);
 			break;
 		} 
 
@@ -799,25 +736,35 @@ void display_thread(){
 			if(cycles >= 3){
 				cycles = 0;
 				mtx.lock();
-				cudaMemcpy(positionsToDisplay, maximaGreen, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
-				cudaMemcpy(imageToDisplay, greenOutputArray, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+				// cudaMemcpy(imageToDisplay, G_double, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+				cudaMemcpy(imageToDisplay, G_backpropagated, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 				mtx.unlock();
 
-				cudaMemcpy(output, positionsToDisplay, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToHost);
-				cudaMemcpy(output2, imageToDisplay, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToHost);
-				const cv::Mat img(cv::Size(STG_WIDTH, STG_HEIGHT), CV_32F, output);
-				const cv::Mat img2(cv::Size(STG_WIDTH, STG_HEIGHT), CV_32F, output2);
+				cudaMemcpy(output, imageToDisplay, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToHost);
+				const cv::Mat img(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_32F, output);
 
-				const cv::Mat img2_trans(cv::Size(STG_WIDTH, STG_HEIGHT), CV_32F);
-				const cv::Mat img_trans(cv::Size(STG_WIDTH, STG_HEIGHT), CV_32F);
+				const cv::Mat img_trans(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_32F);
 
-				cv::flip(img2, img2_trans, -1);
-				cv::transpose(img2_trans, img2);
 				cv::flip(img, img_trans, -1);
 				cv::transpose(img_trans, img);
 
-				const cv::Mat result = img2;
-				cv::imshow("Basic Visualization", result);
+				if (opt_saveimgs) {
+					auto start = std::chrono::system_clock::now();
+					
+					sprintf (filename, "./imgs/img_%05d.png", final_count);
+					cv::imwrite( filename, img );
+					
+					auto end = std::chrono::system_clock::now();
+					std::chrono::duration<double> elapsed_seconds = end-start;
+					if(opt_verbose) {
+						std::cout << "TRACE: Stroring the image took: " << elapsed_seconds.count() << "s\n";
+					}
+				}
+				
+
+
+
+				cv::imshow("Basic Visualization", img);
 				ret_key = (char) cv::waitKey(1);
 
 				if (ret_key == 27 || ret_key == 'x') Settings::set_force_exit(true);  // exit the app if `esc' or 'x' key was pressed.
@@ -828,10 +775,8 @@ void display_thread(){
 
 			if (Settings::force_exit) break;
 		}
-		cudaFree(positionsToDisplay);
 		cudaFree(imageToDisplay);
 		free(output);
-		free(output2);
 	}
 
 	printf("INFO: display_thread: ended\n");
