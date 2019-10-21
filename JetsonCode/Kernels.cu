@@ -98,11 +98,19 @@ __global__ void transpose(int N, int M, float* input, float* output){
             }
         }
 
-__global__ void u16ToDouble(int N, int M, uint16_t* transposee, float* result){
+__global__ void u16ToFloat(int N, int M, uint16_t* input, float* result){
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     int stride = blockDim.x * gridDim.x;
     for(int i = index; i < N*M; i += stride){
-        result[i] = (float)transposee[i];
+        result[i] = (float)input[i];
+    }
+}
+
+__global__ void floatToUInt16(int N, int M, float* input, uint16_t* result){
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+    for(int i = index; i < N*M; i += stride){
+        result[i] = (uint16_t)input[i];
     }
 }
 

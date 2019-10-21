@@ -14,7 +14,8 @@ __global__ void absoluteValue(int N, int M, cufftComplex* storageArray, float* o
 __global__ void cutAndConvert(int N, int M, cufftComplex* input, float* output);
 __global__ void convertToFloat(int count , float* output, cufftComplex* input);
 __global__ void transpose(int N, int M, float* transposee, float* result);
-__global__ void u16ToDouble(int N, int M, uint16_t* transposee, float* result);
+__global__ void u16ToFloat(int N, int M, uint16_t* input, float* result);
+__global__ void floatToUInt16(int N, int M, float* input, uint16_t* result);
 __global__ void convertToComplex(int count , float* real, cufftComplex* complex);
 __global__ void desample(int M, int N, float* input, float* output);
 __global__ void generateConvoMaskRed(int m, int n, float* convoMask);
