@@ -42,20 +42,15 @@ using namespace EGLStream;
 
 cudaError_t res;
 
-float* doubleArray;
-float* G_backpropagated;
 float* redOutputArray;
 cufftComplex* kernelGreen;
 cufftComplex* kernelRed;
-
-float* R_double;
 
 float* convolutionMaskGreen;
 float* convolutionMaskRed;
 
 float* maximaRed;
 float* maximaGreen;
-float* G_double;
 
 int* greenPoints;
 int* redPoints;
@@ -77,6 +72,7 @@ bool opt_saveimgs	= false;
 
 uint16_t *R;
 uint16_t *G;
+uint16_t *G_backprop;
 
 mutex mtx;
 
@@ -499,11 +495,9 @@ void camera_thread(){
 			mtx.lock();
 			cudaMalloc(&maximaGreen, Settings::get_area()*sizeof(float));
 			cudaMalloc(&maximaRed, Settings::get_area()*sizeof(float));
-			cudaMalloc(&doubleArray, 2*Settings::get_area()*sizeof(float));
-			G_double = &doubleArray[0];
-			G_backpropagated = &doubleArray[Settings::get_area()];
+			cudaMalloc(&G_backprop, Settings::get_area()*sizeof(uint16_t));
+
 			cudaMalloc(&redOutputArray, Settings::get_area()*sizeof(float));
-			cudaMalloc(&R_double, Settings::get_area()*sizeof(float));
 			mtx.unlock();
 
 			yTexRef.normalized = 0;
@@ -549,22 +543,19 @@ void camera_thread(){
 				cudaBindTextureToArray(uvTex, (cudaArray_const_t)(uvArray), &uvChannelDesc);
 				auto initialization = std::chrono::system_clock::now();
 
-				
 				numBlocks = (Settings::get_area()/2 +BLOCKSIZE -1)/BLOCKSIZE;
+				
+				mtx.lock();
 				yuv2bgr<<<numBlocks, BLOCKSIZE>>>(dSTG_WIDTH, dSTG_HEIGHT,
 												Settings::values[STG_OFFSET_X], Settings::values[STG_OFFSET_Y], G, R);
-				auto test = std::chrono::system_clock::now();
-				u16ToDouble<<<numBlocks, BLOCKSIZE>>>(dSTG_WIDTH, dSTG_HEIGHT, G, G_double);
-				u16ToDouble<<<numBlocks, BLOCKSIZE>>>(dSTG_WIDTH, dSTG_HEIGHT, R, R_double);
-				mtx.lock();
-				backprop_G.backprop(G_double, G_backpropagated);
+				backprop_G.backprop(G, G_backprop);
 				mtx.unlock();
 				
 				auto test2 = std::chrono::system_clock::now();
-				std::chrono::duration<double> elapsed_seconds = test2-test;
+				std::chrono::duration<double> elapsed_seconds = test2-initialization;
 				
 				if(opt_verbose) {
-					std::cout << "TRACE: Converting the image format took: " << elapsed_seconds.count() << "s\n";
+					std::cout << "TRACE: Converting the image format + backprop took: " << elapsed_seconds.count() << "s\n";
 				}
 
 				cudaUnbindTexture(yTex);
@@ -589,10 +580,8 @@ void camera_thread(){
 			
 			cudaFree(G);
 			cudaFree(R);
-			
-			cudaFree(doubleArray);
+			cudaFree(G_backprop);
 			cudaFree(redOutputArray);
-			cudaFree(R_double);
 			cudaFree(maximaGreen);
 			cudaFree(maximaRed);
 			cudaFree(convolutionMaskGreen);
@@ -642,13 +631,13 @@ void datasend_thread(){
 				mtx.lock();
 				switch (Settings::requested_type){
 					case BACKPROPAGATED:
-						cudaMemcpy(temporary, G_backpropagated, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+						cudaMemcpy(temporary, G_backprop, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 						break;
 					case RAW_G:
-						cudaMemcpy(temporary, G_double, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+						cudaMemcpy(temporary, G, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 						break;
 					case RAW_R:
-						cudaMemcpy(temporary, R_double, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+						cudaMemcpy(temporary, R, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 						break;
 				}	
 
@@ -734,39 +723,33 @@ void display_thread(){
 
 		while(!Settings::sleeping && Settings::connected){
 			if(cycles >= 3){
+				auto start = std::chrono::system_clock::now();
 				cycles = 0;
 				mtx.lock();
-				// cudaMemcpy(imageToDisplay, G_double, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
-				cudaMemcpy(imageToDisplay, G_backpropagated, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+				// cudaMemcpy(imageToDisplay, G, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+				cudaMemcpy(imageToDisplay, G_backprop, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 				mtx.unlock();
 
 				cudaMemcpy(output, imageToDisplay, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToHost);
 				const cv::Mat img(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_32F, output);
 
-				const cv::Mat img_trans(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_32F);
-
-				cv::flip(img, img_trans, -1);
-				cv::transpose(img_trans, img);
-
 				if (opt_saveimgs) {
-					auto start = std::chrono::system_clock::now();
-					
 					sprintf (filename, "./imgs/img_%05d.png", final_count);
 					cv::imwrite( filename, img );
-					
-					auto end = std::chrono::system_clock::now();
-					std::chrono::duration<double> elapsed_seconds = end-start;
-					if(opt_verbose) {
-						std::cout << "TRACE: Stroring the image took: " << elapsed_seconds.count() << "s\n";
-					}
+				} else {
+					// Flip the image only if the images are not stored (to save some time)
+					const cv::Mat img_trans(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_32F);
+					cv::flip(img, img_trans, -1);
+					cv::transpose(img_trans, img);
 				}
-				
-
-
 
 				cv::imshow("Basic Visualization", img);
-				ret_key = (char) cv::waitKey(1);
+				auto end = std::chrono::system_clock::now();
+				std::chrono::duration<double> elapsed_seconds = end-start;if(opt_verbose) {
+					std::cout << "TRACE: Stroring the image took: " << elapsed_seconds.count() << "s\n";
+				}
 
+				ret_key = (char) cv::waitKey(1);
 				if (ret_key == 27 || ret_key == 'x') Settings::set_force_exit(true);  // exit the app if `esc' or 'x' key was pressed.
 			}
 			else{
