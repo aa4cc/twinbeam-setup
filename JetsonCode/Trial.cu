@@ -44,12 +44,6 @@ cudaError_t res;
 
 int client;
 
-// Options
-bool opt_verbose	= false;
-bool opt_debug		= false;
-bool opt_show		= false;
-bool opt_saveimgs	= false;
-bool opt_mousekill 	= false;
 
 uint16_t *R;
 uint16_t *G;
@@ -60,7 +54,7 @@ mutex mtx;
 
 int numBlocks;
 short cycles;
-int final_count;
+int final_count, img_count = 0;
 std::chrono::duration<double> elapsed_seconds_average;
 
 EGLStreamKHR eglStream;
@@ -79,6 +73,13 @@ struct is_not_zero
 	}
 };
 
+// Options
+bool opt_verbose	= false;
+bool opt_debug		= false;
+bool opt_show		= false;
+bool opt_saveimgs	= false;
+bool opt_mousekill 	= false;
+
 // cxxopts.hpp related definitions
 cxxopts::ParseResult
 parse(int argc, char* argv[])
@@ -92,12 +93,15 @@ parse(int argc, char* argv[])
 
     options
       .add_options()
-      ("s,show", "Display the processed image on the display", 	cxxopts::value<bool>(opt_show))
-      ("saveimgs", "Save images", 	cxxopts::value<bool>(opt_saveimgs))
-      ("d,debug", "Prints debug information",					cxxopts::value<bool>(opt_debug))
-      ("k,mousekill", "Moving the mouse or toching the screen kills the app",					cxxopts::value<bool>(opt_mousekill))
-      ("v,verbose", "Prints some additional information",		cxxopts::value<bool>(opt_verbose))
-      ("help", "Prints help")
+      ("s,show", 		"Display the processed image on the display",				cxxopts::value<bool>(opt_show))
+      ("saveimgs", 		"Save images", 												cxxopts::value<bool>(opt_saveimgs))
+      ("d,debug", 		"Prints debug information",									cxxopts::value<bool>(opt_debug))
+      ("k,mousekill", 	"Moving the mouse or toching the screen kills the app",		cxxopts::value<bool>(opt_mousekill))
+      ("v,verbose", 	"Prints some additional information",						cxxopts::value<bool>(opt_verbose))
+      ("e,exp",			"Exposure time (us)",										cxxopts::value<uint32_t>())
+      ("r,resolution", 	"Resolution (example -r 1024,1024)",						cxxopts::value<std::vector<uint32_t>>())
+	  ("o,offset", 		"Offset of the image (example -o 123,523)", 				cxxopts::value<std::vector<uint32_t>>())
+      ("help", 			"Prints help")
     ;
 	
     auto result = options.parse(argc, argv);
@@ -393,7 +397,7 @@ void camera_thread(){
 			ISourceSettings *iSourceSettings = interface_cast<ISourceSettings>(iRequest->getSourceSettings());
 			iSourceSettings->setFrameDurationRange(Range<uint64_t>(1e9/DEFAULT_FPS));
 			iSourceSettings->setExposureTimeRange(Range<uint64_t>(Settings::values[STG_EXPOSURE],Settings::values[STG_EXPOSURE]));
-			iSourceSettings->setGainRange(Range<float>(0.5,1.5));
+			iSourceSettings->setGainRange(Range<float>(100.0,100.0));
 
 			IAutoControlSettings *iAutoSettings = interface_cast<IAutoControlSettings>(iRequest->getAutoControlSettings());
 			iAutoSettings->setExposureCompensation(0);
@@ -569,7 +573,11 @@ void datasend_thread(){
 void display_thread(){
 	printf("INFO: display_thread: started\n");
 
-	float* imageToDisplay;
+	float *cimageToDisplay, *imageToDisplay;
+
+	uint16_t *G_copy, *R_copy, *G_backprop_copy; 
+	uint16_t *cG_copy, *cR_copy, *cG_backprop_copy; 
+
 	char ret_key;
 	char filename [50];
 
@@ -577,19 +585,51 @@ void display_thread(){
 		while(Settings::sleeping && Settings::connected && !Settings::force_exit){}
 		if (Settings::force_exit) break;
 			
-		cudaMalloc(&imageToDisplay, sizeof(float)*Settings::get_area());
-		float* output = (float*)malloc(sizeof(float)*Settings::get_area());
-		cv::namedWindow("Basic Visualization", CV_WINDOW_NORMAL);
-		cv::setWindowProperty("Basic Visualization", CV_WND_PROP_FULLSCREEN, CV_WINDOW_FULLSCREEN);
-		//set the callback function for any mouse event
-		if (opt_mousekill) {
-			 cv::setMouseCallback("Basic Visualization", mouseEventCallback, NULL);
+		// Allocate memory on GPU for copies of the images
+		// displayed img
+		if (opt_show)
+			cudaMalloc(&cimageToDisplay, sizeof(float)*Settings::get_area());
+		// saved imgs
+		if (opt_saveimgs) {
+			cudaMalloc(&cG_copy, sizeof(uint16_t)*Settings::get_area());
+			cudaMalloc(&cR_copy, sizeof(uint16_t)*Settings::get_area());
+			cudaMalloc(&cG_backprop_copy, sizeof(uint16_t)*Settings::get_area());
+		}
+
+		// Allocate memoty on the host
+		// displayed img
+		if (opt_show)
+			imageToDisplay = (float*)malloc(sizeof(float)*Settings::get_area());
+		// saved imgs
+		if (opt_saveimgs) {
+			G_copy = (uint16_t*)malloc(sizeof(uint16_t)*Settings::get_area());
+			R_copy = (uint16_t*)malloc(sizeof(uint16_t)*Settings::get_area());
+			G_backprop_copy = (uint16_t*)malloc(sizeof(uint16_t)*Settings::get_area());
+		}
+
+		if (opt_show) {
+			cv::namedWindow("Basic Visualization", CV_WINDOW_NORMAL);
+			cv::setWindowProperty("Basic Visualization", CV_WND_PROP_FULLSCREEN, CV_WINDOW_FULLSCREEN);
+			//set the callback function for any mouse event
+			if (opt_mousekill) {
+				cv::setMouseCallback("Basic Visualization", mouseEventCallback, NULL);
+			}
 		}
 
 		while(!Settings::initialized && Settings::connected && !Settings::force_exit){}
 		if (Settings::force_exit){
-			cudaFree(imageToDisplay);
-			free(output);
+			if (opt_show) {
+				cudaFree(cimageToDisplay);
+				free(imageToDisplay);
+			}
+			if (opt_saveimgs) {
+				cudaFree(cG_copy);
+				cudaFree(cR_copy);
+				cudaFree(cG_backprop_copy);
+				free(G_copy);
+				free(R_copy);
+				free(G_backprop_copy);
+			}
 			break;
 		} 
 
@@ -601,32 +641,55 @@ void display_thread(){
 				auto start = std::chrono::system_clock::now();
 				cycles = 0;
 				mtx.lock();
-				cudaMemcpy(imageToDisplay, G_float, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
-				// cudaMemcpy(imageToDisplay, G_backprop, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+				if (opt_show)
+					cudaMemcpy(cimageToDisplay, G_float, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);					
+				if (opt_saveimgs) {
+					cudaMemcpy(cG_copy, G, sizeof(uint16_t)*Settings::get_area(), cudaMemcpyDeviceToDevice);					
+					cudaMemcpy(cR_copy, R, sizeof(uint16_t)*Settings::get_area(), cudaMemcpyDeviceToDevice);					
+					cudaMemcpy(cG_backprop_copy, G_backprop, sizeof(uint16_t)*Settings::get_area(), cudaMemcpyDeviceToDevice);					
+				}
 				mtx.unlock();
 
-				cudaMemcpy(output, imageToDisplay, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToHost);
-				const cv::Mat img(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_32F, output);
-
+				
 				if (opt_saveimgs) {
-					sprintf (filename, "./imgs/img_%05d.png", final_count);
-					cv::imwrite( filename, img );
-				} else {
-					// Flip the image only if the images are not stored (to save some time)
+					cudaMemcpy(G_copy, cG_copy, sizeof(uint16_t)*Settings::get_area(), cudaMemcpyDeviceToHost);					
+					cudaMemcpy(R_copy, cR_copy, sizeof(uint16_t)*Settings::get_area(), cudaMemcpyDeviceToHost);					
+					cudaMemcpy(G_backprop_copy, cG_backprop_copy, sizeof(uint16_t)*Settings::get_area(), cudaMemcpyDeviceToHost);					
+					
+					const cv::Mat G_img(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_16U, G_copy);
+					const cv::Mat R_img(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_16U, R_copy);
+					const cv::Mat G_backprop_img(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_16U, G_backprop_copy);
+					
+					sprintf (filename, "./imgs/G_%05d.png", img_count);
+					cv::imwrite( filename, G_img );
+					
+					sprintf (filename, "./imgs/R_%05d.png", img_count);
+					cv::imwrite( filename, R_img );
+					
+					sprintf (filename, "./imgs/G_bp_%05d.png", img_count);
+					cv::imwrite( filename, G_backprop_img );
+				}				
+				
+				if (opt_show) {
+					cudaMemcpy(imageToDisplay, cimageToDisplay, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToHost);
+					const cv::Mat img(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_32F, imageToDisplay);
+
 					cv::flip(img, img_trans, -1);
 					cv::transpose(img_trans, img);
 					
 					img.convertTo(img_u8,CV_8U);
-				}
 
-				cv::imshow("Basic Visualization", img_u8);
-				auto end = std::chrono::system_clock::now();
-				std::chrono::duration<double> elapsed_seconds = end-start;if(opt_verbose) {
-					std::cout << "TRACE: Stroring the image took: " << elapsed_seconds.count() << "s\n";
-				}
+					cv::imshow("Basic Visualization", img_u8);
+					auto end = std::chrono::system_clock::now();
+					std::chrono::duration<double> elapsed_seconds = end-start;if(opt_verbose) {
+						std::cout << "TRACE: Stroring the image took: " << elapsed_seconds.count() << "s\n";
+					}
+	
+					ret_key = (char) cv::waitKey(1);
+					if (ret_key == 27 || ret_key == 'x') Settings::set_force_exit(true);  // exit the app if `esc' or 'x' key was pressed.					
+				}				
 
-				ret_key = (char) cv::waitKey(1);
-				if (ret_key == 27 || ret_key == 'x') Settings::set_force_exit(true);  // exit the app if `esc' or 'x' key was pressed.
+				img_count++;
 			}
 			else{
 				usleep(5000);
@@ -634,8 +697,19 @@ void display_thread(){
 
 			if (Settings::force_exit) break;
 		}
-		cudaFree(imageToDisplay);
-		free(output);
+
+		if (opt_show) {
+			cudaFree(cimageToDisplay);
+			free(imageToDisplay);
+		}
+		if (opt_saveimgs) {
+			cudaFree(cG_copy);
+			cudaFree(cR_copy);
+			cudaFree(cG_backprop_copy);
+			free(G_copy);
+			free(R_copy);
+			free(G_backprop_copy);
+		}
 	}
 
 	printf("INFO: display_thread: ended\n");
@@ -643,13 +717,28 @@ void display_thread(){
 
 
 int main(int argc, char* argv[]){
+	auto result = parse(argc, argv);
+
+	if (result.count("exp") > 0)
+		Settings::values[STG_EXPOSURE] 	= result["exp"].as<uint32_t>();
+	if (result.count("resolution") > 0) {
+		const auto values = result["resolution"].as<std::vector<uint32_t>>();
+		Settings::values[STG_WIDTH] 	= values[0];
+		Settings::values[STG_HEIGHT] 	= values[1];
+	}
+	if (result.count("offset") > 0) {
+		const auto values = result["offset"].as<std::vector<uint32_t>>();
+		Settings::values[STG_OFFSET_X] 	= values[0];
+		Settings::values[STG_OFFSET_Y] 	= values[1];
+	}	
+	
+
 	if(opt_debug){
 		printf("DEBUG: Initial settings:");
 		for(int i = 0 ; i < STG_NUMBER_OF_SETTINGS; i++){
 			printf("%d\n", Settings::values[i]);
 		}
 	}
-  	auto result = parse(argc, argv);
 	
 	cycles = 0;
 
