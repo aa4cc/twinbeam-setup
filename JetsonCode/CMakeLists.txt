@@ -29,6 +29,7 @@ set(SOURCES
 		Misc.cpp
 		Settings.cpp
 		BackPropagator.cu
+		# Camera.cu
         )
 
 include_directories(
@@ -53,12 +54,3 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${HEADERS_FOLDER})
 set_property(TARGET ${PROJECT_NAME}
 	PROPERTY CUDA_SEPARABLE_COMPILATION ON)
 set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
-#target_link_libraries(${PROJECT_NAME} ${ARGUS} ${EGLSTREAM} ${CUDA} ${OpenCV_LIBS} ${CUFFT})
-
-
-
-#FIND_LIBRARY(ARGUS NAMES libnvargus.so PATHS /usr/lib/aarch64-linux-gnu/tegra)
-#FIND_LIBRARY(EGLSTREAM NAMES libnvidia-egl-wayland.so PATHS /usr/lib/aarch64-linux-gnu/tegra)
-#FIND_LIBRARY(EGL NAMES libEGL.so libEGL.so.1 libEGL.so.1.0.0 PATHS /usr/lib/aarch64-linux-gnu/mesa-egl)
-#FIND_LIBRARY(CUDA NAMES libcuda.so libcuda.so.1 libcuda.so.1.1 PATHS /usr/lib/aarch64-linux-gnu/tegra)
-#FIND_LIBRARY(CUFFT NAMES libcufft.so libcufft.so.10.0 libcufft.so.10.0.326 PATHS /usr/local/cuda/lib64)
