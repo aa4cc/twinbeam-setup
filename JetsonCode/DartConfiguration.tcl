@@ -11,10 +11,13 @@ BuildDirectory: /home/nvidia/twinbeam-setup/JetsonCode
 CostDataFile: 
 
 # Site is something like machine.domain, i.e. pragmatic.crd
-Site: tegra-ubuntu
+Site: nvidia-desktop
 
 # Build name is osname-revision-compiler, i.e. Linux-2.4.2-2smp-c++
 BuildName: Linux-c++
+
+# Subprojects
+LabelsForSubprojects: 
 
 # Submission information
 IsCDash: 
@@ -33,8 +36,8 @@ ScpCommand: /usr/bin/scp
 NightlyStartTime: 00:00:00 EDT
 
 # Commands for the build/test/submit cycle
-ConfigureCommand: "/usr/local/bin/cmake" "/home/nvidia/twinbeam-setup/JetsonCode"
-MakeCommand: /usr/local/bin/cmake --build . --config "${CTEST_CONFIGURATION_TYPE}"
+ConfigureCommand: "/usr/bin/cmake" "/home/nvidia/twinbeam-setup/JetsonCode"
+MakeCommand: /usr/bin/cmake --build . --config "${CTEST_CONFIGURATION_TYPE}"
 DefaultCTestConfigurationType: Release
 
 # version control
@@ -70,7 +73,7 @@ UpdateType:
 
 # Compiler info
 Compiler: /usr/bin/c++
-CompilerVersion: 5.4.0
+CompilerVersion: 7.4.0
 
 # Dynamic analysis (MemCheck)
 PurifyCommand: 

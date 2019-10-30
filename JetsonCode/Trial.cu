@@ -29,6 +29,8 @@
 #include "Definitions.h"
 #include "Misc.h"
 #include "Settings.h"
+#include "ArgusHelpers.h"
+#include "CUDAHelper.h"
 
 #define STG_WIDTH Settings::values[STG_WIDTH]
 #define STG_HEIGHT Settings::values[STG_HEIGHT]
@@ -37,7 +39,12 @@ static const int    DEFAULT_FPS        = 30;
 
 using namespace std;
 using namespace Argus;
+using namespace ArgusSamples;
 using namespace EGLStream;
+
+
+// Global variables
+CUcontext g_cudaContext = 0;
 
 cudaError_t res;
 
@@ -455,34 +462,59 @@ void network_thread(){
 }
 
 void camera_thread(){
+
+	UniqueObj<OutputStream> captureStream;
+
 	printf("INFO: camera_thread: started\n");
 	//Initializing LibArgus according to the tutorial for a sample project.
 	// First we create a CameraProvider, necessary for each project.
-	UniqueObj<CameraProvider> cameraProvider(CameraProvider::create());
-	ICameraProvider* iCameraProvider = interface_cast<ICameraProvider>(cameraProvider);
-	if(!iCameraProvider){
-		printf("ERROR: Failed to establish libargus connection\n");
-	}
+	// UniqueObj<CameraProvider> cameraProvider = UniqueObj<CameraProvider>(CameraProvider::create());
+	// ICameraProvider* iCameraProvider = interface_cast<ICameraProvider>(cameraProvider);
+	// if(!iCameraProvider){
+	// 	printf("ERROR: Failed to establish libargus connection\n");
+	// }
 	
-	// Second we select a device from which to receive pictures (camera)
-	std::vector<CameraDevice*> cameraDevices;
-	iCameraProvider->getCameraDevices(&cameraDevices);
-	if (cameraDevices.size() == 0){
-		printf("ERROR: No camera devices available\n");
-	}
-	CameraDevice *selectedDevice = cameraDevices[0];
+	// // Second we select a device from which to receive pictures (camera)
+	// std::vector<CameraDevice*> cameraDevices;
+	// iCameraProvider->getCameraDevices(&cameraDevices);
+	// if (cameraDevices.size() == 0){
+	// 	printf("ERROR: No camera devices available\n");
+	// }
 
-	// We create a capture session 
-	UniqueObj<CaptureSession> captureSession(iCameraProvider->createCaptureSession(selectedDevice));
+	// // iCameraProperties is not used
+	// ICameraProperties *iCameraProperties = interface_cast<ICameraProperties>(cameraDevices[0]);
+    // if (!iCameraProperties)
+	// 	printf("Failed to get ICameraProperties interface");
+
+	// Create the CameraProvider object
+    UniqueObj<CameraProvider> cameraProvider(CameraProvider::create());
+    ICameraProvider *iCameraProvider = interface_cast<ICameraProvider>(cameraProvider);
+    if (!iCameraProvider)
+        printf("Failed to create CameraProvider");
+    printf("Argus Version: %s\n", iCameraProvider->getVersion().c_str());
+
+    // Get the selected CameraDevice and SensorMode.
+    CameraDevice* cameraDevice = ArgusHelpers::getCameraDevice(
+            cameraProvider.get(), 0);
+    if (!cameraDevice)
+        printf("Selected camera device is not available");
+    SensorMode* sensorMode = ArgusHelpers::getSensorMode(cameraDevice, 0);
+    ISensorMode *iSensorMode = interface_cast<ISensorMode>(sensorMode);
+    if (!iSensorMode)
+		printf("Selected sensor mode not available");
+
+	ArgusHelpers::printSensorModeInfo(sensorMode, "\t");	
+		
+	// Create the capture session using the first device and get the core interface.
+	UniqueObj<CaptureSession> captureSession(
+		iCameraProvider->createCaptureSession(cameraDevice));
 	ICaptureSession *iCaptureSession = interface_cast<ICaptureSession>(captureSession);
-	if (!iCaptureSession){
- 		printf("ERROR: Failed to create CaptureSession\n");
-	}
+	if (!iCaptureSession) {
+		printf("ERROR: Failed to create CaptureSession\n");
+	}	
 	
 	//CUDA variable declarations
-	cudaEglStreamConnection conn;
-	cudaGraphicsResource_t resource;
-	cudaEglFrame eglFrame;		
+	CUeglFrame eglFrame;		
 	cudaArray_t yArray;
 	cudaArray_t uvArray;
 	cudaChannelFormatDesc yChannelDesc;
@@ -492,27 +524,52 @@ void camera_thread(){
 		while(Settings::connected && !Settings::force_exit){
 			while(Settings::sleeping && Settings::connected && !Settings::force_exit){}
 			if (Settings::force_exit) break;
-			// Managing the settings for the capture session.
-			UniqueObj<OutputStreamSettings> streamSettings(iCaptureSession->createOutputStreamSettings());
-			IOutputStreamSettings *iStreamSettings = interface_cast<IOutputStreamSettings>(streamSettings);
-			iStreamSettings->setPixelFormat(PIXEL_FMT_YCbCr_420_888);
-			iStreamSettings->setResolution(Size2D<uint32_t>(WIDTH,HEIGHT));
-			
-			// Creating an Output stream. This should already create a producer.
-			UniqueObj<OutputStream> outputStream(iCaptureSession->createOutputStream(streamSettings.get()));
-			IStream* iStream = interface_cast<IStream>(outputStream);
-			if (!iStream){
-				printf("ERROR: Failed to create OutputStream\n");
+
+			if (opt_verbose) {
+				printf("Creating output stream\n");
 			}
-			eglStream = iStream->getEGLStream();
-			cudaEGLStreamConsumerConnect(&conn, eglStream);
+
+			// Managing the settings for the capture session.
+			UniqueObj<OutputStreamSettings> streamSettings(
+				iCaptureSession->createOutputStreamSettings(STREAM_TYPE_EGL));
+
+			IEGLOutputStreamSettings *iEGLStreamSettings =
+					interface_cast<IEGLOutputStreamSettings>(streamSettings);
+			if (!iEGLStreamSettings)
+				printf("ERROR: Failed to create OutputStreamSettings");
+			iEGLStreamSettings->setPixelFormat(PIXEL_FMT_YCbCr_420_888);
+			iEGLStreamSettings->setResolution(Size2D<uint32_t>(STG_WIDTH,STG_HEIGHT));
 			
+			UniqueObj<OutputStream> captureStream(iCaptureSession->createOutputStream(streamSettings.get()));
+    		IEGLOutputStream *iEGLOutputStream = interface_cast<IEGLOutputStream>(captureStream);
+    		if (!iEGLOutputStream)
+				printf("Failed to create EGLOutputStream");
+
+			initCUDA(&g_cudaContext);
+
+			CUresult cuResult;
+    		CUeglStreamConnection cudaConnection;
+    		printf("Connecting CUDA to OutputStream as an EGLStream consumer\n");
+    		cuResult = cuEGLStreamConsumerConnect(&cudaConnection, iEGLOutputStream->getEGLStream());
+			if (cuResult != CUDA_SUCCESS)
+			{
+				printf("Unable to connect CUDA to EGLStream as a consumer (CUresult %s)",
+					getCudaErrorString(cuResult));
+			}
+						
 			// Managing requests.
 			UniqueObj<Request> request(iCaptureSession->createRequest());
 			IRequest *iRequest = interface_cast<IRequest>(request);
-			iRequest->enableOutputStream(outputStream.get());
-			
-			ISourceSettings *iSourceSettings = interface_cast<ISourceSettings>(iRequest->getSourceSettings());
+			if (!iRequest) {
+				printf("Failed to create Request");
+			}
+
+			iRequest->enableOutputStream(captureStream.get());
+
+			ISourceSettings *iSourceSettings = interface_cast<ISourceSettings>(request);
+    		if (!iSourceSettings)
+        		printf("Failed to get source settings request interface");
+
 			iSourceSettings->setFrameDurationRange(Range<uint64_t>(1e9/DEFAULT_FPS));
 			iSourceSettings->setExposureTimeRange(Range<uint64_t>(Settings::values[STG_EXPOSURE],Settings::values[STG_EXPOSURE]));
 			iSourceSettings->setGainRange(Range<float>(0.5,1.5));
@@ -530,6 +587,11 @@ void camera_thread(){
 			IDenoiseSettings *iDenoiseSettings = interface_cast<IDenoiseSettings>(request);	
 			iDenoiseSettings->setDenoiseMode(DENOISE_MODE_FAST);
 			iDenoiseSettings->setDenoiseStrength(1.0);
+
+
+			//printf("Frame duration %d ms\n", getFrameDurationRange()*1e6);
+
+
 
 			cudaMalloc(&G, Settings::get_area()*sizeof(uint16_t));
 			cudaMalloc(&R, Settings::get_area()*sizeof(uint16_t));
@@ -583,17 +645,28 @@ void camera_thread(){
 			if (Settings::force_exit) break;
 
 			while(!Settings::sleeping && Settings::connected && ! Settings::force_exit){
+
+
+				if (opt_verbose) {
+					printf("Submitting a capture request\n");
+				}
+
 				auto start = std::chrono::system_clock::now();
 				
 				
 				iCaptureSession->capture(request.get());
-				res = cudaEGLStreamConsumerAcquireFrame(&conn, &resource, 0, 5000);
-				if(res != cudaSuccess){
+				CUgraphicsResource cudaResource = 0;
+				CUstream cudaStream = 0;
+				cuResult = cuEGLStreamConsumerAcquireFrame(&cudaConnection, &cudaResource, &cudaStream, 1e6);
+				if(cuResult != CUDA_SUCCESS){
 					continue;
 				}
-				cudaGraphicsResourceGetMappedEglFrame(&eglFrame, resource, 0, 0);
-				yArray = eglFrame.frame.pArray[0];
-				uvArray = eglFrame.frame.pArray[1];
+				cuGraphicsResourceGetMappedEglFrame(&eglFrame, cudaResource, 0, 0);
+
+				// printCUDAEGLFrame(eglFrame);
+
+				yArray = (cudaArray_t) eglFrame.frame.pArray[0];
+				uvArray = (cudaArray_t) eglFrame.frame.pArray[1];
 				
 				cudaGetChannelDesc(&yChannelDesc, (cudaArray_const_t)(yArray));
 				cudaBindTextureToArray(yTex, (cudaArray_const_t)(yArray), &yChannelDesc);
@@ -604,13 +677,13 @@ void camera_thread(){
 				
 				numBlocks = (Settings::get_area()/2 +BLOCKSIZE -1)/BLOCKSIZE;
 				yuv2bgr<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT,
-												Settings::values[STG_OFFSET_X], Settings::values[STG_OFFSET_Y], G, R);
+								Settings::values[STG_OFFSET_X], Settings::values[STG_OFFSET_Y], G, R);
 				auto test = std::chrono::system_clock::now();
 				u16ToDouble<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, G, doubleTemporary);
 				u16ToDouble<<<numBlocks, BLOCKSIZE>>>(STG_WIDTH, STG_HEIGHT, R, redDouble);
 				mtx.lock();
 				h_backPropagate(STG_WIDTH, STG_HEIGHT, LAMBDA_GREEN, (float)Settings::values[STG_Z_GREEN]/(float)1000000,
-						doubleTemporary, kernelGreen, greenOutputArray, maximaGreen, true);		
+				 		doubleTemporary, kernelGreen, greenOutputArray, maximaGreen, true);		
 				h_backPropagate(STG_WIDTH,STG_HEIGHT, LAMBDA_RED, (float)Settings::values[STG_Z_RED]/(float)1000000,
 						redDouble, kernelRed, redOutputArray, maximaRed, false);
 				mtx.unlock();
@@ -625,7 +698,12 @@ void camera_thread(){
 				cudaUnbindTexture(yTex);
 				cudaUnbindTexture(uvTex);
 				
-				cudaEGLStreamConsumerReleaseFrame(&conn, resource, 0);
+				cuResult = cuEGLStreamConsumerReleaseFrame(&cudaConnection, cudaResource, &cudaStream);
+				if (cuResult != CUDA_SUCCESS)
+				{
+					printf("Unable to release the last frame acquired from the EGLStream "
+						"(CUresult %s).", getCudaErrorString(cuResult));
+				}
 				
 				auto end = std::chrono::system_clock::now();
 				elapsed_seconds = end-start;
@@ -655,9 +733,15 @@ void camera_thread(){
 			cudaFree(kernelGreen);
 			cudaFree(kernelRed);
 			
-			cudaEGLStreamConsumerDisconnect(&conn);
-			iStream->disconnect();
-			outputStream.reset();
+			cuResult = cuEGLStreamConsumerDisconnect(&cudaConnection);
+			if (cuResult != CUDA_SUCCESS)
+			{
+				printf("Unable to disconnect CUDA as a consumer from EGLStream (CUresult %s)",
+					getCudaErrorString(cuResult));
+			}
+			cleanupCUDA(&g_cudaContext);
+			iEGLOutputStream->disconnect();
+			cameraProvider.reset();
 		}
 	}
 
