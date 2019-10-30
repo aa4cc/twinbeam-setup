@@ -28,8 +28,6 @@ set(SOURCES
 		Kernels.cu
 		Misc.cpp
 		Settings.cpp
-		ArgusHelpers.cpp
-		CUDAHelper.cpp
         )
 
 include_directories(
