@@ -2,14 +2,7 @@
  * @author  Viktor-Adam Koropecky
  */
 
-#include "stdint.h"
-#include "cuda.h"
-#include "cufft.h"
-#include "stdio.h"
 #include "Kernels.h"
-#include "math.h"
-#include <cmath>
-#include "Definitions.h"
 
 /*
     Calculation of the Hq matrix according to the equations in original .m file

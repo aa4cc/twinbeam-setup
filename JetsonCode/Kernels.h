@@ -5,7 +5,13 @@
 #ifndef KERNELS_H
 #define KERNELS_H
 
+#include "stdint.h"
+#include "cuda.h"
 #include "cufft.h"
+#include "stdio.h"
+#include "math.h"
+#include <cmath>
+#include "Definitions.h"
 
 __global__ void calculate(int N, int M, float z, float dx, float n, float lambda, cufftComplex* Hq);
 __global__ void multiplyInPlace(int N, int M, cufftComplex*  input, cufftComplex*  output);
