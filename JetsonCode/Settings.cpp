@@ -9,7 +9,6 @@ bool Settings::connected = false;
 bool Settings::sleeping = true;
 bool Settings::initialized = false;
 bool Settings::force_exit = false;
-bool Settings::touch_kill = false;
 bool Settings::sent_coords = false;
 bool Settings::requested_coords = false;
 REQUEST_TYPE Settings::requested_type = BACKPROPAGATED;
@@ -37,10 +36,6 @@ void Settings::set_force_exit(const bool value){
 
 void Settings::set_sent_coords(const bool value){
 	Settings::sent_coords = value;
-}
-
-void Settings::set_touch_kill(const bool value){
-	Settings::touch_kill = value;
 }
 
 void Settings::set_requested_type(const REQUEST_TYPE value){

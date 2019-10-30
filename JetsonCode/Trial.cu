@@ -69,10 +69,12 @@ bool opt_verbose	= false;
 bool opt_debug		= false;
 bool opt_show		= false;
 bool opt_saveimgs	= false;
+bool opt_mousekill 	= false;
 
 uint16_t *R;
 uint16_t *G;
 uint16_t *G_backprop;
+float *G_float;
 
 mutex mtx;
 
@@ -113,6 +115,7 @@ parse(int argc, char* argv[])
       ("s,show", "Display the processed image on the display", 	cxxopts::value<bool>(opt_show))
       ("saveimgs", "Save images", 	cxxopts::value<bool>(opt_saveimgs))
       ("d,debug", "Prints debug information",					cxxopts::value<bool>(opt_debug))
+      ("k,mousekill", "Moving the mouse or toching the screen kills the app",					cxxopts::value<bool>(opt_mousekill))
       ("v,verbose", "Prints some additional information",		cxxopts::value<bool>(opt_verbose))
       ("help", "Prints help")
     ;
@@ -434,18 +437,18 @@ void camera_thread(){
 			while(Settings::sleeping && Settings::connected && !Settings::force_exit){}
 			if (Settings::force_exit) break;
 			// Managing the settings for the capture session.
-			UniqueObj<OutputStreamSettings> streamSettings(iCaptureSession->createOutputStreamSettings());
-			IOutputStreamSettings *iStreamSettings = interface_cast<IOutputStreamSettings>(streamSettings);
+			UniqueObj<OutputStreamSettings> streamSettings(iCaptureSession->createOutputStreamSettings(STREAM_TYPE_EGL));
+			IEGLOutputStreamSettings *iStreamSettings = interface_cast<IEGLOutputStreamSettings>(streamSettings);
 			iStreamSettings->setPixelFormat(PIXEL_FMT_YCbCr_420_888);
 			iStreamSettings->setResolution(Size2D<uint32_t>(WIDTH,HEIGHT));
 			
 			// Creating an Output stream. This should already create a producer.
 			UniqueObj<OutputStream> outputStream(iCaptureSession->createOutputStream(streamSettings.get()));
-			IStream* iStream = interface_cast<IStream>(outputStream);
-			if (!iStream){
-				printf("ERROR: Failed to create OutputStream\n");
-			}
-			eglStream = iStream->getEGLStream();
+			IEGLOutputStream *iEGLOutputStream = interface_cast<IEGLOutputStream>(outputStream);
+            if (!iEGLOutputStream)
+	            printf("Failed to create EGLOutputStream");
+
+			eglStream = iEGLOutputStream->getEGLStream();
 			cudaEGLStreamConsumerConnect(&conn, eglStream);
 			
 			// Managing requests.
@@ -473,6 +476,7 @@ void camera_thread(){
 			iDenoiseSettings->setDenoiseStrength(1.0);
 
 			cudaMalloc(&G, Settings::get_area()*sizeof(uint16_t));
+			cudaMalloc(&G_float, Settings::get_area()*sizeof(float));
 			cudaMalloc(&R, Settings::get_area()*sizeof(uint16_t));
 			cudaMalloc(&positionsGreen, Settings::get_area()*sizeof(float));
 			cudaMalloc(&positionsRed, Settings::get_area()*sizeof(float));		
@@ -549,6 +553,9 @@ void camera_thread(){
 				yuv2bgr<<<numBlocks, BLOCKSIZE>>>(dSTG_WIDTH, dSTG_HEIGHT,
 												Settings::values[STG_OFFSET_X], Settings::values[STG_OFFSET_Y], G, R);
 				backprop_G.backprop(G, G_backprop);
+
+				u16ToFloat<<<numBlocks, BLOCKSIZE>>>(dSTG_WIDTH, dSTG_HEIGHT, G_backprop, G_float);
+
 				mtx.unlock();
 				
 				auto test2 = std::chrono::system_clock::now();
@@ -590,7 +597,7 @@ void camera_thread(){
 			cudaFree(kernelRed);
 			
 			cudaEGLStreamConsumerDisconnect(&conn);
-			iStream->disconnect();
+			iEGLOutputStream->disconnect();
 			outputStream.reset();
 		}
 	}
@@ -605,9 +612,7 @@ void mouseEventCallback(int event, int x, int y, int flags, void* userdata)
      {
      	if(opt_debug)
         	cout << "DEBUG: Mouse move over the window - position (" << x << ", " << y << ")" << endl;
-        if (Settings::touch_kill) {
-        	Settings::set_force_exit(true);
-      	}
+        Settings::set_force_exit(true);
      }
 }
 
@@ -712,7 +717,9 @@ void display_thread(){
 		cv::namedWindow("Basic Visualization", CV_WINDOW_NORMAL);
 		cv::setWindowProperty("Basic Visualization", CV_WND_PROP_FULLSCREEN, CV_WINDOW_FULLSCREEN);
 		//set the callback function for any mouse event
-     	cv::setMouseCallback("Basic Visualization", mouseEventCallback, NULL);
+		if (opt_mousekill) {
+			 cv::setMouseCallback("Basic Visualization", mouseEventCallback, NULL);
+		}
 
 		while(!Settings::initialized && Settings::connected && !Settings::force_exit){}
 		if (Settings::force_exit){
@@ -721,13 +728,16 @@ void display_thread(){
 			break;
 		} 
 
+		const cv::Mat img_trans(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_32F);		
+		const cv::Mat img_u8(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_8U);
+
 		while(!Settings::sleeping && Settings::connected){
 			if(cycles >= 3){
 				auto start = std::chrono::system_clock::now();
 				cycles = 0;
 				mtx.lock();
-				// cudaMemcpy(imageToDisplay, G, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
-				cudaMemcpy(imageToDisplay, G_backprop, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+				cudaMemcpy(imageToDisplay, G_float, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+				// cudaMemcpy(imageToDisplay, G_backprop, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
 				mtx.unlock();
 
 				cudaMemcpy(output, imageToDisplay, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToHost);
@@ -738,12 +748,13 @@ void display_thread(){
 					cv::imwrite( filename, img );
 				} else {
 					// Flip the image only if the images are not stored (to save some time)
-					const cv::Mat img_trans(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_32F);
 					cv::flip(img, img_trans, -1);
 					cv::transpose(img_trans, img);
+					
+					img.convertTo(img_u8,CV_8U);
 				}
 
-				cv::imshow("Basic Visualization", img);
+				cv::imshow("Basic Visualization", img_u8);
 				auto end = std::chrono::system_clock::now();
 				std::chrono::duration<double> elapsed_seconds = end-start;if(opt_verbose) {
 					std::cout << "TRACE: Stroring the image took: " << elapsed_seconds.count() << "s\n";
@@ -781,7 +792,6 @@ int main(int argc, char* argv[]){
 		Settings::set_initialized(true);
 		Settings::set_connected(true);
 		Settings::set_sleeping(false);
-		Settings::set_touch_kill(true);
 	}
 
 	thread camera_thr (camera_thread);
