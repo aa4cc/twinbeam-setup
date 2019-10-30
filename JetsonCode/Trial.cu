@@ -42,26 +42,6 @@ using namespace EGLStream;
 
 cudaError_t res;
 
-float* redOutputArray;
-cufftComplex* kernelGreen;
-cufftComplex* kernelRed;
-
-float* convolutionMaskGreen;
-float* convolutionMaskRed;
-
-float* maximaRed;
-float* maximaGreen;
-
-int* greenPoints;
-int* redPoints;
-int* positionsGreen;
-int* positionsRed;
-
-int* redPointsLast;
-int* greenPointsLast;
-
-cufftComplex* convolutionFilterBlur;
-
 int client;
 
 // Options
@@ -156,44 +136,6 @@ parse(int argc, char* argv[])
   }
 }
 
-void processPoints(float* greenInputPoints, float* redInputPoints, int* outputGreenCoords, int* outputRedCoords, int* h_count){
-	float* points;
-	int* greenCoords;
-	int* sortedGreenCoords;
-	int* redCoords;
-	int* sortedRedCoords;
-	
-	cudaMalloc(&points, 2*Settings::get_area()*sizeof(float));
-	cudaMalloc(&greenCoords, Settings::get_area()*sizeof(int));
-	cudaMalloc(&redCoords, Settings::get_area()*sizeof(int));
-	cudaMalloc(&sortedGreenCoords, Settings::get_area()*sizeof(int));
-	cudaMalloc(&sortedRedCoords, Settings::get_area()*sizeof(int));
-
-	cudaMemcpy(points, greenInputPoints, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
-	cudaMemcpy(&points[Settings::get_area()], redInputPoints, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
-	findPoints<<<numBlocks, BLOCKSIZE>>>(dSTG_WIDTH, dSTG_HEIGHT, points, greenCoords);
-	findPoints<<<numBlocks, BLOCKSIZE>>>(dSTG_WIDTH, dSTG_HEIGHT, &points[Settings::get_area()], redCoords);
-	thrust::device_ptr<int> greenCoordsPtr(greenCoords);
-	thrust::device_ptr<int> redCoordsPtr(redCoords);
-
-	thrust::device_ptr<int> sortedGreenCoordsPtr(sortedGreenCoords);
-	thrust::device_ptr<int> sortedRedCoordsPtr(sortedRedCoords);
-
-	auto endGreenPointer = thrust::copy_if(thrust::device, greenCoordsPtr, greenCoordsPtr+Settings::get_area(), sortedGreenCoordsPtr, is_not_zero());
-	auto endRedPointer = thrust::copy_if(thrust::device, redCoordsPtr, redCoordsPtr+Settings::get_area(), sortedRedCoordsPtr, is_not_zero());
-
-	h_count[0] = (int)(endGreenPointer - sortedGreenCoordsPtr);
-	h_count[1] = (int)(endRedPointer - sortedRedCoordsPtr);
-
-	cudaMemcpy(outputGreenCoords, sortedGreenCoords, sizeof(int)*h_count[0], cudaMemcpyDeviceToHost);
-	cudaMemcpy(outputRedCoords, sortedRedCoords, sizeof(int)*h_count[1], cudaMemcpyDeviceToHost);
-
-	cudaFree(points);
-	cudaFree(greenCoords);
-	cudaFree(redCoords);
-	cudaFree(sortedRedCoords);
-	cudaFree(sortedGreenCoords);
-}
 
 //#region
 
@@ -223,14 +165,6 @@ __global__ void yuv2bgr(int width, int height, int offset_x, int offset_y,
 				R[i] = (uint16_t)(y2+v2+u1/10);
             }
         }
-
-void transformKernel(int M, int N, int kernelDim, float* kernel, cufftComplex* outputKernel){
-	kernelToImage<<<numBlocks, BLOCKSIZE>>>(M, N, kernelDim, kernel, outputKernel);
-    cufftHandle plan;
-    cufftPlan2d(&plan, N,M, CUFFT_C2C);
-    cufftExecC2C(plan, outputKernel, outputKernel, CUFFT_FORWARD);
-    cufftDestroy(plan);
-}
 
 void keyboard_thread(){
 	printf("INFO: keyboard_thread: started\n");
@@ -478,32 +412,10 @@ void camera_thread(){
 			cudaMalloc(&G, Settings::get_area()*sizeof(uint16_t));
 			cudaMalloc(&G_float, Settings::get_area()*sizeof(float));
 			cudaMalloc(&R, Settings::get_area()*sizeof(uint16_t));
-			cudaMalloc(&positionsGreen, Settings::get_area()*sizeof(float));
-			cudaMalloc(&positionsRed, Settings::get_area()*sizeof(float));		
-			
-			cudaMalloc(&convolutionMaskGreen, CONVO_DIM_GREEN*CONVO_DIM_GREEN*sizeof(float));
-			cudaMalloc(&convolutionMaskRed, CONVO_DIM_RED*CONVO_DIM_RED*sizeof(float));
-			numBlocks = 1024;
-			generateConvoMaskGreen<<<numBlocks, BLOCKSIZE>>>(CONVO_DIM_GREEN, CONVO_DIM_GREEN, convolutionMaskGreen);
-			generateConvoMaskRed<<<numBlocks, BLOCKSIZE>>>(CONVO_DIM_RED, CONVO_DIM_RED, convolutionMaskRed);
-			
-			cudaMalloc(&kernelGreen, Settings::get_area()*sizeof(cufftComplex));
-			cudaMalloc(&kernelRed, Settings::get_area()*sizeof(cufftComplex));
-
-			cudaMalloc(&convolutionFilterBlur, Settings::get_area()*sizeof(cufftComplex));
-			generateBlurFilter<<<numBlocks, BLOCKSIZE>>>(dSTG_WIDTH, dSTG_HEIGHT, 3, convolutionFilterBlur);
-			
-			transformKernel(dSTG_WIDTH, dSTG_HEIGHT, CONVO_DIM_GREEN, convolutionMaskGreen, kernelGreen);
-			transformKernel(dSTG_WIDTH, dSTG_HEIGHT, CONVO_DIM_RED, convolutionMaskRed, kernelRed);
-			
-			mtx.lock();
-			cudaMalloc(&maximaGreen, Settings::get_area()*sizeof(float));
-			cudaMalloc(&maximaRed, Settings::get_area()*sizeof(float));
 			cudaMalloc(&G_backprop, Settings::get_area()*sizeof(uint16_t));
-
-			cudaMalloc(&redOutputArray, Settings::get_area()*sizeof(float));
-			mtx.unlock();
-
+			
+			numBlocks = 1024;
+			
 			yTexRef.normalized = 0;
 			yTexRef.filterMode = cudaFilterModePoint;
 			yTexRef.addressMode[0] = cudaAddressModeClamp;
@@ -588,13 +500,6 @@ void camera_thread(){
 			cudaFree(G);
 			cudaFree(R);
 			cudaFree(G_backprop);
-			cudaFree(redOutputArray);
-			cudaFree(maximaGreen);
-			cudaFree(maximaRed);
-			cudaFree(convolutionMaskGreen);
-			cudaFree(convolutionMaskRed);
-			cudaFree(kernelGreen);
-			cudaFree(kernelRed);
 			
 			cudaEGLStreamConsumerDisconnect(&conn);
 			iEGLOutputStream->disconnect();
@@ -620,16 +525,12 @@ void datasend_thread(){
 	printf("INFO: datasend_thread: started\n");
 
 	float *temporary;
-	float *temporary_red_positions;
-	float *temporary_green_positions;
 	char* buffer;
 	while(true){
 		while(Settings::sleeping && !Settings::force_exit){}
 		if (Settings::force_exit) break;
 
 		cudaMalloc(&temporary, Settings::get_area()*sizeof(float));
-		cudaMalloc(&temporary_red_positions, Settings::get_area()*sizeof(float));
-		cudaMalloc(&temporary_green_positions, Settings::get_area()*sizeof(float));
 		
 		while(Settings::connected && !Settings::sleeping){
 			if(Settings::requested_image){
@@ -654,46 +555,10 @@ void datasend_thread(){
 				free(buffer);
 				printf("INFO: Image sent.\n");
 				Settings::set_requested_image(false);
-			}
-			if(!Settings::sent_coords && Settings::requested_coords){
-				int* sorted_green_positions = (int*)malloc(sizeof(int)*Settings::get_area());
-				int* sorted_red_positions = (int*)malloc(sizeof(int)*Settings::get_area());
-				mtx.lock();
-				cudaMemcpy(temporary_green_positions, maximaGreen, sizeof(int)*Settings::get_area(), cudaMemcpyDeviceToDevice);
-				cudaMemcpy(temporary_red_positions, maximaRed, sizeof(int)*Settings::get_area(), cudaMemcpyDeviceToDevice);
-				mtx.unlock();
-
-				int* count = (int*)malloc(sizeof(int)*2);
-
-				processPoints(temporary_green_positions, temporary_red_positions, sorted_green_positions, sorted_red_positions, count);
-
-				buffer = (char*)malloc(sizeof(int)*(2+count[0]+count[1]));
-
-				if(opt_debug)
-					printf("DEBUG: Count Green : %d ; Count Red : %d\n", count[0], count[1]);
-
-				memcpy(&buffer[0], &count[0], sizeof(int));
-				memcpy(&buffer[4], sorted_green_positions, count[0]*sizeof(int));
-				memcpy(&buffer[4*(1+count[0])], &count[1], sizeof(int));
-				memcpy(&buffer[4*(2+count[0])], sorted_red_positions, count[1]*sizeof(int));
-
-				send(client, buffer, sizeof(int)*(2+count[0]+count[1]), 0);
-
-				printf("INFO: Sent the found locations\n");
-
-				free(buffer);
-				free(count);
-				free(sorted_green_positions);
-				free(sorted_red_positions);
-
-				Settings::set_sent_coords(true);
-				Settings::set_requested_coords(false);
-			}
+			}			
 
 			if (Settings::force_exit) break;
 		}
-		cudaFree(temporary_red_positions);
-		cudaFree(temporary_green_positions);
 		
 		cudaFree(temporary);
 	}
@@ -728,7 +593,7 @@ void display_thread(){
 			break;
 		} 
 
-		const cv::Mat img_trans(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_32F);		
+		const cv::Mat img_trans(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_32F);
 		const cv::Mat img_u8(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_8U);
 
 		while(!Settings::sleeping && Settings::connected){
