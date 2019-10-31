@@ -156,7 +156,7 @@ __global__ void yuv2bgr(int width, int height, int offset_x, int offset_y,
             int count = width*height;
             int tx, ty, ty2;
             float y1, y2;
-            float u1, v2, v1;
+            float u1, v1, v2;
             for (int i = index; i < count; i += stride)
             {
             	ty = i/width + offset_y;
@@ -165,7 +165,7 @@ __global__ void yuv2bgr(int width, int height, int offset_x, int offset_y,
             	y1 = (float)((tex2D<unsigned char>(yTexRef, (float)tx+0.5f, (float)ty+0.5f) - (float)16) * 1.164383f);
             	y2 = (float)((tex2D<unsigned char>(yTexRef, (float)tx+0.5f, (float)ty2+0.5f) - (float)16) * 1.164383f);
             	u1 = (float)(tex2D<uchar2>(uvTexRef, (float)(tx/2)+(float)(tx%2)+0.5f,
-            	 	 (float)(ty/2)+(float)(ty%2)+0.5f).x - 128) * 0.391762f;
+					  (float)(ty/2)+(float)(ty%2)+0.5f).x - 128) * 0.391762f;
             	v2 = (float)(tex2D<uchar2>(uvTexRef, (float)(tx/2)+(float)(tx%2)+0.5f,
             	     (float)(ty2/2)+(float)(ty2%2)+0.5f).y - 128) * 1.596027f;
             	v1 = (float)(tex2D<uchar2>(uvTexRef, (float)(tx/2)+(float)(tx%2)+0.5f,
@@ -173,7 +173,40 @@ __global__ void yuv2bgr(int width, int height, int offset_x, int offset_y,
 				G[i] = CLAMP_F2UINT8(y1-u1-v1);
 				R[i] = CLAMP_F2UINT8(y2+v2);
             }
-        }
+		}
+		
+
+// 		__global__ void yuv2bgr(int width, int height, int offset_x, int offset_y,
+// 			uint8_t* G, uint8_t* R)
+// {
+// int index = blockIdx.x * blockDim.x + threadIdx.x;
+// int stride = blockDim.x * gridDim.x;
+// int count = width*height;
+// int tx, ty, ty2;
+// for (int i = index; i < count; i += stride)
+// {
+// 	ty = i/width + offset_y;
+// 	ty2 = i/width + offset_y - (512);
+// 	tx = i%width + offset_x;
+	
+// 	unsigned char Y_1  	= tex2D<unsigned char>(yTexRef, (float)tx+0.5f, (float)ty+0.5f);
+// 	unsigned char Y_2  	= tex2D<unsigned char>(yTexRef, (float)tx+0.5f, (float)ty2+0.5f);
+// 	uchar2 UV_1 		= tex2D<uchar2>(uvTexRef, (float)(tx/2)+(float)(tx%2)+0.5f, (float)(ty/2)+(float)(ty%2)+0.5f);
+// 	uchar2 UV_2  		= tex2D<uchar2>(uvTexRef, (float)(tx/2)+(float)(tx%2)+0.5f,  (float)(ty2/2)+(float)(ty2%2)+0.5f);
+
+// 	uint16_t C_1 =  (uint16_t)Y_1 		- 16;
+// 	uint16_t D_1 =  (uint16_t)UV_1.x 	- 128;
+// 	uint16_t E_1 =  (uint16_t)UV_1.y 	- 128;
+
+// 	uint16_t C_2 =  (uint16_t)Y_2 		- 16;
+// 	uint16_t E_2 =  (uint16_t)UV_2.y 	- 128;
+
+// 	uint16_t G_u16 = (298*C_1 - 100*D_1 - 208*E_1 + 128) >> 8;
+// 	uint16_t R_u16 = (298*C_2 + 409*E_2 + 128) >> 8;
+// 	G[i] = CLAMP_U16_2_U8(G_u16);
+// 	R[i] = CLAMP_U16_2_U8(R_u16);
+// }
+// }		
 
 void keyboard_thread(){
 	printf("INFO: keyboard_thread: started\n");
@@ -407,13 +440,13 @@ void camera_thread(){
 			IAutoControlSettings *iAutoSettings = interface_cast<IAutoControlSettings>(iRequest->getAutoControlSettings());
 			iAutoSettings->setExposureCompensation(0);
 			iAutoSettings->setIspDigitalGainRange(Range<float>(Settings::values[STG_DIGGAIN],Settings::values[STG_DIGGAIN]));
-			iAutoSettings->setWbGains(100);
+			iAutoSettings->setWbGains(1.0f);
 			iAutoSettings->setColorSaturation(1.0);
 			iAutoSettings->setColorSaturationBias(1.0);
 			iAutoSettings->setColorSaturationEnable(true);
 			iAutoSettings->setAwbLock(true);
 			iAutoSettings->setAeAntibandingMode(AE_ANTIBANDING_MODE_OFF);
-
+			 
 			IDenoiseSettings *iDenoiseSettings = interface_cast<IDenoiseSettings>(request);	
 			iDenoiseSettings->setDenoiseMode(DENOISE_MODE_FAST);
 			iDenoiseSettings->setDenoiseStrength(1.0);
@@ -719,7 +752,7 @@ int main(int argc, char* argv[]){
 	auto result = parse(argc, argv);
 	
 	if (result.count("exp") > 0)
-		Settings::values[STG_EXPOSURE] 	= result["exp"].as<uint32_t>();
+		Settings::values[STG_EXPOSURE] 	= result["exp"].as<uint32_t>()*1e3;
 	if (result.count("digitalgain") > 0)
 		Settings::values[STG_DIGGAIN] 	= result["digitalgain"].as<uint32_t>();
 	if (result.count("analoggain") > 0)
