@@ -98,6 +98,7 @@ parse(int argc, char* argv[])
       ("d,debug", 		"Prints debug information",									cxxopts::value<bool>(opt_debug))
       ("k,mousekill", 	"Moving the mouse or toching the screen kills the app",		cxxopts::value<bool>(opt_mousekill))
       ("v,verbose", 	"Prints some additional information",						cxxopts::value<bool>(opt_verbose))
+	  ("digitalgain", 	"Digital gain 0-100", 										cxxopts::value<uint32_t>())
       ("e,exp",			"Exposure time (us)",										cxxopts::value<uint32_t>())
       ("r,resolution", 	"Resolution (example -r 1024,1024)",						cxxopts::value<std::vector<uint32_t>>())
 	  ("o,offset", 		"Offset of the image (example -o 123,523)", 				cxxopts::value<std::vector<uint32_t>>())
@@ -401,7 +402,7 @@ void camera_thread(){
 
 			IAutoControlSettings *iAutoSettings = interface_cast<IAutoControlSettings>(iRequest->getAutoControlSettings());
 			iAutoSettings->setExposureCompensation(0);
-			iAutoSettings->setIspDigitalGainRange(Range<float>(0,0));
+			iAutoSettings->setIspDigitalGainRange(Range<float>(Settings::values[STG_DIGGAIN],Settings::values[STG_DIGGAIN]));
 			iAutoSettings->setWbGains(100);
 			iAutoSettings->setColorSaturation(1.0);
 			iAutoSettings->setColorSaturationBias(1.0);
@@ -681,7 +682,8 @@ void display_thread(){
 
 					cv::imshow("Basic Visualization", img_u8);
 					auto end = std::chrono::system_clock::now();
-					std::chrono::duration<double> elapsed_seconds = end-start;if(opt_verbose) {
+					std::chrono::duration<double> elapsed_seconds = end-start;
+					if(opt_verbose) {
 						std::cout << "TRACE: Stroring the image took: " << elapsed_seconds.count() << "s\n";
 					}
 	
@@ -721,6 +723,8 @@ int main(int argc, char* argv[]){
 
 	if (result.count("exp") > 0)
 		Settings::values[STG_EXPOSURE] 	= result["exp"].as<uint32_t>();
+	if (result.count("digitalgain") > 0)
+		Settings::values[STG_DIGGAIN] 	= result["digitalgain"].as<uint32_t>();
 	if (result.count("resolution") > 0) {
 		const auto values = result["resolution"].as<std::vector<uint32_t>>();
 		Settings::values[STG_WIDTH] 	= values[0];
