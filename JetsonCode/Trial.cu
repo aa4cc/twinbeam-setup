@@ -97,18 +97,22 @@ parse(int argc, char* argv[])
       ("d,debug", 		"Prints debug information",									cxxopts::value<bool>(opt_debug))
       ("k,mousekill", 	"Moving the mouse or toching the screen kills the app",		cxxopts::value<bool>(opt_mousekill))
       ("v,verbose", 	"Prints some additional information",						cxxopts::value<bool>(opt_verbose))
-	  ("digitalgain", 	"Digital gain 0-100", 										cxxopts::value<uint32_t>())
-      ("e,exp",			"Exposure time (us)",										cxxopts::value<uint32_t>())
+      ("help", 			"Prints help")
+	  ;
+	  
+	options.add_options("Camera")
+      ("e,exp",			"Exposure time (us) 8-333333",								cxxopts::value<uint32_t>())
+	  ("analoggain", 	"Analog gain 1-354", 										cxxopts::value<uint32_t>())
+	  ("digitalgain", 	"Digital gain 1-256", 										cxxopts::value<uint32_t>())
       ("r,resolution", 	"Resolution (example -r 1024,1024)",						cxxopts::value<std::vector<uint32_t>>())
 	  ("o,offset", 		"Offset of the image (example -o 123,523)", 				cxxopts::value<std::vector<uint32_t>>())
-      ("help", 			"Prints help")
-    ;
+	  ;
 	
     auto result = options.parse(argc, argv);
 
     if (result.count("help"))
     {
-      std::cout << options.help({"", "Group"}) << std::endl;
+      std::cout << options.help({"", "Camera"}) << std::endl;
       exit(0);
     }
 
@@ -398,7 +402,7 @@ void camera_thread(){
 			ISourceSettings *iSourceSettings = interface_cast<ISourceSettings>(iRequest->getSourceSettings());
 			iSourceSettings->setFrameDurationRange(Range<uint64_t>(1e9/DEFAULT_FPS));
 			iSourceSettings->setExposureTimeRange(Range<uint64_t>(Settings::values[STG_EXPOSURE],Settings::values[STG_EXPOSURE]));
-			iSourceSettings->setGainRange(Range<float>(100.0,100.0));
+			iSourceSettings->setGainRange(Range<float>(50.0,50.0));
 
 			IAutoControlSettings *iAutoSettings = interface_cast<IAutoControlSettings>(iRequest->getAutoControlSettings());
 			iAutoSettings->setExposureCompensation(0);
@@ -713,11 +717,14 @@ void display_thread(){
 
 int main(int argc, char* argv[]){
 	auto result = parse(argc, argv);
-
+	
 	if (result.count("exp") > 0)
 		Settings::values[STG_EXPOSURE] 	= result["exp"].as<uint32_t>();
 	if (result.count("digitalgain") > 0)
 		Settings::values[STG_DIGGAIN] 	= result["digitalgain"].as<uint32_t>();
+	if (result.count("analoggain") > 0)
+		Settings::values[STG_ANALOGGAIN]= result["analoggain"].as<uint32_t>();
+
 	if (result.count("resolution") > 0) {
 		const auto values = result["resolution"].as<std::vector<uint32_t>>();
 		Settings::values[STG_WIDTH] 	= values[0];
