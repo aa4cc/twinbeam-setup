@@ -22,6 +22,8 @@ __global__ void convertToFloat(int count , float* output, cufftComplex* input);
 __global__ void transpose(int N, int M, float* transposee, float* result);
 __global__ void u16ToFloat(int N, int M, uint16_t* input, float* result);
 __global__ void floatToUInt16(int N, int M, float* input, uint16_t* result);
+__global__ void u8ToFloat(int N, int M, uint8_t* input, float* result);
+__global__ void floatToUInt8(int N, int M, float* input, uint8_t* result);
 __global__ void convertToComplex(int count , float* real, cufftComplex* complex);
 __global__ void desample(int M, int N, float* input, float* output);
 __global__ void generateConvoMaskRed(int m, int n, float* convoMask);

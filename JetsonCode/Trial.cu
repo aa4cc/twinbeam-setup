@@ -45,10 +45,9 @@ cudaError_t res;
 int client;
 
 
-uint16_t *R;
-uint16_t *G;
-uint16_t *G_backprop;
-float *G_float;
+uint8_t *R;
+uint8_t *G;
+uint8_t *G_backprop;
 
 mutex mtx;
 
@@ -142,10 +141,11 @@ parse(int argc, char* argv[])
 }
 
 
-//#region
+#define  CLAMP_F2UINT8(in) ((in) > 255 ? 255: (in))
+
 
 __global__ void yuv2bgr(int width, int height, int offset_x, int offset_y,
-						uint16_t* G, uint16_t* R)
+						uint8_t* G, uint8_t* R)
         {
             int index = blockIdx.x * blockDim.x + threadIdx.x;
             int stride = blockDim.x * gridDim.x;
@@ -166,8 +166,8 @@ __global__ void yuv2bgr(int width, int height, int offset_x, int offset_y,
             	     (float)(ty2/2)+(float)(ty2%2)+0.5f).y - 128) * 1.596027f;
             	v1 = (float)(tex2D<uchar2>(uvTexRef, (float)(tx/2)+(float)(tx%2)+0.5f,
             	     (float)(ty/2)+(float)(ty%2)+0.5f).y - 128) * 0.812968f;
-				G[i] = (uint16_t)(y1-u1-v1);
-				R[i] = (uint16_t)(y2+v2+u1/10);
+				G[i] = CLAMP_F2UINT8(y1-u1-v1);
+				R[i] = CLAMP_F2UINT8(y2+v2);
             }
         }
 
@@ -414,10 +414,9 @@ void camera_thread(){
 			iDenoiseSettings->setDenoiseMode(DENOISE_MODE_FAST);
 			iDenoiseSettings->setDenoiseStrength(1.0);
 
-			cudaMalloc(&G, Settings::get_area()*sizeof(uint16_t));
-			cudaMalloc(&G_float, Settings::get_area()*sizeof(float));
-			cudaMalloc(&R, Settings::get_area()*sizeof(uint16_t));
-			cudaMalloc(&G_backprop, Settings::get_area()*sizeof(uint16_t));
+			cudaMalloc(&G, Settings::get_area()*sizeof(uint8_t));
+			cudaMalloc(&R, Settings::get_area()*sizeof(uint8_t));
+			cudaMalloc(&G_backprop, Settings::get_area()*sizeof(uint8_t));
 			
 			numBlocks = 1024;
 			
@@ -470,8 +469,6 @@ void camera_thread(){
 				yuv2bgr<<<numBlocks, BLOCKSIZE>>>(dSTG_WIDTH, dSTG_HEIGHT,
 												Settings::values[STG_OFFSET_X], Settings::values[STG_OFFSET_Y], G, R);
 				backprop_G.backprop(G, G_backprop);
-
-				u16ToFloat<<<numBlocks, BLOCKSIZE>>>(dSTG_WIDTH, dSTG_HEIGHT, G_backprop, G_float);
 
 				mtx.unlock();
 				
@@ -574,10 +571,8 @@ void datasend_thread(){
 void display_thread(){
 	printf("INFO: display_thread: started\n");
 
-	float *cimageToDisplay, *imageToDisplay;
-
-	uint16_t *G_copy, *R_copy, *G_backprop_copy; 
-	uint16_t *cG_copy, *cR_copy, *cG_backprop_copy; 
+	uint8_t *G_copy, *R_copy, *G_backprop_copy; 
+	uint8_t *cG_copy, *cR_copy, *cG_backprop_copy; 
 
 	char ret_key;
 	char filename [50];
@@ -588,24 +583,24 @@ void display_thread(){
 			
 		// Allocate memory on GPU for copies of the images
 		// displayed img
-		if (opt_show)
-			cudaMalloc(&cimageToDisplay, sizeof(float)*Settings::get_area());
+		if (opt_show && !opt_saveimgs)
+			cudaMalloc(&cG_backprop_copy, sizeof(uint8_t)*Settings::get_area());
 		// saved imgs
 		if (opt_saveimgs) {
-			cudaMalloc(&cG_copy, sizeof(uint16_t)*Settings::get_area());
-			cudaMalloc(&cR_copy, sizeof(uint16_t)*Settings::get_area());
-			cudaMalloc(&cG_backprop_copy, sizeof(uint16_t)*Settings::get_area());
+			cudaMalloc(&cG_copy, sizeof(uint8_t)*Settings::get_area());
+			cudaMalloc(&cR_copy, sizeof(uint8_t)*Settings::get_area());
+			cudaMalloc(&cG_backprop_copy, sizeof(uint8_t)*Settings::get_area());
 		}
 
 		// Allocate memoty on the host
 		// displayed img
-		if (opt_show)
-			imageToDisplay = (float*)malloc(sizeof(float)*Settings::get_area());
+		if (opt_show && !opt_saveimgs)
+			G_backprop_copy = (uint8_t*)malloc(sizeof(uint8_t)*Settings::get_area());
 		// saved imgs
 		if (opt_saveimgs) {
-			G_copy = (uint16_t*)malloc(sizeof(uint16_t)*Settings::get_area());
-			R_copy = (uint16_t*)malloc(sizeof(uint16_t)*Settings::get_area());
-			G_backprop_copy = (uint16_t*)malloc(sizeof(uint16_t)*Settings::get_area());
+			G_copy = (uint8_t*)malloc(sizeof(uint8_t)*Settings::get_area());
+			R_copy = (uint8_t*)malloc(sizeof(uint8_t)*Settings::get_area());
+			G_backprop_copy = (uint8_t*)malloc(sizeof(uint8_t)*Settings::get_area());
 		}
 
 		if (opt_show) {
@@ -619,9 +614,9 @@ void display_thread(){
 
 		while(!Settings::initialized && Settings::connected && !Settings::force_exit){}
 		if (Settings::force_exit){
-			if (opt_show) {
-				cudaFree(cimageToDisplay);
-				free(imageToDisplay);
+			if (opt_show && !opt_saveimgs) {
+				cudaFree(cG_backprop_copy);
+				free(G_backprop_copy);
 			}
 			if (opt_saveimgs) {
 				cudaFree(cG_copy);
@@ -634,32 +629,31 @@ void display_thread(){
 			break;
 		} 
 
-		const cv::Mat img_trans(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_32F);
-		const cv::Mat img_u8(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_8U);
+		const cv::Mat img_trans(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_8U);
 
 		while(!Settings::sleeping && Settings::connected){
 			if(cycles >= 3){
 				auto start = std::chrono::system_clock::now();
 				cycles = 0;
 				mtx.lock();
-				if (opt_show)
-					cudaMemcpy(cimageToDisplay, G_float, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);					
+				if (opt_show && !opt_saveimgs)
+					cudaMemcpy(cG_backprop_copy, G_backprop, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToDevice);					
 				if (opt_saveimgs) {
-					cudaMemcpy(cG_copy, G, sizeof(uint16_t)*Settings::get_area(), cudaMemcpyDeviceToDevice);					
-					cudaMemcpy(cR_copy, R, sizeof(uint16_t)*Settings::get_area(), cudaMemcpyDeviceToDevice);					
-					cudaMemcpy(cG_backprop_copy, G_backprop, sizeof(uint16_t)*Settings::get_area(), cudaMemcpyDeviceToDevice);					
+					cudaMemcpy(cG_copy, G, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToDevice);					
+					cudaMemcpy(cR_copy, R, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToDevice);					
+					cudaMemcpy(cG_backprop_copy, G_backprop, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToDevice);					
 				}
 				mtx.unlock();
 
 				
 				if (opt_saveimgs) {
-					cudaMemcpy(G_copy, cG_copy, sizeof(uint16_t)*Settings::get_area(), cudaMemcpyDeviceToHost);					
-					cudaMemcpy(R_copy, cR_copy, sizeof(uint16_t)*Settings::get_area(), cudaMemcpyDeviceToHost);					
-					cudaMemcpy(G_backprop_copy, cG_backprop_copy, sizeof(uint16_t)*Settings::get_area(), cudaMemcpyDeviceToHost);					
+					cudaMemcpy(G_copy, cG_copy, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToHost);					
+					cudaMemcpy(R_copy, cR_copy, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToHost);					
+					cudaMemcpy(G_backprop_copy, cG_backprop_copy, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToHost);					
 					
-					const cv::Mat G_img(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_16U, G_copy);
-					const cv::Mat R_img(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_16U, R_copy);
-					const cv::Mat G_backprop_img(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_16U, G_backprop_copy);
+					const cv::Mat G_img(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_8U, G_copy);
+					const cv::Mat R_img(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_8U, R_copy);
+					const cv::Mat G_backprop_img(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_8U, G_backprop_copy);
 					
 					sprintf (filename, "./imgs/G_%05d.png", img_count);
 					cv::imwrite( filename, G_img );
@@ -672,15 +666,14 @@ void display_thread(){
 				}				
 				
 				if (opt_show) {
-					cudaMemcpy(imageToDisplay, cimageToDisplay, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToHost);
-					const cv::Mat img(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_32F, imageToDisplay);
+					if (!opt_saveimgs)
+						cudaMemcpy(G_backprop_copy, cG_backprop_copy, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToHost);
+					const cv::Mat img(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_8U, G_backprop_copy);
 
 					cv::flip(img, img_trans, -1);
 					cv::transpose(img_trans, img);
 					
-					img.convertTo(img_u8,CV_8U);
-
-					cv::imshow("Basic Visualization", img_u8);
+					cv::imshow("Basic Visualization", img);
 					auto end = std::chrono::system_clock::now();
 					std::chrono::duration<double> elapsed_seconds = end-start;
 					if(opt_verbose) {
@@ -700,9 +693,9 @@ void display_thread(){
 			if (Settings::force_exit) break;
 		}
 
-		if (opt_show) {
-			cudaFree(cimageToDisplay);
-			free(imageToDisplay);
+		if (opt_show && !opt_saveimgs) {
+			cudaFree(cG_backprop_copy);
+			free(G_backprop_copy);
 		}
 		if (opt_saveimgs) {
 			cudaFree(cG_copy);

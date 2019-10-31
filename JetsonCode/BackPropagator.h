@@ -22,7 +22,7 @@ private:
 public:
     BackPropagator( int m, int n, float lambda, float backprop_dist );
 
-    void backprop(uint16_t* input, uint16_t* output );
+    void backprop(uint8_t* input, uint8_t* output );
 
     ~BackPropagator();
 };

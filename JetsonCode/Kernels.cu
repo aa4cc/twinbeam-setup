@@ -107,6 +107,23 @@ __global__ void floatToUInt16(int N, int M, float* input, uint16_t* result){
     }
 }
 
+
+__global__ void u8ToFloat(int N, int M, uint8_t* input, float* result){
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+    for(int i = index; i < N*M; i += stride){
+        result[i] = (float)input[i];
+    }
+}
+
+__global__ void floatToUInt8(int N, int M, float* input, uint8_t* result){
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+    for(int i = index; i < N*M; i += stride){
+        result[i] = (uint8_t)input[i];
+    }
+}
+
 /*
     Converting a real mxArray to complex cufftComplex array
 */

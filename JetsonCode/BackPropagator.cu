@@ -14,10 +14,10 @@ BackPropagator::BackPropagator( int m, int n, float lambda, float backprop_dist 
         calculate<<<numBlocks, BLOCKSIZE>>>(N, M, backprop_dist, PIXEL_DX, REFRACTION_INDEX, lambda, Hq);
     };
 
-void BackPropagator::backprop(uint16_t* input, uint16_t* output )
+void BackPropagator::backprop(uint8_t* input, uint8_t* output )
 {
-    // Convert the uint16 image to float image 
-    u16ToFloat<<<numBlocks, BLOCKSIZE>>>(M, N, input, image_float);
+    // Convert the uint8 image to float image 
+    u8ToFloat<<<numBlocks, BLOCKSIZE>>>(M, N, input, image_float);
 
     // Convert the real input image to complex image
     convertToComplex<<<numBlocks, BLOCKSIZE>>>(N*M, image_float, image);
@@ -33,7 +33,7 @@ void BackPropagator::backprop(uint16_t* input, uint16_t* output )
 	// Conversion of result matrix to a real float matrix
 	imaginary<<<numBlocks, BLOCKSIZE>>>(M,N, image, image_float);
 	// Conversion of result matrix to a real float matrix
-	floatToUInt16<<<numBlocks, BLOCKSIZE>>>(M,N, image_float, output);
+	floatToUInt8<<<numBlocks, BLOCKSIZE>>>(M,N, image_float, output);
 }
 
 BackPropagator::~BackPropagator() {
