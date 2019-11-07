@@ -21,7 +21,7 @@ set(CUDA_NVCC_FLAGS #TX2
 
 SET(OpenCV_DIR "usr/lib")
 SET(HEADERS_FOLDER "{CMAKE_CURRENT_SOURCE_DIR}")
-FIND_PACKAGE(OpenCV REQUIRED COMPONENTS core highgui)
+FIND_PACKAGE(OpenCV REQUIRED COMPONENTS core highgui cudaarithm cudawarping)
 
 set(SOURCES
         Trial.cu

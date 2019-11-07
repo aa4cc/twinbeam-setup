@@ -17,6 +17,7 @@
 #include <chrono>
 #include <opencv2/opencv.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/core/cuda.hpp>
 #include "Kernels.h"
 #include <cstdlib>
 #include <thread>
@@ -33,8 +34,6 @@
 
 #define dSTG_WIDTH Settings::values[STG_WIDTH]
 #define dSTG_HEIGHT Settings::values[STG_HEIGHT]
-
-static const int    DEFAULT_FPS        = 30;
 
 using namespace std;
 using namespace Argus;
@@ -101,11 +100,12 @@ parse(int argc, char* argv[])
 	  ;
 	  
 	options.add_options("Camera")
-      ("e,exp",			"Exposure time (us) 8-333333",								cxxopts::value<uint32_t>())
-	  ("analoggain", 	"Analog gain 1-354", 										cxxopts::value<uint32_t>())
-	  ("digitalgain", 	"Digital gain 1-256", 										cxxopts::value<uint32_t>())
+      ("e,exp",			"Exposure time (us) [8,333333]",								cxxopts::value<uint32_t>())
+	  ("analoggain", 	"Analog gain [1,354]", 										cxxopts::value<uint32_t>())
+	  ("digitalgain", 	"Digital gain [1,256]", 										cxxopts::value<uint32_t>())
       ("r,resolution", 	"Resolution (example -r 1024,1024)",						cxxopts::value<std::vector<uint32_t>>())
 	  ("o,offset", 		"Offset of the image (example -o 123,523)", 				cxxopts::value<std::vector<uint32_t>>())
+	  ("f,fps", 		"Frame rate [1,60]", 												cxxopts::value<uint32_t>())
 	  ;
 	
     auto result = options.parse(argc, argv);
@@ -114,7 +114,28 @@ parse(int argc, char* argv[])
     {
       std::cout << options.help({"", "Camera"}) << std::endl;
       exit(0);
-    }
+	}
+	
+	if (result.count("exp") > 0)
+		Settings::values[STG_EXPOSURE] 	= result["exp"].as<uint32_t>()*1e3;
+	if (result.count("digitalgain") > 0)
+		Settings::values[STG_DIGGAIN] 	= result["digitalgain"].as<uint32_t>();
+	if (result.count("analoggain") > 0)
+		Settings::values[STG_ANALOGGAIN]= result["analoggain"].as<uint32_t>();
+
+	if (result.count("fps") > 0)
+		Settings::values[STG_FPS]= result["fps"].as<uint32_t>();
+
+	if (result.count("resolution") > 0) {
+		const auto values = result["resolution"].as<std::vector<uint32_t>>();
+		Settings::values[STG_WIDTH] 	= values[0];
+		Settings::values[STG_HEIGHT] 	= values[1];
+	}
+	if (result.count("offset") > 0) {
+		const auto values = result["offset"].as<std::vector<uint32_t>>();
+		Settings::values[STG_OFFSET_X] 	= values[0];
+		Settings::values[STG_OFFSET_Y] 	= values[1];
+	}		
 
 
     if (opt_debug) {
@@ -154,19 +175,20 @@ __global__ void yuv2bgr(int width, int height, int offset_x, int offset_y,
             int index = blockIdx.x * blockDim.x + threadIdx.x;
             int stride = blockDim.x * gridDim.x;
             int count = width*height;
-            int tx, ty, ty2;
+            int tx, tx2, ty, ty2;
             float y1, y2;
             float u1, v1, v2;
             for (int i = index; i < count; i += stride)
             {
-            	ty = i/width + offset_y;
-            	ty2 = i/width + offset_y - (512);
-            	tx = i%width + offset_x;
+            	ty 	= i/width + offset_y;
+            	ty2 = i/width + offset_y;
+				tx 	= i%width + offset_x;
+				tx2 = i%width + offset_x + (512);
             	y1 = (float)((tex2D<unsigned char>(yTexRef, (float)tx+0.5f, (float)ty+0.5f) - (float)16) * 1.164383f);
-            	y2 = (float)((tex2D<unsigned char>(yTexRef, (float)tx+0.5f, (float)ty2+0.5f) - (float)16) * 1.164383f);
+            	y2 = (float)((tex2D<unsigned char>(yTexRef, (float)tx2+0.5f, (float)ty2+0.5f) - (float)16) * 1.164383f);
             	u1 = (float)(tex2D<uchar2>(uvTexRef, (float)(tx/2)+(float)(tx%2)+0.5f,
 					  (float)(ty/2)+(float)(ty%2)+0.5f).x - 128) * 0.391762f;
-            	v2 = (float)(tex2D<uchar2>(uvTexRef, (float)(tx/2)+(float)(tx%2)+0.5f,
+            	v2 = (float)(tex2D<uchar2>(uvTexRef, (float)(tx2/2)+(float)(tx2%2)+0.5f,
             	     (float)(ty2/2)+(float)(ty2%2)+0.5f).y - 128) * 1.596027f;
             	v1 = (float)(tex2D<uchar2>(uvTexRef, (float)(tx/2)+(float)(tx%2)+0.5f,
             	     (float)(ty/2)+(float)(ty%2)+0.5f).y - 128) * 0.812968f;
@@ -206,7 +228,7 @@ __global__ void yuv2bgr(int width, int height, int offset_x, int offset_y,
 // 	G[i] = CLAMP_U16_2_U8(G_u16);
 // 	R[i] = CLAMP_U16_2_U8(R_u16);
 // }
-// }		
+// }
 
 void keyboard_thread(){
 	printf("INFO: keyboard_thread: started\n");
@@ -431,11 +453,37 @@ void camera_thread(){
 			UniqueObj<Request> request(iCaptureSession->createRequest());
 			IRequest *iRequest = interface_cast<IRequest>(request);
 			iRequest->enableOutputStream(outputStream.get());
+
+			ICameraProperties *iCameraProperties = interface_cast<ICameraProperties>(selectedDevice);
+			if (!iCameraProperties)
+				printf("Failed to get ICameraProperties interface");			
+
+			ISensorMode *iSensorMode;
+			std::vector<SensorMode*> sensorModes;
+			iCameraProperties->getBasicSensorModes(&sensorModes);
+			if (sensorModes.size() == 0)
+				printf("Failed to get sensor modes");
+		
+			if(opt_debug) {
+				printf("Available Sensor modes :\n");
+				for (uint32_t i = 0; i < sensorModes.size(); i++) {
+					iSensorMode = interface_cast<ISensorMode>(sensorModes[i]);
+					Size2D<uint32_t> resolution = iSensorMode->getResolution();
+					printf("[%u] W=%u H=%u\n", i, resolution.width(), resolution.height());
+				}
+			}
+						
+			uint32_t SENSOR_MODE = 1;
+			// Check sensor mode index
+			if (SENSOR_MODE >= sensorModes.size())
+				printf("Sensor mode index is out of range");
+			SensorMode *sensorMode = sensorModes[SENSOR_MODE];
 			
 			ISourceSettings *iSourceSettings = interface_cast<ISourceSettings>(iRequest->getSourceSettings());
-			iSourceSettings->setFrameDurationRange(Range<uint64_t>(1e9/DEFAULT_FPS));
+			iSourceSettings->setFrameDurationRange(Range<uint64_t>(1e9/Settings::values[STG_FPS]));
 			iSourceSettings->setExposureTimeRange(Range<uint64_t>(Settings::values[STG_EXPOSURE],Settings::values[STG_EXPOSURE]));
 			iSourceSettings->setGainRange(Range<float>(50.0,50.0));
+			iSourceSettings->setSensorMode(sensorMode);	
 
 			IAutoControlSettings *iAutoSettings = interface_cast<IAutoControlSettings>(iRequest->getAutoControlSettings());
 			iAutoSettings->setExposureCompensation(0);
@@ -552,7 +600,7 @@ void camera_thread(){
 void mouseEventCallback(int event, int x, int y, int flags, void* userdata)
 {
 	// https://www.opencv-srf.com/2011/11/mouse-events.html
-	if ( event == CV_EVENT_MOUSEMOVE )
+	if ( event == cv::EVENT_MOUSEMOVE )
      {
      	if(opt_debug)
         	cout << "DEBUG: Mouse move over the window - position (" << x << ", " << y << ")" << endl;
@@ -641,8 +689,8 @@ void display_thread(){
 		}
 
 		if (opt_show) {
-			cv::namedWindow("Basic Visualization", CV_WINDOW_NORMAL);
-			cv::setWindowProperty("Basic Visualization", CV_WND_PROP_FULLSCREEN, CV_WINDOW_FULLSCREEN);
+			cv::namedWindow("Basic Visualization", cv::WINDOW_NORMAL);
+			cv::setWindowProperty("Basic Visualization", cv::WND_PROP_FULLSCREEN, cv::WINDOW_FULLSCREEN);
 			//set the callback function for any mouse event
 			if (opt_mousekill) {
 				cv::setMouseCallback("Basic Visualization", mouseEventCallback, NULL);
@@ -666,7 +714,9 @@ void display_thread(){
 			break;
 		} 
 
-		const cv::Mat img_trans(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_8U);
+		const cv::cuda::GpuMat c_img_resized(cv::Size(800, 800), CV_8U);
+		const cv::cuda::GpuMat c_img_flip(cv::Size(800, 800), CV_8U);
+		const cv::Mat img_disp(cv::Size(800, 800), CV_8U);
 
 		while(!Settings::sleeping && Settings::connected){
 			if(cycles >= 3){
@@ -703,14 +753,18 @@ void display_thread(){
 				}				
 				
 				if (opt_show) {
-					if (!opt_saveimgs)
-						cudaMemcpy(G_backprop_copy, cG_backprop_copy, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToHost);
-					const cv::Mat img(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_8U, G_backprop_copy);
+					// if (!opt_saveimgs)
+						// cudaMemcpy(G_backprop_copy, cG_backprop_copy, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToHost);
+					const cv::cuda::GpuMat c_img(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_8U, cG_backprop_copy);
 
-					cv::flip(img, img_trans, -1);
-					cv::transpose(img_trans, img);
+					// Resize the image so that it fits the display
+					cv::cuda::resize(c_img, c_img_resized, cv::Size(800, 800));	
+					// Flip the axis so that the displayed image corresponds to the actual top view on the image sensor
+					cv::cuda::flip(c_img_resized, c_img_flip, 0);
+
+					c_img_flip.download(img_disp);
 					
-					cv::imshow("Basic Visualization", img);
+					cv::imshow("Basic Visualization", img_disp);
 					auto end = std::chrono::system_clock::now();
 					std::chrono::duration<double> elapsed_seconds = end-start;
 					if(opt_verbose) {
@@ -751,25 +805,6 @@ void display_thread(){
 int main(int argc, char* argv[]){
 	auto result = parse(argc, argv);
 	
-	if (result.count("exp") > 0)
-		Settings::values[STG_EXPOSURE] 	= result["exp"].as<uint32_t>()*1e3;
-	if (result.count("digitalgain") > 0)
-		Settings::values[STG_DIGGAIN] 	= result["digitalgain"].as<uint32_t>();
-	if (result.count("analoggain") > 0)
-		Settings::values[STG_ANALOGGAIN]= result["analoggain"].as<uint32_t>();
-
-	if (result.count("resolution") > 0) {
-		const auto values = result["resolution"].as<std::vector<uint32_t>>();
-		Settings::values[STG_WIDTH] 	= values[0];
-		Settings::values[STG_HEIGHT] 	= values[1];
-	}
-	if (result.count("offset") > 0) {
-		const auto values = result["offset"].as<std::vector<uint32_t>>();
-		Settings::values[STG_OFFSET_X] 	= values[0];
-		Settings::values[STG_OFFSET_Y] 	= values[1];
-	}	
-	
-
 	if(opt_debug){
 		printf("DEBUG: Initial settings:");
 		for(int i = 0 ; i < STG_NUMBER_OF_SETTINGS; i++){

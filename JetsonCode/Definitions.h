@@ -1,8 +1,10 @@
 #ifndef DEFINITIONS_H
 #define DEFINITIONS_H
 
-#define WIDTH 4056
-#define HEIGHT 3040
+// #define WIDTH 4056
+// #define HEIGHT 3040
+#define WIDTH 3840
+#define HEIGHT 2160
 #define LAMBDA_GREEN 520e-9f
 #define LAMBDA_RED 625e-9f
 #define BLOCKSIZE 1024
@@ -45,6 +47,7 @@ enum SETTINGS_TYPE{
 	STG_DIGGAIN,
 	STG_Z_RED,
 	STG_Z_GREEN,
+	STG_FPS,
 	STG_NUMBER_OF_SETTINGS
 };
 
