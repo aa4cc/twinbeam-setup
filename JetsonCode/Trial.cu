@@ -1,15 +1,10 @@
 #include "cuda.h"
 #include "cufft.h"
-#include "cudaEGL.h"
-#include "cuda_egl_interop.h"
 #include "thrust/copy.h"
 #include "thrust/execution_policy.h"
 #include "thrust/device_ptr.h"
-#include "Argus/Argus.h"
-#include "EGLStream/EGLStream.h"
 #include "stdio.h"
 #include "stdlib.h"
-#include "EGL/egl.h"
 #include <iterator>
 #include <unistd.h>
 #include <iostream>
@@ -21,46 +16,29 @@
 #include "Kernels.h"
 #include <cstdlib>
 #include <thread>
-#include <mutex>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <string.h>
-#include "cxxopts.hpp"
 #include "Definitions.h"
 #include "Misc.h"
 #include "Settings.h"
+#include "argpars.h"
+#include "camera_thread.h"
 #include "BackPropagator.h"
 
-#define dSTG_WIDTH Settings::values[STG_WIDTH]
-#define dSTG_HEIGHT Settings::values[STG_HEIGHT]
-
 using namespace std;
-using namespace Argus;
-using namespace EGLStream;
-
-cudaError_t res;
-
-int client;
 
 
-uint8_t *R;
-uint8_t *G;
-uint8_t *G_backprop;
+uint8_t *G, *R, *G_backprop;
 
 mutex mtx;
 
-int numBlocks;
-short cycles;
-int final_count, img_count = 0;
+int client;
+
+int img_count = 0;
 std::chrono::duration<double> elapsed_seconds_average;
 
-EGLStreamKHR eglStream;
-const textureReference* uvTex;
-const textureReference* yTex;
-
-texture<unsigned char, 2, cudaReadModeElementType> yTexRef;
-texture<uchar2, 2, cudaReadModeElementType> uvTexRef;
 
 struct is_not_zero
 {
@@ -71,164 +49,6 @@ struct is_not_zero
 	}
 };
 
-// Options
-bool opt_verbose	= false;
-bool opt_debug		= false;
-bool opt_show		= false;
-bool opt_saveimgs	= false;
-bool opt_mousekill 	= false;
-
-// cxxopts.hpp related definitions
-cxxopts::ParseResult
-parse(int argc, char* argv[])
-{
-  try
-  {
-    cxxopts::Options options(argv[0], " - Twin-beam setup - image processing");
-    options
-      .positional_help("[optional args]")
-      .show_positional_help();
-
-    options
-      .add_options()
-      ("s,show", 		"Display the processed image on the display",				cxxopts::value<bool>(opt_show))
-      ("saveimgs", 		"Save images", 												cxxopts::value<bool>(opt_saveimgs))
-      ("d,debug", 		"Prints debug information",									cxxopts::value<bool>(opt_debug))
-      ("k,mousekill", 	"Moving the mouse or toching the screen kills the app",		cxxopts::value<bool>(opt_mousekill))
-      ("v,verbose", 	"Prints some additional information",						cxxopts::value<bool>(opt_verbose))
-      ("help", 			"Prints help")
-	  ;
-	  
-	options.add_options("Camera")
-      ("e,exp",			"Exposure time (us) [8,333333]",								cxxopts::value<uint32_t>())
-	  ("analoggain", 	"Analog gain [1,354]", 										cxxopts::value<uint32_t>())
-	  ("digitalgain", 	"Digital gain [1,256]", 										cxxopts::value<uint32_t>())
-      ("r,resolution", 	"Resolution (example -r 1024,1024)",						cxxopts::value<std::vector<uint32_t>>())
-	  ("o,offset", 		"Offset of the image (example -o 123,523)", 				cxxopts::value<std::vector<uint32_t>>())
-	  ("f,fps", 		"Frame rate [1,60]", 												cxxopts::value<uint32_t>())
-	  ;
-	
-    auto result = options.parse(argc, argv);
-
-    if (result.count("help"))
-    {
-      std::cout << options.help({"", "Camera"}) << std::endl;
-      exit(0);
-	}
-	
-	if (result.count("exp") > 0)
-		Settings::values[STG_EXPOSURE] 	= result["exp"].as<uint32_t>()*1e3;
-	if (result.count("digitalgain") > 0)
-		Settings::values[STG_DIGGAIN] 	= result["digitalgain"].as<uint32_t>();
-	if (result.count("analoggain") > 0)
-		Settings::values[STG_ANALOGGAIN]= result["analoggain"].as<uint32_t>();
-
-	if (result.count("fps") > 0)
-		Settings::values[STG_FPS]= result["fps"].as<uint32_t>();
-
-	if (result.count("resolution") > 0) {
-		const auto values = result["resolution"].as<std::vector<uint32_t>>();
-		Settings::values[STG_WIDTH] 	= values[0];
-		Settings::values[STG_HEIGHT] 	= values[1];
-	}
-	if (result.count("offset") > 0) {
-		const auto values = result["offset"].as<std::vector<uint32_t>>();
-		Settings::values[STG_OFFSET_X] 	= values[0];
-		Settings::values[STG_OFFSET_Y] 	= values[1];
-	}		
-
-
-    if (opt_debug) {
-	    if (opt_show)
-	    {
-	      std::cout << "Saw option ‘s’" << std::endl;
-	    }
-
-	    if (opt_debug)
-	    {
-	      std::cout << "Saw option ‘d’" << std::endl;
-	    }
-
-	    if (opt_verbose)
-	    {
-	      std::cout << "Saw option ‘v’" << std::endl;
-	    }
-	}
-
-
-    return result;
-
-  } catch (const cxxopts::OptionException& e)
-  {
-    std::cout << "error parsing options: " << e.what() << std::endl;
-    exit(1);
-  }
-}
-
-
-#define  CLAMP_F2UINT8(in) ((in) > 255 ? 255: (in))
-
-
-__global__ void yuv2bgr(int width, int height, int offset_x, int offset_y,
-						uint8_t* G, uint8_t* R)
-        {
-            int index = blockIdx.x * blockDim.x + threadIdx.x;
-            int stride = blockDim.x * gridDim.x;
-            int count = width*height;
-            int tx, tx2, ty, ty2;
-            float y1, y2;
-            float u1, v1, v2;
-            for (int i = index; i < count; i += stride)
-            {
-            	ty 	= i/width + offset_y;
-            	ty2 = i/width + offset_y;
-				tx 	= i%width + offset_x;
-				tx2 = i%width + offset_x + (512);
-            	y1 = (float)((tex2D<unsigned char>(yTexRef, (float)tx+0.5f, (float)ty+0.5f) - (float)16) * 1.164383f);
-            	y2 = (float)((tex2D<unsigned char>(yTexRef, (float)tx2+0.5f, (float)ty2+0.5f) - (float)16) * 1.164383f);
-            	u1 = (float)(tex2D<uchar2>(uvTexRef, (float)(tx/2)+(float)(tx%2)+0.5f,
-					  (float)(ty/2)+(float)(ty%2)+0.5f).x - 128) * 0.391762f;
-            	v2 = (float)(tex2D<uchar2>(uvTexRef, (float)(tx2/2)+(float)(tx2%2)+0.5f,
-            	     (float)(ty2/2)+(float)(ty2%2)+0.5f).y - 128) * 1.596027f;
-            	v1 = (float)(tex2D<uchar2>(uvTexRef, (float)(tx/2)+(float)(tx%2)+0.5f,
-            	     (float)(ty/2)+(float)(ty%2)+0.5f).y - 128) * 0.812968f;
-				G[i] = CLAMP_F2UINT8(y1-u1-v1);
-				R[i] = CLAMP_F2UINT8(y2+v2);
-            }
-		}
-		
-
-// 		__global__ void yuv2bgr(int width, int height, int offset_x, int offset_y,
-// 			uint8_t* G, uint8_t* R)
-// {
-// int index = blockIdx.x * blockDim.x + threadIdx.x;
-// int stride = blockDim.x * gridDim.x;
-// int count = width*height;
-// int tx, ty, ty2;
-// for (int i = index; i < count; i += stride)
-// {
-// 	ty = i/width + offset_y;
-// 	ty2 = i/width + offset_y - (512);
-// 	tx = i%width + offset_x;
-	
-// 	unsigned char Y_1  	= tex2D<unsigned char>(yTexRef, (float)tx+0.5f, (float)ty+0.5f);
-// 	unsigned char Y_2  	= tex2D<unsigned char>(yTexRef, (float)tx+0.5f, (float)ty2+0.5f);
-// 	uchar2 UV_1 		= tex2D<uchar2>(uvTexRef, (float)(tx/2)+(float)(tx%2)+0.5f, (float)(ty/2)+(float)(ty%2)+0.5f);
-// 	uchar2 UV_2  		= tex2D<uchar2>(uvTexRef, (float)(tx/2)+(float)(tx%2)+0.5f,  (float)(ty2/2)+(float)(ty2%2)+0.5f);
-
-// 	uint16_t C_1 =  (uint16_t)Y_1 		- 16;
-// 	uint16_t D_1 =  (uint16_t)UV_1.x 	- 128;
-// 	uint16_t E_1 =  (uint16_t)UV_1.y 	- 128;
-
-// 	uint16_t C_2 =  (uint16_t)Y_2 		- 16;
-// 	uint16_t E_2 =  (uint16_t)UV_2.y 	- 128;
-
-// 	uint16_t G_u16 = (298*C_1 - 100*D_1 - 208*E_1 + 128) >> 8;
-// 	uint16_t R_u16 = (298*C_2 + 409*E_2 + 128) >> 8;
-// 	G[i] = CLAMP_U16_2_U8(G_u16);
-// 	R[i] = CLAMP_U16_2_U8(R_u16);
-// }
-// }
 
 void keyboard_thread(){
 	printf("INFO: keyboard_thread: started\n");
@@ -333,7 +153,7 @@ void network_thread(){
 				printf("ERROR: Did not properly receive data.\n");
 			}
 
-			if(opt_debug)
+			if(Options::debug)
 				printf("DEBUG: Received %d bytes.\n", msg_len);
 
 			response = parseMessage(buf);
@@ -396,213 +216,12 @@ void network_thread(){
 	printf("INFO: network_thread: ended\n");
 }
 
-void camera_thread(){
-	printf("INFO: camera_thread: started\n");
-	//Initializing LibArgus according to the tutorial for a sample project.
-	// First we create a CameraProvider, necessary for each project.
-	UniqueObj<CameraProvider> cameraProvider(CameraProvider::create());
-	ICameraProvider* iCameraProvider = interface_cast<ICameraProvider>(cameraProvider);
-	if(!iCameraProvider){
-		printf("ERROR: Failed to establish libargus connection\n");
-	}
-	
-	// Second we select a device from which to receive pictures (camera)
-	std::vector<CameraDevice*> cameraDevices;
-	iCameraProvider->getCameraDevices(&cameraDevices);
-	if (cameraDevices.size() == 0){
-		printf("ERROR: No camera devices available\n");
-	}
-	CameraDevice *selectedDevice = cameraDevices[0];
-
-	// We create a capture session 
-	UniqueObj<CaptureSession> captureSession(iCameraProvider->createCaptureSession(selectedDevice));
-	ICaptureSession *iCaptureSession = interface_cast<ICaptureSession>(captureSession);
-	if (!iCaptureSession){
- 		printf("ERROR: Failed to create CaptureSession\n");
-	}
-	
-	//CUDA variable declarations
-	cudaEglStreamConnection conn;
-	cudaGraphicsResource_t resource;
-	cudaEglFrame eglFrame;		
-	cudaArray_t yArray;
-	cudaArray_t uvArray;
-	cudaChannelFormatDesc yChannelDesc;
-	cudaChannelFormatDesc uvChannelDesc;
-
-	while(!Settings::force_exit){
-		while(Settings::connected && !Settings::force_exit){
-			while(Settings::sleeping && Settings::connected && !Settings::force_exit){}
-			if (Settings::force_exit) break;
-			// Managing the settings for the capture session.
-			UniqueObj<OutputStreamSettings> streamSettings(iCaptureSession->createOutputStreamSettings(STREAM_TYPE_EGL));
-			IEGLOutputStreamSettings *iStreamSettings = interface_cast<IEGLOutputStreamSettings>(streamSettings);
-			iStreamSettings->setPixelFormat(PIXEL_FMT_YCbCr_420_888);
-			iStreamSettings->setResolution(Size2D<uint32_t>(WIDTH,HEIGHT));
-			
-			// Creating an Output stream. This should already create a producer.
-			UniqueObj<OutputStream> outputStream(iCaptureSession->createOutputStream(streamSettings.get()));
-			IEGLOutputStream *iEGLOutputStream = interface_cast<IEGLOutputStream>(outputStream);
-            if (!iEGLOutputStream)
-	            printf("Failed to create EGLOutputStream");
-
-			eglStream = iEGLOutputStream->getEGLStream();
-			cudaEGLStreamConsumerConnect(&conn, eglStream);
-			
-			// Managing requests.
-			UniqueObj<Request> request(iCaptureSession->createRequest());
-			IRequest *iRequest = interface_cast<IRequest>(request);
-			iRequest->enableOutputStream(outputStream.get());
-
-			ICameraProperties *iCameraProperties = interface_cast<ICameraProperties>(selectedDevice);
-			if (!iCameraProperties)
-				printf("Failed to get ICameraProperties interface");			
-
-			ISensorMode *iSensorMode;
-			std::vector<SensorMode*> sensorModes;
-			iCameraProperties->getBasicSensorModes(&sensorModes);
-			if (sensorModes.size() == 0)
-				printf("Failed to get sensor modes");
-		
-			if(opt_debug) {
-				printf("Available Sensor modes :\n");
-				for (uint32_t i = 0; i < sensorModes.size(); i++) {
-					iSensorMode = interface_cast<ISensorMode>(sensorModes[i]);
-					Size2D<uint32_t> resolution = iSensorMode->getResolution();
-					printf("[%u] W=%u H=%u\n", i, resolution.width(), resolution.height());
-				}
-			}
-						
-			uint32_t SENSOR_MODE = 1;
-			// Check sensor mode index
-			if (SENSOR_MODE >= sensorModes.size())
-				printf("Sensor mode index is out of range");
-			SensorMode *sensorMode = sensorModes[SENSOR_MODE];
-			
-			ISourceSettings *iSourceSettings = interface_cast<ISourceSettings>(iRequest->getSourceSettings());
-			iSourceSettings->setFrameDurationRange(Range<uint64_t>(1e9/Settings::values[STG_FPS]));
-			iSourceSettings->setExposureTimeRange(Range<uint64_t>(Settings::values[STG_EXPOSURE],Settings::values[STG_EXPOSURE]));
-			iSourceSettings->setGainRange(Range<float>(50.0,50.0));
-			iSourceSettings->setSensorMode(sensorMode);	
-
-			IAutoControlSettings *iAutoSettings = interface_cast<IAutoControlSettings>(iRequest->getAutoControlSettings());
-			iAutoSettings->setExposureCompensation(0);
-			iAutoSettings->setIspDigitalGainRange(Range<float>(Settings::values[STG_DIGGAIN],Settings::values[STG_DIGGAIN]));
-			iAutoSettings->setWbGains(1.0f);
-			iAutoSettings->setColorSaturation(1.0);
-			iAutoSettings->setColorSaturationBias(1.0);
-			iAutoSettings->setColorSaturationEnable(true);
-			iAutoSettings->setAwbLock(true);
-			iAutoSettings->setAeAntibandingMode(AE_ANTIBANDING_MODE_OFF);
-			 
-			IDenoiseSettings *iDenoiseSettings = interface_cast<IDenoiseSettings>(request);	
-			iDenoiseSettings->setDenoiseMode(DENOISE_MODE_FAST);
-			iDenoiseSettings->setDenoiseStrength(1.0);
-
-			cudaMalloc(&G, Settings::get_area()*sizeof(uint8_t));
-			cudaMalloc(&R, Settings::get_area()*sizeof(uint8_t));
-			cudaMalloc(&G_backprop, Settings::get_area()*sizeof(uint8_t));
-			
-			numBlocks = 1024;
-			
-			yTexRef.normalized = 0;
-			yTexRef.filterMode = cudaFilterModePoint;
-			yTexRef.addressMode[0] = cudaAddressModeClamp;
-			yTexRef.addressMode[1] = cudaAddressModeClamp;
-			cudaGetTextureReference(&yTex, &yTexRef);
-			
-			uvTexRef.normalized = 0;
-			uvTexRef.filterMode = cudaFilterModePoint;
-			uvTexRef.addressMode[0] = cudaAddressModeClamp;
-			uvTexRef.addressMode[1] = cudaAddressModeClamp;
-			cudaGetTextureReference(&uvTex, &uvTexRef);
-
-			// Initialize the BackPropagator for the green image
-			BackPropagator backprop_G(dSTG_WIDTH, dSTG_HEIGHT, LAMBDA_GREEN, (float)Settings::values[STG_Z_GREEN]/(float)1000000);
-			
-			//CUDA initialization
-			//Main loop
-			auto initializer = std::chrono::system_clock::now();
-			std::chrono::duration<double> elapsed_seconds_average = initializer-initializer;
-
-			final_count = 0;
-			while(!Settings::initialized && Settings::connected && !Settings::force_exit){}
-			if (Settings::force_exit) break;
-
-			while(!Settings::sleeping && Settings::connected && ! Settings::force_exit){
-				auto start = std::chrono::system_clock::now();
-				
-				
-				iCaptureSession->capture(request.get());
-				res = cudaEGLStreamConsumerAcquireFrame(&conn, &resource, 0, 5000);
-				if(res != cudaSuccess){
-					continue;
-				}
-				cudaGraphicsResourceGetMappedEglFrame(&eglFrame, resource, 0, 0);
-				yArray = eglFrame.frame.pArray[0];
-				uvArray = eglFrame.frame.pArray[1];
-				
-				cudaGetChannelDesc(&yChannelDesc, (cudaArray_const_t)(yArray));
-				cudaBindTextureToArray(yTex, (cudaArray_const_t)(yArray), &yChannelDesc);
-				cudaGetChannelDesc(&uvChannelDesc, (cudaArray_const_t)(uvArray));
-				cudaBindTextureToArray(uvTex, (cudaArray_const_t)(uvArray), &uvChannelDesc);
-				auto initialization = std::chrono::system_clock::now();
-
-				numBlocks = (Settings::get_area()/2 +BLOCKSIZE -1)/BLOCKSIZE;
-				
-				mtx.lock();
-				yuv2bgr<<<numBlocks, BLOCKSIZE>>>(dSTG_WIDTH, dSTG_HEIGHT,
-												Settings::values[STG_OFFSET_X], Settings::values[STG_OFFSET_Y], G, R);
-				backprop_G.backprop(G, G_backprop);
-
-				mtx.unlock();
-				
-				auto test2 = std::chrono::system_clock::now();
-				std::chrono::duration<double> elapsed_seconds = test2-initialization;
-				
-				if(opt_verbose) {
-					std::cout << "TRACE: Converting the image format + backprop took: " << elapsed_seconds.count() << "s\n";
-				}
-
-				cudaUnbindTexture(yTex);
-				cudaUnbindTexture(uvTex);
-				
-				cudaEGLStreamConsumerReleaseFrame(&conn, resource, 0);
-				
-				auto end = std::chrono::system_clock::now();
-				elapsed_seconds = end-start;
-				elapsed_seconds_average +=elapsed_seconds;
-				final_count++;
-				Settings::sent_coords = false;
-				
-				if(opt_verbose) {
-					std::cout << "TRACE: This cycle took: " << elapsed_seconds.count() << "s\n";
-				}
-
-				cycles++;				
-			}
-			std::cout << "INFO: Average time to complete a cycle: " << elapsed_seconds_average.count()/final_count << "s\n";
-			iCaptureSession->waitForIdle();
-			
-			cudaFree(G);
-			cudaFree(R);
-			cudaFree(G_backprop);
-			
-			cudaEGLStreamConsumerDisconnect(&conn);
-			iEGLOutputStream->disconnect();
-			outputStream.reset();
-		}
-	}
-
-	printf("INFO: camera_thread: ended\n");
-}
-
 void mouseEventCallback(int event, int x, int y, int flags, void* userdata)
 {
 	// https://www.opencv-srf.com/2011/11/mouse-events.html
 	if ( event == cv::EVENT_MOUSEMOVE )
      {
-     	if(opt_debug)
+     	if(Options::debug)
         	cout << "DEBUG: Mouse move over the window - position (" << x << ", " << y << ")" << endl;
         Settings::set_force_exit(true);
      }
@@ -653,6 +272,52 @@ void datasend_thread(){
 	printf("INFO: datasend_thread: ended\n");
 }
 
+void imgproc_thread(){
+	printf("INFO: imgproc_thread: started\n");
+	
+	// Initialize the BackPropagator for the green image
+	BackPropagator backprop_G(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT], LAMBDA_GREEN, (float)Settings::values[STG_Z_GREEN]/(float)1000000);
+
+	// Allocate the memory for the images
+	cudaMalloc(&G, Settings::get_area()*sizeof(uint8_t));
+	cudaMalloc(&R, Settings::get_area()*sizeof(uint8_t));
+	cudaMalloc(&G_backprop, Settings::get_area()*sizeof(uint8_t));
+
+	while(!Settings::force_exit) {
+		auto start = std::chrono::system_clock::now();
+
+		// wait tiil new image is ready
+		while(Camera::img_produced == Camera::img_processed && !Settings::force_exit) {
+			usleep(500);
+		}
+
+		mtx.lock();
+		// Make copies of red and green channel
+		cudaMemcpy(G, Camera::G, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToDevice);	
+		cudaMemcpy(R, Camera::R, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToDevice);	
+
+		// increase the number of processed images so that the camera starts capturing a new image
+		++Camera::img_processed;
+
+		// process the image
+		backprop_G.backprop(G, G_backprop);
+
+		mtx.unlock();
+
+		auto end = std::chrono::system_clock::now();
+		chrono::duration<double> elapsed_seconds = end - start;
+		if(Options::verbose) {
+			std::cout << "TRACE: This cycle took: " << elapsed_seconds.count() << "s\n";
+		}
+	}
+
+	cudaFree(G);
+	cudaFree(R);
+	cudaFree(G_backprop);
+
+	printf("INFO: imgproc_thread: ended\n");
+}
+
 void display_thread(){
 	printf("INFO: display_thread: started\n");
 
@@ -668,10 +333,10 @@ void display_thread(){
 			
 		// Allocate memory on GPU for copies of the images
 		// displayed img
-		if (opt_show && !opt_saveimgs)
+		if (Options::show && !Options::saveimgs)
 			cudaMalloc(&cG_backprop_copy, sizeof(uint8_t)*Settings::get_area());
 		// saved imgs
-		if (opt_saveimgs) {
+		if (Options::saveimgs) {
 			cudaMalloc(&cG_copy, sizeof(uint8_t)*Settings::get_area());
 			cudaMalloc(&cR_copy, sizeof(uint8_t)*Settings::get_area());
 			cudaMalloc(&cG_backprop_copy, sizeof(uint8_t)*Settings::get_area());
@@ -679,31 +344,31 @@ void display_thread(){
 
 		// Allocate memoty on the host
 		// displayed img
-		if (opt_show && !opt_saveimgs)
+		if (Options::show && !Options::saveimgs)
 			G_backprop_copy = (uint8_t*)malloc(sizeof(uint8_t)*Settings::get_area());
 		// saved imgs
-		if (opt_saveimgs) {
+		if (Options::saveimgs) {
 			G_copy = (uint8_t*)malloc(sizeof(uint8_t)*Settings::get_area());
 			R_copy = (uint8_t*)malloc(sizeof(uint8_t)*Settings::get_area());
 			G_backprop_copy = (uint8_t*)malloc(sizeof(uint8_t)*Settings::get_area());
 		}
 
-		if (opt_show) {
+		if (Options::show) {
 			cv::namedWindow("Basic Visualization", cv::WINDOW_NORMAL);
 			cv::setWindowProperty("Basic Visualization", cv::WND_PROP_FULLSCREEN, cv::WINDOW_FULLSCREEN);
 			//set the callback function for any mouse event
-			if (opt_mousekill) {
+			if (Options::mousekill) {
 				cv::setMouseCallback("Basic Visualization", mouseEventCallback, NULL);
 			}
 		}
 
 		while(!Settings::initialized && Settings::connected && !Settings::force_exit){}
 		if (Settings::force_exit){
-			if (opt_show && !opt_saveimgs) {
+			if (Options::show && !Options::saveimgs) {
 				cudaFree(cG_backprop_copy);
 				free(G_backprop_copy);
 			}
-			if (opt_saveimgs) {
+			if (Options::saveimgs) {
 				cudaFree(cG_copy);
 				cudaFree(cR_copy);
 				cudaFree(cG_backprop_copy);
@@ -718,14 +383,15 @@ void display_thread(){
 		const cv::cuda::GpuMat c_img_flip(cv::Size(800, 800), CV_8U);
 		const cv::Mat img_disp(cv::Size(800, 800), CV_8U);
 
+		uint32_t last_img_processed = Camera::img_processed;
+
 		while(!Settings::sleeping && Settings::connected){
-			if(cycles >= 3){
+			if(Camera::img_processed - last_img_processed > 3){
 				auto start = std::chrono::system_clock::now();
-				cycles = 0;
 				mtx.lock();
-				if (opt_show && !opt_saveimgs)
+				if (Options::show && !Options::saveimgs)
 					cudaMemcpy(cG_backprop_copy, G_backprop, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToDevice);					
-				if (opt_saveimgs) {
+				if (Options::saveimgs) {
 					cudaMemcpy(cG_copy, G, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToDevice);					
 					cudaMemcpy(cR_copy, R, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToDevice);					
 					cudaMemcpy(cG_backprop_copy, G_backprop, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToDevice);					
@@ -733,14 +399,14 @@ void display_thread(){
 				mtx.unlock();
 
 				
-				if (opt_saveimgs) {
+				if (Options::saveimgs) {
 					cudaMemcpy(G_copy, cG_copy, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToHost);
 					cudaMemcpy(R_copy, cR_copy, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToHost);
 					cudaMemcpy(G_backprop_copy, cG_backprop_copy, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToHost);
 					
-					const cv::Mat G_img(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_8U, G_copy);
-					const cv::Mat R_img(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_8U, R_copy);
-					const cv::Mat G_backprop_img(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_8U, G_backprop_copy);
+					const cv::Mat G_img(cv::Size(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]), CV_8U, G_copy);
+					const cv::Mat R_img(cv::Size(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]), CV_8U, R_copy);
+					const cv::Mat G_backprop_img(cv::Size(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]), CV_8U, G_backprop_copy);
 					
 					sprintf (filename, "./imgs/G_%05d.png", img_count);
 					cv::imwrite( filename, G_img );
@@ -752,8 +418,8 @@ void display_thread(){
 					cv::imwrite( filename, G_backprop_img );
 				}				
 				
-				if (opt_show) {
-					const cv::cuda::GpuMat c_img(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_8U, cG_backprop_copy);
+				if (Options::show) {
+					const cv::cuda::GpuMat c_img(cv::Size(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]), CV_8U, cG_backprop_copy);
 
 					// Resize the image so that it fits the display
 					cv::cuda::resize(c_img, c_img_resized, cv::Size(800, 800));	
@@ -765,7 +431,7 @@ void display_thread(){
 					cv::imshow("Basic Visualization", img_disp);
 					auto end = std::chrono::system_clock::now();
 					std::chrono::duration<double> elapsed_seconds = end-start;
-					if(opt_verbose) {
+					if(Options::verbose) {
 						std::cout << "TRACE: Stroring the image took: " << elapsed_seconds.count() << "s\n";
 					}
 	
@@ -774,6 +440,7 @@ void display_thread(){
 				}				
 
 				img_count++;
+				last_img_processed = Camera::img_processed;
 			}
 			else{
 				usleep(1000);
@@ -782,11 +449,11 @@ void display_thread(){
 			if (Settings::force_exit) break;
 		}
 
-		if (opt_show && !opt_saveimgs) {
+		if (Options::show && !Options::saveimgs) {
 			cudaFree(cG_backprop_copy);
 			free(G_backprop_copy);
 		}
-		if (opt_saveimgs) {
+		if (Options::saveimgs) {
 			cudaFree(cG_copy);
 			cudaFree(cR_copy);
 			cudaFree(cG_backprop_copy);
@@ -801,30 +468,30 @@ void display_thread(){
 
 
 int main(int argc, char* argv[]){
-	auto result = parse(argc, argv);
+	Options::parse(argc, argv);
 	
-	if(opt_debug){
+	if(Options::debug){
 		printf("DEBUG: Initial settings:");
 		for(int i = 0 ; i < STG_NUMBER_OF_SETTINGS; i++){
 			printf("%d\n", Settings::values[i]);
 		}
 	}
-	
-	cycles = 0;
 
-	if (opt_show) {
+	if (Options::show) {
 		Settings::set_initialized(true);
 		Settings::set_connected(true);
 		Settings::set_sleeping(false);
 	}
 
-	thread camera_thr (camera_thread);
+	thread camera_thr (Camera::camera_thread);
+	thread imgproc_thr (imgproc_thread);
 	thread display_thr (display_thread);
 	thread network_thr (network_thread);
 	thread datasend_thr (datasend_thread);
 	thread keyboard_thr (keyboard_thread);
 	
 	camera_thr.join();
+	imgproc_thr.join();
 	display_thr.join();
 	datasend_thr.join();
 

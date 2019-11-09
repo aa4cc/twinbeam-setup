@@ -29,6 +29,8 @@ set(SOURCES
 		Misc.cpp
 		Settings.cpp
 		BackPropagator.cu
+		camera_thread.cu
+		argpars.cpp
 		# Camera.cu
         )
 
