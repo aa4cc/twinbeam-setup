@@ -734,9 +734,9 @@ void display_thread(){
 
 				
 				if (opt_saveimgs) {
-					cudaMemcpy(G_copy, cG_copy, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToHost);					
-					cudaMemcpy(R_copy, cR_copy, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToHost);					
-					cudaMemcpy(G_backprop_copy, cG_backprop_copy, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToHost);					
+					cudaMemcpy(G_copy, cG_copy, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToHost);
+					cudaMemcpy(R_copy, cR_copy, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToHost);
+					cudaMemcpy(G_backprop_copy, cG_backprop_copy, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToHost);
 					
 					const cv::Mat G_img(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_8U, G_copy);
 					const cv::Mat R_img(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_8U, R_copy);
@@ -753,8 +753,6 @@ void display_thread(){
 				}				
 				
 				if (opt_show) {
-					// if (!opt_saveimgs)
-						// cudaMemcpy(G_backprop_copy, cG_backprop_copy, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToHost);
 					const cv::cuda::GpuMat c_img(cv::Size(dSTG_WIDTH, dSTG_HEIGHT), CV_8U, cG_backprop_copy);
 
 					// Resize the image so that it fits the display
@@ -778,7 +776,7 @@ void display_thread(){
 				img_count++;
 			}
 			else{
-				usleep(5000);
+				usleep(1000);
 			}
 
 			if (Settings::force_exit) break;
