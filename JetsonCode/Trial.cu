@@ -26,6 +26,7 @@
 #include "argpars.h"
 #include "camera_thread.h"
 #include "BackPropagator.h"
+// #include "BeadsFinder.h"
 
 using namespace std;
 
@@ -38,16 +39,6 @@ int client;
 
 int img_count = 0;
 std::chrono::duration<double> elapsed_seconds_average;
-
-
-struct is_not_zero
-{
-	__host__ __device__
-	bool operator()(const int x)
-	{
-		return x != 0;
-	}
-};
 
 
 void keyboard_thread(){
@@ -278,13 +269,19 @@ void imgproc_thread(){
 	// Initialize the BackPropagator for the green image
 	BackPropagator backprop_G(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT], LAMBDA_GREEN, (float)Settings::values[STG_Z_GREEN]/(float)1000000);
 
+	// Initialize the BeadFinder
+	// BeadsFinder beadsFinder(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]);
+
 	// Allocate the memory for the images
 	cudaMalloc(&G, Settings::get_area()*sizeof(uint8_t));
 	cudaMalloc(&R, Settings::get_area()*sizeof(uint8_t));
 	cudaMalloc(&G_backprop, Settings::get_area()*sizeof(uint8_t));
 
+	// Allocate the memory for the backprop image on the host
+	// uint8_t* hG_backprop = (uint8_t*)malloc(sizeof(uint8_t)*Settings::get_area());
+
 	while(!Settings::force_exit) {
-		auto start = std::chrono::system_clock::now();
+		auto t_start_cycle = std::chrono::system_clock::now();
 
 		// wait tiil new image is ready
 		while(Camera::img_produced == Camera::img_processed && !Settings::force_exit) {
@@ -300,14 +297,23 @@ void imgproc_thread(){
 		++Camera::img_processed;
 
 		// process the image
+		auto t_backprop = std::chrono::system_clock::now();
 		backprop_G.backprop(G, G_backprop);
+		// if(Options::debug){
+			// printf("Searching for the beads \n");
+		// }
+		// cudaMemcpy(hG_backprop, G_backprop, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToHost);
+		// beadsFinder.update(hG_backprop);
 
 		mtx.unlock();
 
-		auto end = std::chrono::system_clock::now();
-		chrono::duration<double> elapsed_seconds = end - start;
+		auto t_end_cycle = std::chrono::system_clock::now();
 		if(Options::verbose) {
-			std::cout << "TRACE: This cycle took: " << elapsed_seconds.count() << "s\n";
+			chrono::duration<double> cycle_elapsed_seconds = t_end_cycle - t_start_cycle;
+			chrono::duration<double> bp_elapsed_seconds = t_end_cycle - t_backprop;
+
+			std::cout << "TRACE: Backpropagation took: " << bp_elapsed_seconds.count();
+			std::cout << "| whole cycle took: " << cycle_elapsed_seconds.count() << " s\n";
 		}
 	}
 
@@ -331,26 +337,27 @@ void display_thread(){
 		while(Settings::sleeping && Settings::connected && !Settings::force_exit){}
 		if (Settings::force_exit) break;
 			
-		// Allocate memory on GPU for copies of the images
-		// displayed img
-		if (Options::show && !Options::saveimgs)
-			cudaMalloc(&cG_backprop_copy, sizeof(uint8_t)*Settings::get_area());
-		// saved imgs
-		if (Options::saveimgs) {
-			cudaMalloc(&cG_copy, sizeof(uint8_t)*Settings::get_area());
-			cudaMalloc(&cR_copy, sizeof(uint8_t)*Settings::get_area());
-			cudaMalloc(&cG_backprop_copy, sizeof(uint8_t)*Settings::get_area());
-		}
-
+		
 		// Allocate memoty on the host
 		// displayed img
 		if (Options::show && !Options::saveimgs)
-			G_backprop_copy = (uint8_t*)malloc(sizeof(uint8_t)*Settings::get_area());
+			cudaHostAlloc((void **)&G_backprop_copy,  sizeof(uint8_t)*Settings::get_area(),  cudaHostAllocMapped);
 		// saved imgs
 		if (Options::saveimgs) {
-			G_copy = (uint8_t*)malloc(sizeof(uint8_t)*Settings::get_area());
-			R_copy = (uint8_t*)malloc(sizeof(uint8_t)*Settings::get_area());
-			G_backprop_copy = (uint8_t*)malloc(sizeof(uint8_t)*Settings::get_area());
+			cudaHostAlloc((void **)&G_copy,  sizeof(uint8_t)*Settings::get_area(),  cudaHostAllocMapped);
+			cudaHostAlloc((void **)&R_copy,  sizeof(uint8_t)*Settings::get_area(),  cudaHostAllocMapped);
+			cudaHostAlloc((void **)&G_backprop_copy,  sizeof(uint8_t)*Settings::get_area(),  cudaHostAllocMapped);
+		}
+
+		// Allocate memory on GPU for copies of the images
+		// displayed img
+		if (Options::show && !Options::saveimgs)
+			cudaHostGetDevicePointer((void **)&cG_backprop_copy,  (void *) G_backprop_copy , 0);
+		// saved imgs
+		if (Options::saveimgs) {
+			cudaHostGetDevicePointer((void **)&cG_copy,  (void *) G_copy , 0);
+			cudaHostGetDevicePointer((void **)&cR_copy,  (void *) R_copy , 0);
+			cudaHostGetDevicePointer((void **)&cG_backprop_copy,  (void *) G_backprop_copy , 0);
 		}
 
 		if (Options::show) {
@@ -365,16 +372,12 @@ void display_thread(){
 		while(!Settings::initialized && Settings::connected && !Settings::force_exit){}
 		if (Settings::force_exit){
 			if (Options::show && !Options::saveimgs) {
-				cudaFree(cG_backprop_copy);
-				free(G_backprop_copy);
+				cudaFreeHost(G_backprop_copy);
 			}
 			if (Options::saveimgs) {
-				cudaFree(cG_copy);
-				cudaFree(cR_copy);
-				cudaFree(cG_backprop_copy);
-				free(G_copy);
-				free(R_copy);
-				free(G_backprop_copy);
+				cudaFreeHost(G_copy);
+				cudaFreeHost(R_copy);
+				cudaFreeHost(G_backprop_copy);
 			}
 			break;
 		} 
@@ -399,11 +402,7 @@ void display_thread(){
 				mtx.unlock();
 
 				
-				if (Options::saveimgs) {
-					cudaMemcpy(G_copy, cG_copy, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToHost);
-					cudaMemcpy(R_copy, cR_copy, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToHost);
-					cudaMemcpy(G_backprop_copy, cG_backprop_copy, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToHost);
-					
+				if (Options::saveimgs) {					
 					const cv::Mat G_img(cv::Size(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]), CV_8U, G_copy);
 					const cv::Mat R_img(cv::Size(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]), CV_8U, R_copy);
 					const cv::Mat G_backprop_img(cv::Size(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]), CV_8U, G_backprop_copy);
@@ -450,16 +449,12 @@ void display_thread(){
 		}
 
 		if (Options::show && !Options::saveimgs) {
-			cudaFree(cG_backprop_copy);
-			free(G_backprop_copy);
+			cudaFreeHost(G_backprop_copy);
 		}
 		if (Options::saveimgs) {
-			cudaFree(cG_copy);
-			cudaFree(cR_copy);
-			cudaFree(cG_backprop_copy);
-			free(G_copy);
-			free(R_copy);
-			free(G_backprop_copy);
+			cudaFreeHost(G_copy);
+			cudaFreeHost(R_copy);
+			cudaFreeHost(G_backprop_copy);
 		}
 	}
 
