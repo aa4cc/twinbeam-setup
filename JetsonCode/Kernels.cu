@@ -124,6 +124,14 @@ __global__ void floatToUInt8(int N, int M, float* input, uint8_t* result){
     }
 }
 
+__global__ void floatToUInt8(int N, int M, float* input, uint8_t* result, float scale){
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+    for(int i = index; i < N*M; i += stride){
+        result[i] = (uint8_t)input[i]*scale;
+    }
+}
+
 /*
     Converting a real mxArray to complex cufftComplex array
 */
@@ -256,6 +264,32 @@ __global__ void getLocalMaxima(int M, int N, float* input, float* output){
     }
 }
 
+__global__ void getLocalMinima(int M, int N, float* input, uint8_t* output, float thrs){
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+    int count = M*N;
+
+    uint16_t idx, idy;
+    for(int i = index; i < count; i += stride){
+        output[i] = 0;
+
+        // Continue if the value is larger than a certain value
+        if (input[i] > thrs)
+            continue;
+
+        // Check whether we are on the edge of the image. If so, continue.
+        idx = i % M;
+        if (idx == 0 || idx == M-1)        
+            continue;
+        idy = i / M;
+        if (idy == 0 || idy == N-1)
+            continue;        
+
+        if( input[i-1] < input[i] && input[i+1] < input[i] && input[i-M] < input[i] && input[i+M] < input[i])
+            output[i] = 255;        
+    }
+}
+
 __global__ void kernelToImage(int M, int N, int kernelDim, float* kernel, cufftComplex* outputKernel){
 			int index = blockIdx.x * blockDim.x + threadIdx.x;
             int stride = blockDim.x * gridDim.x;
@@ -330,4 +364,18 @@ __global__ void imaginary(int M, int N, cufftComplex* input, float* output){
     for(int i = index; i < count; i += stride){
         output[i] = input[i].y;
     }
+    }
+
+template<typename T>
+__global__ void copyKernel(int M, int N, T* input, T* output) {
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+    int count = N*M;
+    for(int i = index; i < count; i += stride){
+        output[i] = input[i];
+    }
 }
+
+template __global__ void copyKernel<uint8_t>(int, int, uint8_t*, uint8_t*);
+template __global__ void copyKernel<uint16_t>(int, int, uint16_t*, uint16_t*);
+template __global__ void copyKernel<float>(int, int, float*, float*);

@@ -20,8 +20,8 @@ using namespace std;
 using namespace Argus;
 using namespace EGLStream;
 
-uint8_t *Camera::G 					= nullptr;
-uint8_t *Camera::R 					= nullptr;
+ImageData<uint8_t> Camera::G;
+ImageData<uint8_t> Camera::R;
 uint32_t Camera::img_produced 		= 0;
 uint32_t Camera::img_processed 		= 0;
 
@@ -207,8 +207,8 @@ void Camera::camera_thread(){
 			iDenoiseSettings->setDenoiseMode(DENOISE_MODE_FAST);
 			iDenoiseSettings->setDenoiseStrength(1.0);
 
-			cudaMalloc(&Camera::G, Settings::get_area()*sizeof(uint8_t));
-			cudaMalloc(&Camera::R, Settings::get_area()*sizeof(uint8_t));
+			Camera::G.create(dSTG_WIDTH, dSTG_HEIGHT);
+			Camera::R.create(dSTG_WIDTH, dSTG_HEIGHT);
 			
 			numBlocks = 1024;
 			
@@ -250,7 +250,7 @@ void Camera::camera_thread(){
 				numBlocks = (Settings::get_area()/2 +BLOCKSIZE -1)/BLOCKSIZE;
 				
 				yuv2bgr<<<numBlocks, BLOCKSIZE>>>(dSTG_WIDTH, dSTG_HEIGHT,
-												Settings::values[STG_OFFSET_X], Settings::values[STG_OFFSET_Y], Camera::G, Camera::R);
+												Settings::values[STG_OFFSET_X], Settings::values[STG_OFFSET_Y], Camera::G.devicePtr(), Camera::R.devicePtr());
 				
 				++Camera::img_produced;
 				// printf("Produced: %d\t, processed: %d\t\n", Camera::img_produced, Camera::img_processed);
@@ -266,8 +266,8 @@ void Camera::camera_thread(){
 			}
 			iCaptureSession->waitForIdle();
 			
-			cudaFree(Camera::G);
-			cudaFree(Camera::R);
+			Camera::G.release();
+			Camera::R.release();
 			
 			cudaEGLStreamConsumerDisconnect(&conn);
 			iEGLOutputStream->disconnect();

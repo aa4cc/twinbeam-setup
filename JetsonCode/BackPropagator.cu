@@ -10,6 +10,8 @@ BackPropagator::BackPropagator( int m, int n, float lambda, float backprop_dist 
         // Declaring the FFT plan
         cufftPlan2d(&fft_plan, N, M, CUFFT_C2C);
 
+        numBlocks = (m*n/2 + BLOCKSIZE -1)/BLOCKSIZE;
+
         // Calculating the Hq matrix according to the equations in the original .m file.
         calculate<<<numBlocks, BLOCKSIZE>>>(N, M, backprop_dist, PIXEL_DX, REFRACTION_INDEX, lambda, Hq);
     };

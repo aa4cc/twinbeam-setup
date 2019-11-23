@@ -10,6 +10,7 @@ public:
     static bool debug;
     static bool show;
     static bool saveimgs;
+    // static bool savevideos;
     static bool mousekill;
 
     static cxxopts::ParseResult parse(int argc, char* argv[]);

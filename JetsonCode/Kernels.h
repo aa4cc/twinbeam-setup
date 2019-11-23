@@ -8,6 +8,8 @@
 #include "stdint.h"
 #include "cuda.h"
 #include "cufft.h"
+// #include <opencv2/opencv.hpp>
+#include <opencv2/core/cuda.hpp>
 #include "stdio.h"
 #include "math.h"
 #include <cmath>
@@ -24,6 +26,7 @@ __global__ void u16ToFloat(int N, int M, uint16_t* input, float* result);
 __global__ void floatToUInt16(int N, int M, float* input, uint16_t* result);
 __global__ void u8ToFloat(int N, int M, uint8_t* input, float* result);
 __global__ void floatToUInt8(int N, int M, float* input, uint8_t* result);
+__global__ void floatToUInt8(int N, int M, float* input, uint8_t* result, float scale);
 __global__ void convertToComplex(int count , float* real, cufftComplex* complex);
 __global__ void desample(int M, int N, float* input, float* output);
 __global__ void generateConvoMaskRed(int m, int n, float* convoMask);
@@ -33,11 +36,15 @@ __global__ void findExtremes(int M, int N, float* input, float* extremes);
 __global__ void findMaxima(int M, int N, float* input, float* maxima);
 __global__ void normalize(int M, int N, float* input, float* extremes); // input is also output
 __global__ void getLocalMaxima(int M, int N, float* input, float* output);
+__global__ void getLocalMinima(int M, int N, float* input, uint8_t* output, float thrs);
 __global__ void kernelToImage(int M, int N, int kernelDim, float* kernel, cufftComplex* outputKernel);
 __global__ void findPoints(int M, int N, float* input, int* output);
 __global__ void generateBlurFilter(int M, int N, int margin, cufftComplex* filter);
 __global__ void blurFilter(int M, int N, int margin, cufftComplex* input);
 __global__ void real(int M, int N, cufftComplex* input, float* output);
 __global__ void imaginary(int M, int N, cufftComplex* input, float* output);
+
+template<typename T>
+__global__ void copyKernel(int M, int N, T* input, T* output);
 
 #endif

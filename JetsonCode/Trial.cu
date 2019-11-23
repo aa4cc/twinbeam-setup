@@ -26,12 +26,13 @@
 #include "argpars.h"
 #include "camera_thread.h"
 #include "BackPropagator.h"
-// #include "BeadsFinder.h"
+#include "BeadsFinder.h"
+#include "ImageData.h"
 
 using namespace std;
 
 
-uint8_t *G, *R, *G_backprop;
+ImageData<uint8_t> G, R, G_backprop;
 
 mutex mtx;
 
@@ -218,50 +219,50 @@ void mouseEventCallback(int event, int x, int y, int flags, void* userdata)
      }
 }
 
-void datasend_thread(){
-	printf("INFO: datasend_thread: started\n");
+// void datasend_thread(){
+// 	printf("INFO: datasend_thread: started\n");
 
-	float *temporary;
-	char* buffer;
-	while(true){
-		while(Settings::sleeping && !Settings::force_exit){}
-		if (Settings::force_exit) break;
+// 	float *temporary;
+// 	char* buffer;
+// 	while(true){
+// 		while(Settings::sleeping && !Settings::force_exit){}
+// 		if (Settings::force_exit) break;
 
-		cudaMalloc(&temporary, Settings::get_area()*sizeof(float));
+// 		cudaMalloc(&temporary, Settings::get_area()*sizeof(float));
 		
-		while(Settings::connected && !Settings::sleeping){
-			if(Settings::requested_image){
-				mtx.lock();
-				switch (Settings::requested_type){
-					case BACKPROPAGATED:
-						cudaMemcpy(temporary, G_backprop, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
-						break;
-					case RAW_G:
-						cudaMemcpy(temporary, G, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
-						break;
-					case RAW_R:
-						cudaMemcpy(temporary, R, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
-						break;
-				}	
+// 		while(Settings::connected && !Settings::sleeping){
+// 			if(Settings::requested_image){
+// 				mtx.lock();
+// 				switch (Settings::requested_type){
+// 					case BACKPROPAGATED:
+// 						cudaMemcpy(temporary, G_backprop, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+// 						break;
+// 					case RAW_G:
+// 						cudaMemcpy(temporary, G, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+// 						break;
+// 					case RAW_R:
+// 						cudaMemcpy(temporary, R, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+// 						break;
+// 				}	
 
-				mtx.unlock();
+// 				mtx.unlock();
 
-				buffer = (char*)malloc(Settings::get_area()*sizeof(float));
-				cudaMemcpy(buffer, temporary, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToHost);
-				send(client, buffer, sizeof(float)*Settings::get_area(), 0);
-				free(buffer);
-				printf("INFO: Image sent.\n");
-				Settings::set_requested_image(false);
-			}			
+// 				buffer = (char*)malloc(Settings::get_area()*sizeof(float));
+// 				cudaMemcpy(buffer, temporary, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToHost);
+// 				send(client, buffer, sizeof(float)*Settings::get_area(), 0);
+// 				free(buffer);
+// 				printf("INFO: Image sent.\n");
+// 				Settings::set_requested_image(false);
+// 			}			
 
-			if (Settings::force_exit) break;
-		}
+// 			if (Settings::force_exit) break;
+// 		}
 		
-		cudaFree(temporary);
-	}
+// 		cudaFree(temporary);
+// 	}
 
-	printf("INFO: datasend_thread: ended\n");
-}
+// 	printf("INFO: datasend_thread: ended\n");
+// }
 
 void imgproc_thread(){
 	printf("INFO: imgproc_thread: started\n");
@@ -270,18 +271,18 @@ void imgproc_thread(){
 	BackPropagator backprop_G(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT], LAMBDA_GREEN, (float)Settings::values[STG_Z_GREEN]/(float)1000000);
 
 	// Initialize the BeadFinder
-	// BeadsFinder beadsFinder(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]);
+	BeadsFinder beadsFinder(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]);
 
 	// Allocate the memory for the images
-	cudaMalloc(&G, Settings::get_area()*sizeof(uint8_t));
-	cudaMalloc(&R, Settings::get_area()*sizeof(uint8_t));
-	cudaMalloc(&G_backprop, Settings::get_area()*sizeof(uint8_t));
+	G.create(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]);
+	R.create(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]);
+	G_backprop.create(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]);
 
 	// Allocate the memory for the backprop image on the host
 	// uint8_t* hG_backprop = (uint8_t*)malloc(sizeof(uint8_t)*Settings::get_area());
 
 	while(!Settings::force_exit) {
-		auto t_start_cycle = std::chrono::system_clock::now();
+		auto t_cycle_start = std::chrono::system_clock::now();
 
 		// wait tiil new image is ready
 		while(Camera::img_produced == Camera::img_processed && !Settings::force_exit) {
@@ -290,75 +291,65 @@ void imgproc_thread(){
 
 		mtx.lock();
 		// Make copies of red and green channel
-		cudaMemcpy(G, Camera::G, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToDevice);	
-		cudaMemcpy(R, Camera::R, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToDevice);	
+		auto t_cp_start = std::chrono::system_clock::now();
+		Camera::G.copyTo(G);
+		Camera::R.copyTo(R);
+		auto t_cp_end = std::chrono::system_clock::now();
 
 		// increase the number of processed images so that the camera starts capturing a new image
 		++Camera::img_processed;
 
 		// process the image
-		auto t_backprop = std::chrono::system_clock::now();
-		backprop_G.backprop(G, G_backprop);
-		// if(Options::debug){
-			// printf("Searching for the beads \n");
-		// }
-		// cudaMemcpy(hG_backprop, G_backprop, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToHost);
-		// beadsFinder.update(hG_backprop);
+		// backprop
+		auto t_backprop_start = std::chrono::system_clock::now();
+		backprop_G.backprop(G.devicePtr(), G_backprop.devicePtr());
+		auto t_backprop_end = std::chrono::system_clock::now();
 
+		// Update the image in beadsFinder where the beads are to be searched for
+		auto t_beadsfinder_cp_start = std::chrono::system_clock::now();
+		beadsFinder.updateImage(G_backprop);
+		auto t_beadsfinder_cp_end = std::chrono::system_clock::now();
 		mtx.unlock();
 
-		auto t_end_cycle = std::chrono::system_clock::now();
+		// find the bads
+		auto t_beadsfinder_start = std::chrono::system_clock::now();
+		beadsFinder.findBeads();
+		auto t_beadsfinder_end = std::chrono::system_clock::now();
+
+
+		auto t_cycle_end = std::chrono::system_clock::now();
 		if(Options::verbose) {
-			chrono::duration<double> cycle_elapsed_seconds = t_end_cycle - t_start_cycle;
-			chrono::duration<double> bp_elapsed_seconds = t_end_cycle - t_backprop;
+			chrono::duration<double> cycle_elapsed_seconds = t_cycle_end - t_cycle_start;
+			chrono::duration<double> cp_elapsed_seconds = t_cp_end - t_cp_start;
+			chrono::duration<double> bp_elapsed_seconds = t_backprop_end - t_backprop_start;
+			chrono::duration<double> bf_cp_elapsed_seconds = t_beadsfinder_cp_end - t_beadsfinder_cp_start;
+			chrono::duration<double> bf_elapsed_seconds = t_beadsfinder_end - t_beadsfinder_start;
 
 			std::cout << "TRACE: Backpropagation took: " << bp_elapsed_seconds.count();
+			std::cout << "| BF.cp took: " << bf_cp_elapsed_seconds.count();
+			std::cout << "| BF.findBeads took: " << bf_elapsed_seconds.count();
+			std::cout << "| cp took: " << cp_elapsed_seconds.count();
 			std::cout << "| whole cycle took: " << cycle_elapsed_seconds.count() << " s\n";
 		}
 	}
-
-	cudaFree(G);
-	cudaFree(R);
-	cudaFree(G_backprop);
-
+	
 	printf("INFO: imgproc_thread: ended\n");
 }
 
 void display_thread(){
 	printf("INFO: display_thread: started\n");
-
-	uint8_t *G_copy, *R_copy, *G_backprop_copy; 
-	uint8_t *cG_copy, *cR_copy, *cG_backprop_copy; 
-
+	
 	char ret_key;
 	char filename [50];
 
 	while(true){
 		while(Settings::sleeping && Settings::connected && !Settings::force_exit){}
 		if (Settings::force_exit) break;
-			
-		
-		// Allocate memoty on the host
-		// displayed img
-		if (Options::show && !Options::saveimgs)
-			cudaHostAlloc((void **)&G_backprop_copy,  sizeof(uint8_t)*Settings::get_area(),  cudaHostAllocMapped);
-		// saved imgs
-		if (Options::saveimgs) {
-			cudaHostAlloc((void **)&G_copy,  sizeof(uint8_t)*Settings::get_area(),  cudaHostAllocMapped);
-			cudaHostAlloc((void **)&R_copy,  sizeof(uint8_t)*Settings::get_area(),  cudaHostAllocMapped);
-			cudaHostAlloc((void **)&G_backprop_copy,  sizeof(uint8_t)*Settings::get_area(),  cudaHostAllocMapped);
-		}
 
-		// Allocate memory on GPU for copies of the images
-		// displayed img
-		if (Options::show && !Options::saveimgs)
-			cudaHostGetDevicePointer((void **)&cG_backprop_copy,  (void *) G_backprop_copy , 0);
-		// saved imgs
-		if (Options::saveimgs) {
-			cudaHostGetDevicePointer((void **)&cG_copy,  (void *) G_copy , 0);
-			cudaHostGetDevicePointer((void **)&cR_copy,  (void *) R_copy , 0);
-			cudaHostGetDevicePointer((void **)&cG_backprop_copy,  (void *) G_backprop_copy , 0);
-		}
+		// Allocate the memory
+		ImageData<uint8_t> G_backprop_copy(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]);
+		ImageData<uint8_t> G_copy(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]);
+		ImageData<uint8_t> R_copy(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]);
 
 		if (Options::show) {
 			cv::namedWindow("Basic Visualization", cv::WINDOW_NORMAL);
@@ -371,14 +362,6 @@ void display_thread(){
 
 		while(!Settings::initialized && Settings::connected && !Settings::force_exit){}
 		if (Settings::force_exit){
-			if (Options::show && !Options::saveimgs) {
-				cudaFreeHost(G_backprop_copy);
-			}
-			if (Options::saveimgs) {
-				cudaFreeHost(G_copy);
-				cudaFreeHost(R_copy);
-				cudaFreeHost(G_backprop_copy);
-			}
 			break;
 		} 
 
@@ -393,19 +376,19 @@ void display_thread(){
 				auto start = std::chrono::system_clock::now();
 				mtx.lock();
 				if (Options::show && !Options::saveimgs)
-					cudaMemcpy(cG_backprop_copy, G_backprop, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToDevice);					
+					G_backprop.copyTo(G_backprop_copy);
 				if (Options::saveimgs) {
-					cudaMemcpy(cG_copy, G, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToDevice);					
-					cudaMemcpy(cR_copy, R, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToDevice);					
-					cudaMemcpy(cG_backprop_copy, G_backprop, sizeof(uint8_t)*Settings::get_area(), cudaMemcpyDeviceToDevice);					
+					G_backprop.copyTo(G_backprop_copy);
+					G.copyTo(G_copy);
+					R.copyTo(R_copy);
 				}
 				mtx.unlock();
 
 				
 				if (Options::saveimgs) {					
-					const cv::Mat G_img(cv::Size(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]), CV_8U, G_copy);
-					const cv::Mat R_img(cv::Size(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]), CV_8U, R_copy);
-					const cv::Mat G_backprop_img(cv::Size(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]), CV_8U, G_backprop_copy);
+					const cv::Mat G_img(cv::Size(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]), CV_8U, G_copy.hostPtr());
+					const cv::Mat R_img(cv::Size(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]), CV_8U, R_copy.hostPtr());
+					const cv::Mat G_backprop_img(cv::Size(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]), CV_8U, G_backprop_copy.hostPtr());
 					
 					sprintf (filename, "./imgs/G_%05d.png", img_count);
 					cv::imwrite( filename, G_img );
@@ -418,7 +401,7 @@ void display_thread(){
 				}				
 				
 				if (Options::show) {
-					const cv::cuda::GpuMat c_img(cv::Size(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]), CV_8U, cG_backprop_copy);
+					const cv::cuda::GpuMat c_img(cv::Size(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]), CV_8U, G_backprop_copy.devicePtr());
 
 					// Resize the image so that it fits the display
 					cv::cuda::resize(c_img, c_img_resized, cv::Size(800, 800));	
@@ -447,15 +430,6 @@ void display_thread(){
 
 			if (Settings::force_exit) break;
 		}
-
-		if (Options::show && !Options::saveimgs) {
-			cudaFreeHost(G_backprop_copy);
-		}
-		if (Options::saveimgs) {
-			cudaFreeHost(G_copy);
-			cudaFreeHost(R_copy);
-			cudaFreeHost(G_backprop_copy);
-		}
 	}
 
 	printf("INFO: display_thread: ended\n");
@@ -482,13 +456,13 @@ int main(int argc, char* argv[]){
 	thread imgproc_thr (imgproc_thread);
 	thread display_thr (display_thread);
 	thread network_thr (network_thread);
-	thread datasend_thr (datasend_thread);
+	// thread datasend_thr (datasend_thread);
 	thread keyboard_thr (keyboard_thread);
 	
 	camera_thr.join();
 	imgproc_thr.join();
 	display_thr.join();
-	datasend_thr.join();
+	// datasend_thr.join();
 
 	return 0;
 }

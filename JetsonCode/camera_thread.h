@@ -2,13 +2,14 @@
 #define CAMERA_THREAD_H
 
 #include <stdint.h>
-#include <mutex>
+#include <mutex> 
+#include "ImageData.h"
 
 
 class Camera{
     public:
-    static uint8_t *G;
-    static uint8_t *R;
+    static ImageData<uint8_t> G;
+    static ImageData<uint8_t> R;
     static uint32_t img_produced;
     static uint32_t img_processed;
 

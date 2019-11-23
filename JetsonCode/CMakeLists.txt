@@ -6,22 +6,23 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 set(CMAKE_SOURCE_DIR "/usr/src/tegra_multimedia_api/argus")
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_MODULE_PATH}")
 
+set(CUDA_PROPAGATE_HOST_FLAGS OFF)
+set(CUDA_SEPARABLE_COMPILATION ON)
+
 find_package(CUDA REQUIRED)
 find_package(Argus REQUIRED)
 find_package(EGL REQUIRED)
 
 
-set(CUDA_PROPAGATE_HOST_FLAGS OFF)
-set(CUDA_SEPARABLE_COMPILATION ON)
 set(CUDA_NVCC_FLAGS #TX2
 		${CUDA_NVCC_FLAGS};
 		-gencode arch=compute_62,code=sm_62
-		-rdc=true -std=c++11
+		-rdc=true -std=c++14
         )
 
 SET(OpenCV_DIR "usr/lib")
 SET(HEADERS_FOLDER "{CMAKE_CURRENT_SOURCE_DIR}")
-FIND_PACKAGE(OpenCV REQUIRED COMPONENTS core highgui cudaarithm cudawarping)
+FIND_PACKAGE(OpenCV REQUIRED COMPONENTS core highgui cudaarithm cudawarping cudaimgproc cudafilters)
 
 set(SOURCES
         Trial.cu
@@ -29,6 +30,7 @@ set(SOURCES
 		Misc.cpp
 		Settings.cpp
 		BackPropagator.cu
+		BeadsFinder.cu
 		camera_thread.cu
 		argpars.cpp
 		# Camera.cu
@@ -43,10 +45,12 @@ include_directories(
 
 cuda_add_executable(${PROJECT_NAME} ${SOURCES})
 
+message( ${CUDA_LIBRARIES} )
+
 target_link_libraries(${PROJECT_NAME}
         ${ARGUS_LIBRARIES}
 	 	${EGL_LIBRARIES}
-        cuda
+		${CUDA_LIBRARIES}
         ${CUDA_CUFFT_LIBRARIES}
 		${OpenCV_LIBS}
         )

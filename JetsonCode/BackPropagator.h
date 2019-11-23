@@ -11,7 +11,7 @@
 class BackPropagator
 {
 private:
-    int numBlocks = 1024;
+    int numBlocks;
     int M, N;
     cufftComplex *Hq, *image;
     float* image_float;
