@@ -57,7 +57,7 @@ void BeadsFinder::findBeads()
     cudaMemcpy(&positions, d_positions, 2*MAX_NUMBER_BEADS*sizeof(uint16_t), cudaMemcpyDeviceToHost);
     _mtx.unlock();
 
-    std::cout << "Points found: " << pointsCounter << "\n";
+    // std::cout << "Points found: " << pointsCounter << "\n";
     // for(int i = 0; i < pointsCounter; i++) 
         // std::cout << "(" << positions[i] << "," << positions[i+MAX_NUMBER_BEADS] << ")" << std::endl;
 

@@ -1,5 +1,6 @@
 #include "Settings.h"
 #include "Definitions.h"
+#include "stdio.h"
 
 using namespace std;
 //width, height
@@ -13,6 +14,12 @@ bool Settings::sent_coords = false;
 bool Settings::requested_coords = false;
 REQUEST_TYPE Settings::requested_type = BACKPROPAGATED;
 bool Settings::requested_image = false;
+
+void Settings::print(){
+	for(int i = 0 ; i < STG_NUMBER_OF_SETTINGS; i++){
+		printf("%d\n", Settings::values[i]);
+	}
+}
 
 void Settings::set_connected(const bool value){
 	Settings::connected = value;

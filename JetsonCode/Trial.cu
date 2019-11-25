@@ -71,34 +71,6 @@ void keyboard_thread(){
 	printf("INFO: keyboard_thread: ended\n");
 }
 
-void changeSettings(char* buf){
-	
-	// int tmpSettings; 
-	// int count = 0;
-	// int current_index = 2;
-
-	// while(count < 7){
-	// 	string str = "";
-	// 	while(isdigit(buf[current_index])){
-	// 		str.append(1u,buf[current_index]);
-	// 		current_index++;
-	// 	}
-	// 	try{
-	// 		tmpSettings = atol(str.c_str());
-	// 	}
-	// 	catch(int e ){
-	// 		printf("Number is too large\n");
-	// 		tmpSettings = 0;
-	// 	}
-	// 	if(tmpSettings != 0){
-	// 		Settings::set_setting(count, tmpSettings);
-	// 		printf("%d\n", Settings::values[count]);
-	// 	}
-	// 	count++;
-	// 	current_index++;
-	// }
-}
-
 void network_thread(){
 	printf("INFO: network_thread: started\n");
 
@@ -165,7 +137,8 @@ void network_thread(){
 					if(!Settings::sleeping)
 						printf("WARN: Can't change settings while the loop is running\n");
 					else{
-						changeSettings(buf);
+						memcpy(Settings::values, buf+1, sizeof(uint32_t)*STG_NUMBER_OF_SETTINGS);
+						Settings::print();
 						printf("INFO: Changed settings\n");
 					}
 					break;
@@ -217,50 +190,75 @@ void mouseEventCallback(int event, int x, int y, int flags, void* userdata)
      }
 }
 
-// void datasend_thread(){
-// 	printf("INFO: datasend_thread: started\n");
+void datasend_thread(){
+	printf("INFO: datasend_thread: started\n");
 
-// 	float *temporary;
-// 	char* buffer;
-// 	while(true){
-// 		while(Settings::sleeping && !Settings::force_exit){}
-// 		if (Settings::force_exit) break;
-
-// 		cudaMalloc(&temporary, Settings::get_area()*sizeof(float));
+	while(true){
+		while(Settings::sleeping && !Settings::force_exit){}
+		if (Settings::force_exit) break;
 		
-// 		while(Settings::connected && !Settings::sleeping){
-// 			if(Settings::requested_image){
-// 				mtx.lock();
-// 				switch (Settings::requested_type){
-// 					case BACKPROPAGATED:
-// 						cudaMemcpy(temporary, G_backprop, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
-// 						break;
-// 					case RAW_G:
-// 						cudaMemcpy(temporary, G, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
-// 						break;
-// 					case RAW_R:
-// 						cudaMemcpy(temporary, R, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToDevice);
-// 						break;
-// 				}	
+		while(Settings::connected && !Settings::sleeping){
+			if(Settings::requested_image){
+				ImageData<uint8_t> temp_img(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]);
 
-// 				mtx.unlock();
+				switch (Settings::requested_type){
+					case BACKPROPAGATED:
+						G_backprop.copyTo(temp_img);
+						break;
+					case RAW_G:
+						G.copyTo(temp_img);
+						break;
+					case RAW_R:
+						R.copyTo(temp_img);
+						break;
+				}	
 
-// 				buffer = (char*)malloc(Settings::get_area()*sizeof(float));
-// 				cudaMemcpy(buffer, temporary, sizeof(float)*Settings::get_area(), cudaMemcpyDeviceToHost);
-// 				send(client, buffer, sizeof(float)*Settings::get_area(), 0);
-// 				free(buffer);
-// 				printf("INFO: Image sent.\n");
-// 				Settings::set_requested_image(false);
-// 			}			
+				send(client, temp_img.hostPtr(), sizeof(uint8_t)*Settings::get_area(), 0);
+				printf("INFO: Image sent.\n");
+				Settings::set_requested_image(false);
+			}
 
-// 			if (Settings::force_exit) break;
-// 		}
-		
-// 		cudaFree(temporary);
-// 	}
+			// if(!Settings::sent_coords && Settings::requested_coords){
+			// 	int* sorted_green_positions = (int*)malloc(sizeof(int)*Settings::get_area());
+			// 	int* sorted_red_positions = (int*)malloc(sizeof(int)*Settings::get_area());
+			// 	mtx.lock();
+			// 	cudaMemcpy(temporary_green_positions, maximaGreen, sizeof(int)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+			// 	cudaMemcpy(temporary_red_positions, maximaRed, sizeof(int)*Settings::get_area(), cudaMemcpyDeviceToDevice);
+			// 	mtx.unlock();
 
-// 	printf("INFO: datasend_thread: ended\n");
-// }
+			// 	int* count = (int*)malloc(sizeof(int)*2);
+
+			// 	processPoints(temporary_green_positions, temporary_red_positions, sorted_green_positions, sorted_red_positions, count);
+
+			// 	buffer = (char*)malloc(sizeof(int)*(2+count[0]+count[1]));
+
+			// 	if(opt_debug)
+			// 		printf("DEBUG: Count Green : %d ; Count Red : %d\n", count[0], count[1]);
+
+			// 	memcpy(&buffer[0], &count[0], sizeof(int));
+			// 	memcpy(&buffer[4], sorted_green_positions, count[0]*sizeof(int));
+			// 	memcpy(&buffer[4*(1+count[0])], &count[1], sizeof(int));
+			// 	memcpy(&buffer[4*(2+count[0])], sorted_red_positions, count[1]*sizeof(int));
+
+			// 	send(client, buffer, sizeof(int)*(2+count[0]+count[1]), 0);
+
+			// 	printf("INFO: Sent the found locations\n");
+
+			// 	free(buffer);
+			// 	free(count);
+			// 	free(sorted_green_positions);
+			// 	free(sorted_red_positions);
+
+			// 	Settings::set_sent_coords(true);
+			// 	Settings::set_requested_coords(false);
+			// }
+
+			if (Settings::force_exit) break;
+		}
+	}
+
+	printf("INFO: datasend_thread: ended\n");
+}
 
 void imgproc_thread(){
 	printf("INFO: imgproc_thread: started\n");
@@ -322,11 +320,12 @@ void imgproc_thread(){
 			chrono::duration<double> bf_cp_elapsed_seconds = t_beadsfinder_cp_end - t_beadsfinder_cp_start;
 			chrono::duration<double> bf_elapsed_seconds = t_beadsfinder_end - t_beadsfinder_start;
 
-			std::cout << "TRACE: Backpropagation took: " << bp_elapsed_seconds.count();
-			std::cout << "| BF.cp took: " << bf_cp_elapsed_seconds.count();
-			std::cout << "| BF.findBeads took: " << bf_elapsed_seconds.count();
-			std::cout << "| cp took: " << cp_elapsed_seconds.count();
-			std::cout << "| whole cycle took: " << cycle_elapsed_seconds.count() << " s\n";
+			std::cout << "TRACE: Backprop: " << bp_elapsed_seconds.count();
+			std::cout << "| BF.cp: " << bf_cp_elapsed_seconds.count();
+			std::cout << "| BF.findBeads: " << bf_elapsed_seconds.count();
+			std::cout << "| cp: " << cp_elapsed_seconds.count();
+			std::cout << "| whole cycle: " << cycle_elapsed_seconds.count();
+			std::cout << "| #points: " << bead_count << " s\n";
 		}
 	}
 	
@@ -443,9 +442,7 @@ int main(int argc, char* argv[]){
 	
 	if(Options::debug){
 		printf("DEBUG: Initial settings:");
-		for(int i = 0 ; i < STG_NUMBER_OF_SETTINGS; i++){
-			printf("%d\n", Settings::values[i]);
-		}
+		Settings::print();
 	}
 
 	if (Options::show) {
@@ -458,13 +455,13 @@ int main(int argc, char* argv[]){
 	thread imgproc_thr (imgproc_thread);
 	thread display_thr (display_thread);
 	thread network_thr (network_thread);
-	// thread datasend_thr (datasend_thread);
+	thread datasend_thr (datasend_thread);
 	thread keyboard_thr (keyboard_thread);
 	
 	camera_thr.join();
 	imgproc_thr.join();
 	display_thr.join();
-	// datasend_thr.join();
+	datasend_thr.join();
 
 	return 0;
 }
