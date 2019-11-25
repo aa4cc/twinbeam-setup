@@ -37,8 +37,8 @@ classdef twinbeam
                 timeout = p.Results.Timeout;
             end
             
-            obj.height = 1024;
-            obj.width = 1024;
+            obj.height = 1200;
+            obj.width = 1200;
             
             obj.connection = tcpclient(ip, port, 'ConnectTimeout', timeout);
             read(obj.connection)
@@ -69,9 +69,7 @@ classdef twinbeam
                     error('This image type is not supported.')
             end
             
-            
-            
-            image = typecast(read(obj.connection, obj.height*obj.width*4), 'single');
+            image = typecast(read(obj.connection, obj.height*obj.width), 'uint8');
             image2D = reshape(image, obj.width, obj.height);
             if nargout == 0
                 figure(1)
@@ -85,10 +83,14 @@ classdef twinbeam
         
         function obj = settings(obj, width, height, offset_x, offset_y, exposure, red_dist, green_dist)
             if nargin == 1
-                prompt = {'Width:','Height:','Offset X:', 'Offset Y:', 'Exposure time [ns]:', 'Red distance [um]:', 'Green distance [um]:'};
+                prompt = {'Width:','Height:', ...
+                    'Offset X:', 'Offset Y:', ...
+                    'Exposure time [ns]:', 'Analog gain:', 'Digital gain:', ...
+                    'Red distance [um]:', 'Green distance [um]:', ...
+                    'Frames per second: ', 'Image threshold:'};
                 dlgtitle = 'New settings';
                 dims = [1 40];
-                definput = {'1024','1024','1500','1000','5000000', '2500', '2400'};
+                definput = {'1200','1200','1352','596','5000000', '100', '1', '3100', '2750', '30', '80'};
                 answer = inputdlg(prompt,dlgtitle,dims,definput);
                 width = str2double(answer(1));
                 height = str2double(answer(2));
@@ -101,7 +103,11 @@ classdef twinbeam
 
             obj.width = width;
             obj.height = height;
-            message = uint8(char(strcat("o ", num2str(width), " ", num2str(height), " ", num2str(offset_x), " ", num2str(offset_y), " ", num2str(exposure), " ", num2str(red_dist), " ", num2str(green_dist), " ")));
+            
+            message = [uint8('o')];
+            for i=1:numel(answer)
+                message = [message twinbeam.uint2binarray(uint32(str2double(answer{i})))];
+            end
             write(obj.connection, message);
         end
 
@@ -140,6 +146,16 @@ classdef twinbeam
         function delete(obj)
             write(obj.connection, uint8('d'));
             pause(0.2);
+        end
+    end
+    
+    methods(Static)
+        function binarray = uint2binarray(data)
+            binarray = [ ...
+                uint8(bitand(bitshift(data, 0), 255)), ...
+                uint8(bitand(bitshift(data, -8), 255)),  ...
+                uint8(bitand(bitshift(data, -16), 255)),  ...
+                uint8(bitand(bitshift(data, -24), 255))];
         end
     end
 end
