@@ -249,9 +249,13 @@ void Camera::camera_thread(){
 
 				numBlocks = (Settings::get_area()/2 +BLOCKSIZE -1)/BLOCKSIZE;
 				
+				Camera::G.mtx.lock();
+				Camera::R.mtx.lock();
 				yuv2bgr<<<numBlocks, BLOCKSIZE>>>(dSTG_WIDTH, dSTG_HEIGHT,
 												Settings::values[STG_OFFSET_X], Settings::values[STG_OFFSET_Y], Camera::G.devicePtr(), Camera::R.devicePtr());
-				
+				Camera::G.mtx.unlock();
+				Camera::R.mtx.unlock();
+
 				++Camera::img_produced;
 				// printf("Produced: %d\t, processed: %d\t\n", Camera::img_produced, Camera::img_processed);
 				// Wait until the image is processed

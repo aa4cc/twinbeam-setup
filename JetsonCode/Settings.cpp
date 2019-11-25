@@ -3,7 +3,7 @@
 
 using namespace std;
 //width, height
-int Settings::values[] = {1200, 1200, 1352, 596, 5000000, 100, 1, 3100, 2750, 30};
+int Settings::values[] = {1200, 1200, 1352, 596, 5000000, 100, 1, 3100, 2750, 30, 80};
 
 bool Settings::connected = false;
 bool Settings::sleeping = true;
@@ -13,10 +13,6 @@ bool Settings::sent_coords = false;
 bool Settings::requested_coords = false;
 REQUEST_TYPE Settings::requested_type = BACKPROPAGATED;
 bool Settings::requested_image = false;
-
-void Settings::set_setting(int index, const int new_setting){
-	Settings::values[index] = new_setting;
-}
 
 void Settings::set_connected(const bool value){
 	Settings::connected = value;

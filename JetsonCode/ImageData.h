@@ -2,6 +2,7 @@
 #define IMAGEDATA_H
 
 #include <stdint.h>
+#include <mutex>
 #include "Kernels.h"
 #include "Definitions.h"
 
@@ -14,6 +15,7 @@ private:
     int width, height;           // dimensions of the image
 
 public:
+    mutable std::mutex mtx;
     ImageData() {};
     ImageData(uint16_t m, uint16_t n) : width{m}, height{n} {create(m, n);};
 
@@ -31,8 +33,10 @@ public:
 
     T* hostPtr() {return h_data;};
     T* devicePtr() {return d_data;};
-    void copyTo(const ImageData<T>& dst) { copyKernel<<<(width*height/2 + BLOCKSIZE -1)/BLOCKSIZE, BLOCKSIZE>>>(width, height, d_data, dst.d_data); };
-    // void copyTo(const ImageData<T>& dst) { cudaMemcpy(dst.d_data, d_data, sizeof(T)*width*height, cudaMemcpyDeviceToDevice); };
+    void copyTo(const ImageData<T>& dst) {
+        std::lock_guard<std::mutex> l_src(mtx);
+        std::lock_guard<std::mutex> l_dst(dst.mtx);
+        copyKernel<<<(width*height/2 + BLOCKSIZE -1)/BLOCKSIZE, BLOCKSIZE>>>(width, height, d_data, dst.d_data); };
 
     ~ImageData() { release(); };
 };

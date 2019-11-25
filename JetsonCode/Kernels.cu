@@ -264,15 +264,13 @@ __global__ void getLocalMaxima(int M, int N, float* input, float* output){
     }
 }
 
-__global__ void getLocalMinima(int M, int N, float* input, uint8_t* output, float thrs){
+__global__ void getLocalMinima(int M, int N, float* input, uint16_t* points, uint32_t pointsMaxSize, uint32_t* pointsCounter, float thrs) {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     int stride = blockDim.x * gridDim.x;
     int count = M*N;
 
     uint16_t idx, idy;
     for(int i = index; i < count; i += stride){
-        output[i] = 0;
-
         // Continue if the value is larger than a certain value
         if (input[i] > thrs)
             continue;
@@ -283,11 +281,14 @@ __global__ void getLocalMinima(int M, int N, float* input, uint8_t* output, floa
             continue;
         idy = i / M;
         if (idy == 0 || idy == N-1)
-            continue;        
+            continue;
 
-        if( input[i-1] < input[i] && input[i+1] < input[i] && input[i-M] < input[i] && input[i+M] < input[i])
-            output[i] = 255;        
-    }
+        if( input[i-1] > input[i] && input[i+1] > input[i] && input[i-M] > input[i] && input[i+M] > input[i]) {
+            uint32_t ind = atomicInc(pointsCounter, pointsMaxSize);
+            points[2*ind] = idx;
+            points[2*ind+1] = idy;
+        }
+    }    
 }
 
 __global__ void kernelToImage(int M, int N, int kernelDim, float* kernel, cufftComplex* outputKernel){
@@ -309,14 +310,16 @@ __global__ void kernelToImage(int M, int N, int kernelDim, float* kernel, cufftC
             }
 	}
 	
-__global__ void findPoints(int M, int N, float* input, int* output){
+__global__ void findPoints(int M, int N, uint8_t* input, uint32_t* output){
 	int index = blockIdx.x * blockDim.x + threadIdx.x;
 	int stride = blockDim.x * gridDim.x;
 	int count = N*M;
 	for(int i = index; i < count; i += stride){
 		if(input[i] > 0){
 			output[i] = i;
-		}
+		} else {
+            output[i] = 0;
+        }
 	}
 }
 

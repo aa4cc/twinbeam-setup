@@ -28,19 +28,25 @@ cxxopts::ParseResult Options::parse(int argc, char* argv[])
 	  ;
 	  
 	options.add_options("Camera")
-      ("e,exp",			"Exposure time (us) [8,333333]",								cxxopts::value<uint32_t>())
+      ("e,exp",			"Exposure time (us) [8,333333]",							cxxopts::value<uint32_t>())
 	  ("analoggain", 	"Analog gain [1,354]", 										cxxopts::value<uint32_t>())
-	  ("digitalgain", 	"Digital gain [1,256]", 										cxxopts::value<uint32_t>())
+	  ("digitalgain", 	"Digital gain [1,256]", 									cxxopts::value<uint32_t>())
       ("r,resolution", 	"Resolution (example -r 1024,1024)",						cxxopts::value<std::vector<uint32_t>>())
 	  ("o,offset", 		"Offset of the image (example -o 123,523)", 				cxxopts::value<std::vector<uint32_t>>())
-	  ("f,fps", 		"Frame rate [1,60]", 												cxxopts::value<uint32_t>())
+	  ("f,fps", 		"Frame rate [1,60]", 										cxxopts::value<uint32_t>())
+	  ;
+	  
+	options.add_options("Image Processing")
+      ("t,img_threshold", 		"Prints debug information",							cxxopts::value<uint32_t>())
+      ("g_dist", 				"Green channel backpropagation distance",			cxxopts::value<uint32_t>())
+      ("r_dist", 				"Red channel backpropagation distance",				cxxopts::value<uint32_t>())
 	  ;
 	
     auto result = options.parse(argc, argv);
 
     if (result.count("help"))
     {
-      std::cout << options.help({"", "Camera"}) << std::endl;
+      std::cout << options.help({"", "Camera", "Image Processing"}) << std::endl;
       exit(0);
 	}
 	
@@ -64,6 +70,16 @@ cxxopts::ParseResult Options::parse(int argc, char* argv[])
 		Settings::values[STG_OFFSET_X] 	= values[0];
 		Settings::values[STG_OFFSET_Y] 	= values[1];
 	}		
+	
+	if (result.count("img_threshold") > 0) {
+		Settings::values[STG_IMGTHRS]= result["img_threshold"].as<uint32_t>();
+	}
+	if (result.count("r_dist") > 0) {
+		Settings::values[STG_Z_RED]= result["r_dist"].as<uint32_t>();
+	}
+	if (result.count("g_dist") > 0) {
+		Settings::values[STG_Z_GREEN]= result["g_dist"].as<uint32_t>();
+	}
 
     if (Options::debug) {
 	    if (Options::show)

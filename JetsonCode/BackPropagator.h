@@ -4,6 +4,7 @@
 #include "cuda.h"
 #include "cufft.h"
 
+#include "ImageData.h"
 #include "Definitions.h"
 #include "Kernels.h"
 
@@ -22,7 +23,7 @@ private:
 public:
     BackPropagator( int m, int n, float lambda, float backprop_dist );
 
-    void backprop(uint8_t* input, uint8_t* output );
+    void backprop(ImageData<uint8_t>& input, ImageData<uint8_t>& output);
 
     ~BackPropagator();
 };

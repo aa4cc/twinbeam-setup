@@ -36,9 +36,9 @@ __global__ void findExtremes(int M, int N, float* input, float* extremes);
 __global__ void findMaxima(int M, int N, float* input, float* maxima);
 __global__ void normalize(int M, int N, float* input, float* extremes); // input is also output
 __global__ void getLocalMaxima(int M, int N, float* input, float* output);
-__global__ void getLocalMinima(int M, int N, float* input, uint8_t* output, float thrs);
+__global__ void getLocalMinima(int M, int N, float* input, uint16_t* points, uint32_t pointsMaxSize, uint32_t* pointsCounter, float thrs);
 __global__ void kernelToImage(int M, int N, int kernelDim, float* kernel, cufftComplex* outputKernel);
-__global__ void findPoints(int M, int N, float* input, int* output);
+__global__ void findPoints(int M, int N, uint8_t* input, uint32_t* output);
 __global__ void generateBlurFilter(int M, int N, int margin, cufftComplex* filter);
 __global__ void blurFilter(int M, int N, int margin, cufftComplex* input);
 __global__ void real(int M, int N, cufftComplex* input, float* output);

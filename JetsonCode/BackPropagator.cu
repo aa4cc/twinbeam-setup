@@ -16,10 +16,12 @@ BackPropagator::BackPropagator( int m, int n, float lambda, float backprop_dist 
         calculate<<<numBlocks, BLOCKSIZE>>>(N, M, backprop_dist, PIXEL_DX, REFRACTION_INDEX, lambda, Hq);
     };
 
-void BackPropagator::backprop(uint8_t* input, uint8_t* output )
+void BackPropagator::backprop(ImageData<uint8_t>& input, ImageData<uint8_t>& output)
 {
     // Convert the uint8 image to float image 
-    u8ToFloat<<<numBlocks, BLOCKSIZE>>>(M, N, input, image_float);
+    input.mtx.lock();
+    u8ToFloat<<<numBlocks, BLOCKSIZE>>>(M, N, input.devicePtr(), image_float);
+    input.mtx.unlock();
 
     // Convert the real input image to complex image
     convertToComplex<<<numBlocks, BLOCKSIZE>>>(N*M, image_float, image);
@@ -34,8 +36,10 @@ void BackPropagator::backprop(uint8_t* input, uint8_t* output )
 	cufftExecC2C(fft_plan, image, image, CUFFT_INVERSE);
 	// Conversion of result matrix to a real float matrix
 	imaginary<<<numBlocks, BLOCKSIZE>>>(M,N, image, image_float);
-	// Conversion of result matrix to a real float matrix
-	floatToUInt8<<<numBlocks, BLOCKSIZE>>>(M,N, image_float, output);
+    // Conversion of result matrix to a real float matrix
+    output.mtx.lock();
+	floatToUInt8<<<numBlocks, BLOCKSIZE>>>(M,N, image_float, output.devicePtr());
+    output.mtx.unlock();
 }
 
 BackPropagator::~BackPropagator() {

@@ -1,8 +1,5 @@
 #include "cuda.h"
 #include "cufft.h"
-#include "thrust/copy.h"
-#include "thrust/execution_policy.h"
-#include "thrust/device_ptr.h"
 #include "stdio.h"
 #include "stdlib.h"
 #include <iterator>
@@ -31,10 +28,9 @@
 
 using namespace std;
 
-
 ImageData<uint8_t> G, R, G_backprop;
-
-mutex mtx;
+uint16_t bead_positions[2*BeadsFinder::MAX_NUMBER_BEADS];
+uint32_t bead_count;
 
 int client;
 
@@ -76,29 +72,31 @@ void keyboard_thread(){
 }
 
 void changeSettings(char* buf){
-	int tmpSettings; 
-	int count = 0;
-	int current_index = 2;
-	while(count < 7){
-		string str = "";
-		while(isdigit(buf[current_index])){
-			str.append(1u,buf[current_index]);
-			current_index++;
-		}
-		try{
-			tmpSettings = atol(str.c_str());
-		}
-		catch(int e ){
-			printf("Number is too large\n");
-			tmpSettings = 0;
-		}
-		if(tmpSettings != 0){
-			Settings::set_setting(count, tmpSettings);
-			printf("%d\n", Settings::values[count]);
-		}
-		count++;
-		current_index++;
-	}
+	
+	// int tmpSettings; 
+	// int count = 0;
+	// int current_index = 2;
+
+	// while(count < 7){
+	// 	string str = "";
+	// 	while(isdigit(buf[current_index])){
+	// 		str.append(1u,buf[current_index]);
+	// 		current_index++;
+	// 	}
+	// 	try{
+	// 		tmpSettings = atol(str.c_str());
+	// 	}
+	// 	catch(int e ){
+	// 		printf("Number is too large\n");
+	// 		tmpSettings = 0;
+	// 	}
+	// 	if(tmpSettings != 0){
+	// 		Settings::set_setting(count, tmpSettings);
+	// 		printf("%d\n", Settings::values[count]);
+	// 	}
+	// 	count++;
+	// 	current_index++;
+	// }
 }
 
 void network_thread(){
@@ -271,7 +269,7 @@ void imgproc_thread(){
 	BackPropagator backprop_G(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT], LAMBDA_GREEN, (float)Settings::values[STG_Z_GREEN]/(float)1000000);
 
 	// Initialize the BeadFinder
-	BeadsFinder beadsFinder(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]);
+	BeadsFinder beadsFinder(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT], (uint8_t)Settings::values[STG_IMGTHRS]);
 
 	// Allocate the memory for the images
 	G.create(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]);
@@ -289,7 +287,6 @@ void imgproc_thread(){
 			usleep(500);
 		}
 
-		mtx.lock();
 		// Make copies of red and green channel
 		auto t_cp_start = std::chrono::system_clock::now();
 		Camera::G.copyTo(G);
@@ -302,18 +299,18 @@ void imgproc_thread(){
 		// process the image
 		// backprop
 		auto t_backprop_start = std::chrono::system_clock::now();
-		backprop_G.backprop(G.devicePtr(), G_backprop.devicePtr());
+		backprop_G.backprop(G, G_backprop);
 		auto t_backprop_end = std::chrono::system_clock::now();
 
 		// Update the image in beadsFinder where the beads are to be searched for
 		auto t_beadsfinder_cp_start = std::chrono::system_clock::now();
 		beadsFinder.updateImage(G_backprop);
 		auto t_beadsfinder_cp_end = std::chrono::system_clock::now();
-		mtx.unlock();
 
 		// find the bads
 		auto t_beadsfinder_start = std::chrono::system_clock::now();
 		beadsFinder.findBeads();
+		bead_count = beadsFinder.copyPositionsTo(bead_positions);
 		auto t_beadsfinder_end = std::chrono::system_clock::now();
 
 
@@ -374,7 +371,6 @@ void display_thread(){
 		while(!Settings::sleeping && Settings::connected){
 			if(Camera::img_processed - last_img_processed > 3){
 				auto start = std::chrono::system_clock::now();
-				mtx.lock();
 				if (Options::show && !Options::saveimgs)
 					G_backprop.copyTo(G_backprop_copy);
 				if (Options::saveimgs) {
@@ -382,8 +378,6 @@ void display_thread(){
 					G.copyTo(G_copy);
 					R.copyTo(R_copy);
 				}
-				mtx.unlock();
-
 				
 				if (Options::saveimgs) {					
 					const cv::Mat G_img(cv::Size(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]), CV_8U, G_copy.hostPtr());
@@ -405,10 +399,18 @@ void display_thread(){
 
 					// Resize the image so that it fits the display
 					cv::cuda::resize(c_img, c_img_resized, cv::Size(800, 800));	
+					
 					// Flip the axis so that the displayed image corresponds to the actual top view on the image sensor
 					cv::cuda::flip(c_img_resized, c_img_flip, 0);
 
 					c_img_flip.download(img_disp);
+
+					// Draw bead positions
+					for(int i = 0; i < bead_count; i++) {
+						uint32_t x = (bead_positions[2*i]*800)/Settings::values[STG_WIDTH];
+						uint32_t y = 800 - (bead_positions[2*i+1]*800)/Settings::values[STG_HEIGHT] - 1;
+						cv::circle(img_disp, cv::Point(x, y), 20, 255);
+					}
 					
 					cv::imshow("Basic Visualization", img_disp);
 					auto end = std::chrono::system_clock::now();
