@@ -16,6 +16,7 @@ public:
 	static bool requested_image;
 	static bool requested_coords;
 
+	static void print();
 	static void set_connected(const bool value);
 	static void set_sleeping(const bool value);
 	static void set_initialized(const bool value);
