@@ -47,10 +47,11 @@ void BeadsFinder::findBeads()
     getLocalMinima<<<numBlocks, BLOCKSIZE>>>(im_width, im_height, (float*)img_filt.data, d_positions, MAX_NUMBER_BEADS, d_pointsCounterPtr, img_threshold);
 
     // Copy back the value of the counter and the array to the CPU memory
-    _mtx.lock();
-    cudaMemcpy(&pointsCounter, d_pointsCounterPtr, sizeof(uint32_t), cudaMemcpyDeviceToHost);
-    cudaMemcpy(&positions, d_positions, 2*MAX_NUMBER_BEADS*sizeof(uint16_t), cudaMemcpyDeviceToHost);
-    _mtx.unlock();
+    {
+        std::lock_guard<std::mutex> l(_mtx);
+        cudaMemcpy(&pointsCounter, d_pointsCounterPtr, sizeof(uint32_t), cudaMemcpyDeviceToHost);
+        cudaMemcpy(&positions, d_positions, 2*MAX_NUMBER_BEADS*sizeof(uint16_t), cudaMemcpyDeviceToHost);
+    }
 
     // std::cout << "Points found: " << pointsCounter << "\n";
     // for(int i = 0; i < pointsCounter; i++) 

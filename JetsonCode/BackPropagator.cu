@@ -24,9 +24,10 @@ BackPropagator::BackPropagator( int m, int n, float lambda, float backprop_dist 
 void BackPropagator::backprop(ImageData<uint8_t>& input, ImageData<uint8_t>& output)
 {
     // Convert the uint8 image to float image 
-    input.mtx.lock();
-    u8ToFloat<<<numBlocks, BLOCKSIZE>>>(M, N, input.devicePtr(), image_float);
-    input.mtx.unlock();
+    {
+        std::lock_guard<std::mutex> l_src(mtx);
+        u8ToFloat<<<numBlocks, BLOCKSIZE>>>(M, N, input.devicePtr(), image_float);
+    }
 
     // Convert the real input image to complex image
     convertToComplex<<<numBlocks, BLOCKSIZE>>>(N*M, image_float, image);
@@ -42,9 +43,10 @@ void BackPropagator::backprop(ImageData<uint8_t>& input, ImageData<uint8_t>& out
 	// Conversion of result matrix to a real float matrix
 	imaginary<<<numBlocks, BLOCKSIZE>>>(M,N, image, image_float);
     // Conversion of result matrix to a real float matrix
-    output.mtx.lock();
-	floatToUInt8<<<numBlocks, BLOCKSIZE>>>(M,N, image_float, output.devicePtr());
-    output.mtx.unlock();
+    {
+        std::lock_guard<std::mutex> l_src(mtx);
+        floatToUInt8<<<numBlocks, BLOCKSIZE>>>(M,N, image_float, output.devicePtr());
+    }
 }
 
 BackPropagator::~BackPropagator() {
