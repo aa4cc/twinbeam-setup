@@ -1,3 +1,8 @@
+/**
+ * @author  Martin Gurtner
+ * @author  Viktor-Adam Koropecky
+ */
+ 
 #include "BackPropagator.h"
 
 BackPropagator::BackPropagator( int m, int n, float lambda, float backprop_dist ) :M{m}, N{n}
@@ -13,7 +18,7 @@ BackPropagator::BackPropagator( int m, int n, float lambda, float backprop_dist 
         numBlocks = (m*n/2 + BLOCKSIZE -1)/BLOCKSIZE;
 
         // Calculating the Hq matrix according to the equations in the original .m file.
-        calculate<<<numBlocks, BLOCKSIZE>>>(N, M, backprop_dist, PIXEL_DX, REFRACTION_INDEX, lambda, Hq);
+        calculateBackPropMatrix<<<numBlocks, BLOCKSIZE>>>(N, M, backprop_dist, PIXEL_DX, REFRACTION_INDEX, lambda, Hq);
     };
 
 void BackPropagator::backprop(ImageData<uint8_t>& input, ImageData<uint8_t>& output)

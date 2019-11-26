@@ -1,3 +1,7 @@
+/**
+ * @author  Martin Gurtner
+ * @author  Viktor-Adam Koropecky
+ */
 #ifndef BACKPROPAGATOR_H
 #define BACKPROPAGATOR_H
 

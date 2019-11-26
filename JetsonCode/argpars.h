@@ -1,3 +1,6 @@
+/**
+ * @author  Martin Gurtner
+ */
 #ifndef ARGPARS_H
 #define ARGPARS_H
 

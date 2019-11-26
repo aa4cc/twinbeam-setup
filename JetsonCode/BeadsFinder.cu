@@ -1,3 +1,7 @@
+/**
+ * @author  Martin Gurtner
+ */
+
 #include "BeadsFinder.h"
 #include <cstddef>
 #include <cstdlib>
@@ -24,15 +28,6 @@ BeadsFinder::BeadsFinder(uint16_t m, uint16_t n, uint8_t img_thrs): im_width{m},
     // Allocates memory for the filtered image. Even thoug the filtered image is created by OpenCV and GpuMat, the memory has to be allocated manually so that the data in GpuMat are stored in a continous manner (withtou gaps after each column).
     cudaMalloc(&img_filt_data, im_width*im_height*sizeof(float));
 
-};
-
-struct is_not_zero
-{
-	__host__ __device__
-	bool operator()(const int x)
-	{
-		return x != 0;
-	}
 };
 
 // uint32_t cnt = 0;

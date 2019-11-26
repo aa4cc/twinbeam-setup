@@ -1,3 +1,7 @@
+/**
+ * @author  Martin Gurtner
+ */
+
 #ifndef BEADSFINDER_H
 #define BEADSFINDER_H
 

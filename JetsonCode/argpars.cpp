@@ -1,3 +1,6 @@
+/**
+ * @author  Martin Gurtner
+ */
 #include "argpars.h"
 
 bool Options::verbose 		= false;

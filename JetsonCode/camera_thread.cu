@@ -1,3 +1,7 @@
+/**
+ * @author  Martin Gurtner
+ * @author  Viktor-Adam Koropecky
+ */
 #include "camera_thread.h"
 #include "Definitions.h"
 #include "Kernels.h"
