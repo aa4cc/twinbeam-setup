@@ -25,7 +25,7 @@ void BackPropagator::backprop(ImageData<uint8_t>& input, ImageData<uint8_t>& out
 {
     // Convert the uint8 image to float image 
     {
-        std::lock_guard<std::mutex> l_src(mtx);
+        std::lock_guard<std::mutex> l_src(input.mtx);
         u8ToFloat<<<numBlocks, BLOCKSIZE>>>(M, N, input.devicePtr(), image_float);
     }
 
@@ -44,7 +44,7 @@ void BackPropagator::backprop(ImageData<uint8_t>& input, ImageData<uint8_t>& out
 	imaginary<<<numBlocks, BLOCKSIZE>>>(M,N, image, image_float);
     // Conversion of result matrix to a real float matrix
     {
-        std::lock_guard<std::mutex> l_src(mtx);
+        std::lock_guard<std::mutex> l_src(output.mtx);
         floatToUInt8<<<numBlocks, BLOCKSIZE>>>(M,N, image_float, output.devicePtr());
     }
 }
