@@ -41,7 +41,7 @@ void BackPropagator::backprop(ImageData<uint8_t>& input, ImageData<uint8_t>& out
 	// Executing inverse FFT
 	cufftExecC2C(fft_plan, image, image, CUFFT_INVERSE);
 	// Conversion of result matrix to a real float matrix
-	imaginary<<<numBlocks, BLOCKSIZE>>>(M,N, image, image_float);
+	absoluteValue<<<numBlocks, BLOCKSIZE>>>(M,N, image, image_float);
     // Conversion of result matrix to a real float matrix
     {
         std::lock_guard<std::mutex> l_src(output.mtx);
