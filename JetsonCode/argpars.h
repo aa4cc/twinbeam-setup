@@ -13,6 +13,7 @@ public:
     static bool debug;
     static bool show;
     static bool saveimgs;
+    static bool saveimgs_bp;
     // static bool savevideos;
     static bool mousekill;
 

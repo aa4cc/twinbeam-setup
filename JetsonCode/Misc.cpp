@@ -2,28 +2,28 @@
 #include "Misc.h"
 #include <iostream>
 
-MESSAGE_TYPE parseMessage(char* buf){
+MessageType parseMessage(char* buf){
 		switch (buf[0]){
 			case 's':
-				return MSG_WAKEUP;
+				return MessageType::WAKEUP;
 			case 'q':
-				return MSG_SLEEP;
+				return MessageType::SLEEP;
 			case 'o':
-				return MSG_SETTINGS;
+				return MessageType::SETTINGS;
 			case 'a':
-				return MSG_HELLO;
+				return MessageType::HELLO;
 			case 'd':
-				return MSG_DISCONNECT;
+				return MessageType::DISCONNECT;
 			case 'r':
-				return MSG_REQUEST;
+				return MessageType::REQUEST;
 			case 'x':
-				return MSG_REQUEST_RAW_G;
+				return MessageType::REQUEST_RAW_G;
 			case 'y':
-				return MSG_REQUEST_RAW_R;
+				return MessageType::REQUEST_RAW_R;
 			case 'g':
-				return MSG_COORDS;
+				return MessageType::COORDS;
 			default:
-				return MSG_UNKNOWN_TYPE;
+				return MessageType::UNKNOWN_TYPE;
 		}
 }
 

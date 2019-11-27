@@ -17,21 +17,21 @@
 #define CONVO_DIM_RED 60
 #define CONVO_DIM_GREEN 160
 
-enum MESSAGE_TYPE{
-	MSG_HELLO,
-	MSG_WAKEUP,
-	MSG_SLEEP,
-	MSG_SETTINGS,
-	MSG_DISCONNECT,
-	MSG_REQUEST, // request on sending the backpropagated image
-	MSG_REQUEST_RAW_G, // request on sending the unprocessed green channel
-	MSG_REQUEST_RAW_R, // request on sending the unprocessed red channel
-	MSG_COORDS,
-	MSG_UNKNOWN_TYPE
+enum class MessageType{
+	HELLO,
+	WAKEUP,
+	SLEEP,
+	SETTINGS,
+	DISCONNECT,
+	REQUEST, // request on sending the backpropagated image
+	REQUEST_RAW_G, // request on sending the unprocessed green channel
+	REQUEST_RAW_R, // request on sending the unprocessed red channel
+	COORDS,
+	UNKNOWN_TYPE
 };
 
 
-enum REQUEST_TYPE{
+enum class RequestType{
 	BACKPROPAGATED,
 	RAW_G,
 	RAW_R
