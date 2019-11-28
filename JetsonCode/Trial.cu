@@ -448,6 +448,7 @@ int main(int argc, char* argv[]){
 	imgproc_thr.join();
 	display_thr.join();
 	datasend_thr.join();
+	keyboard_thr.join();
 
 	return 0;
 }
