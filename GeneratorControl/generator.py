@@ -6,6 +6,7 @@ import time
 import numpy
 import logging
 import itertools
+import struct
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +66,10 @@ class Generator(object):
 
         byte_stream.reverse()
 
-        packet = self.OPEN_CODE + bytes(byte_stream) + self.CLOSE_CODE
+        # compute checksum
+        chcksum = sum(bytes(byte_stream))
+
+        packet = self.OPEN_CODE + bytes(byte_stream) + self.CLOSE_CODE + struct.pack(">H", chcksum)
 
         if self.port:
             self.port.write(packet)
@@ -74,7 +78,9 @@ class Generator(object):
     def find_PLL(self, frequency):
         if(frequency == 300e3):
             return 3*36, 5, 10 # Known value for 300kHz
-        raise ValueError("Settings is only known for 300 kHz");
+        elif(frequency == 40e3):
+            return 36, 5, 25 # Known value for 40kHz
+        raise ValueError("Settings is only known for 300 kHz and 40 kHz");
 
     def set_frequency(self, frequency):
         M, N, C = self.find_PLL(frequency)
