@@ -32,6 +32,7 @@ set(SOURCES
 		BackPropagator.cu
 		BeadsFinder.cu
 		camera_thread.cu
+		CameraController.cu
 		argpars.cpp
 		# Camera.cu
         )
