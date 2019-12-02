@@ -29,6 +29,7 @@
 
 using namespace std;
 
+CameraImgI camI;
 ImageData<uint8_t> G, R, G_backprop;
 uint16_t bead_positions[2*BeadsFinder::MAX_NUMBER_BEADS];
 uint32_t bead_count;
@@ -263,19 +264,19 @@ void imgproc_thread(){
 			auto t_cycle_start = std::chrono::system_clock::now();
 
 			// wait till new image is ready
-			while(Camera::img_produced == Camera::img_processed && !Settings::force_exit) {
+			while(camI.img_produced == camI.img_processed && !Settings::force_exit) {
 				usleep(200);
 			}
 			if(Settings::force_exit) break;
 
 			// Make copies of red and green channel
 			auto t_cp_start = std::chrono::system_clock::now();
-			Camera::G.copyTo(G);
-			Camera::R.copyTo(R);
+			camI.G.copyTo(G);
+			camI.R.copyTo(R);
 			auto t_cp_end = std::chrono::system_clock::now();
 
 			// increase the number of processed images so that the camera starts capturing a new image
-			++Camera::img_processed;
+			++camI.img_processed;
 
 			// process the image
 			// backprop
@@ -351,10 +352,10 @@ void display_thread(){
 		const cv::cuda::GpuMat c_img_flip(cv::Size(800, 800), CV_8U);
 		const cv::Mat img_disp(cv::Size(800, 800), CV_8U);
 
-		uint32_t last_img_processed = Camera::img_processed;
+		uint32_t last_img_processed = camI.img_processed;
 
 		while(!Settings::sleeping && Settings::connected && !Settings::force_exit){
-			if(Camera::img_processed - last_img_processed > 3){
+			if(camI.img_processed - last_img_processed > 3){
 				auto start = std::chrono::system_clock::now();
 				if (Options::show && !Options::saveimgs)
 					G_backprop.copyTo(G_backprop_copy);
@@ -411,7 +412,7 @@ void display_thread(){
 				}				
 
 				img_count++;
-				last_img_processed = Camera::img_processed;
+				last_img_processed = camI.img_processed;
 			}
 			else{
 				usleep(1000);
@@ -437,7 +438,7 @@ int main(int argc, char* argv[]){
 		Settings::set_sleeping(false);
 	}
 
-	thread camera_thr (Camera::camera_thread);
+	thread camera_thr (camera_thread, std::ref(camI));
 	thread imgproc_thr (imgproc_thread);
 	thread display_thr (display_thread);
 	thread network_thr (network_thread);

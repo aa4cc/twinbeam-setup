@@ -7,17 +7,20 @@
 
 #include <stdint.h>
 #include <mutex> 
+#include <atomic>
 #include "ImageData.h"
 
 
-class Camera{
+class CameraImgI{
     public:
-    static ImageData<uint8_t> G;
-    static ImageData<uint8_t> R;
-    static uint32_t img_produced;
-    static uint32_t img_processed;
+    std::atomic<unsigned int> img_produced;
+    std::atomic<unsigned int> img_processed;
+    ImageData<uint8_t> G;
+    ImageData<uint8_t> R;
 
-    static void camera_thread();
+    CameraImgI() : img_produced{0}, img_processed{0} { };
 };
+
+void camera_thread(CameraImgI& CamI);
 
 #endif

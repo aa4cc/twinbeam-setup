@@ -18,17 +18,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define dSTG_WIDTH Settings::values[STG_WIDTH]
-#define dSTG_HEIGHT Settings::values[STG_HEIGHT]
-
 using namespace std;
 using namespace Argus;
 using namespace EGLStream;
-
-ImageData<uint8_t> Camera::G;
-ImageData<uint8_t> Camera::R;
-uint32_t Camera::img_produced 		= 0;
-uint32_t Camera::img_processed 		= 0;
 
 cudaError_t res;
 cudaArray_t yArray;
@@ -105,7 +97,7 @@ __global__ void yuv2bgr(int width, int height, int offset_x, int offset_y,
 // }
 // }
 
-void Camera::camera_thread(){
+void camera_thread(CameraImgI& CamI){
 	printf("INFO: camera_thread: started\n");
 	
 	CameraController camController(0, 1, Options::verbose, Options::debug);
@@ -126,7 +118,7 @@ void Camera::camera_thread(){
 			while(Settings::sleeping && Settings::connected && !Settings::force_exit){}
 			if (Settings::force_exit) break;
 			
-			camController.Start(dSTG_WIDTH, dSTG_HEIGHT,Settings::values[STG_FPS], Settings::values[STG_EXPOSURE], Settings::values[STG_ANALOGGAIN], Settings::values[STG_DIGGAIN]);
+			camController.Start(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT],Settings::values[STG_FPS], Settings::values[STG_EXPOSURE], Settings::values[STG_ANALOGGAIN], Settings::values[STG_DIGGAIN]);
 
 			res = cudaEGLStreamConsumerConnect(&conn, camController.GetEGLStream());
 			if (res != cudaSuccess) {
@@ -134,8 +126,8 @@ void Camera::camera_thread(){
 				// return false;
 			}
 
-			Camera::G.create(dSTG_WIDTH, dSTG_HEIGHT);
-			Camera::R.create(dSTG_WIDTH, dSTG_HEIGHT);
+			CamI.G.create(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]);
+			CamI.R.create(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]);
 			
 			numBlocks = 1024;
 			
@@ -154,8 +146,8 @@ void Camera::camera_thread(){
 			//CUDA initialization
 			//Main loop
 
-			Camera::img_produced = 0;
-			Camera::img_processed = 0;
+			CamI.img_produced = 0;
+			CamI.img_processed = 0;
 			while(!Settings::initialized && Settings::connected && !Settings::force_exit){}
 			if (Settings::force_exit) break;
 
@@ -177,17 +169,17 @@ void Camera::camera_thread(){
 
 				numBlocks = (Settings::get_area()/2 +BLOCKSIZE -1)/BLOCKSIZE;
 				
-				Camera::G.mtx.lock();
-				Camera::R.mtx.lock();
-				yuv2bgr<<<numBlocks, BLOCKSIZE>>>(dSTG_WIDTH, dSTG_HEIGHT,
-												Settings::values[STG_OFFSET_X], Settings::values[STG_OFFSET_Y], Camera::G.devicePtr(), Camera::R.devicePtr());
-				Camera::G.mtx.unlock();
-				Camera::R.mtx.unlock();
+				CamI.G.mtx.lock();
+				CamI.R.mtx.lock();
+				yuv2bgr<<<numBlocks, BLOCKSIZE>>>(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT],
+												Settings::values[STG_OFFSET_X], Settings::values[STG_OFFSET_Y], CamI.G.devicePtr(), CamI.R.devicePtr());
+				CamI.G.mtx.unlock();
+				CamI.R.mtx.unlock();
 
-				++Camera::img_produced;
-				// printf("Produced: %d\t, processed: %d\t\n", Camera::img_produced, Camera::img_processed);
+				++CamI.img_produced;
+				// printf("Produced: %d\t, processed: %d\t\n", CamI.img_produced, CamI.img_processed);
 				// Wait until the image is processed
-				while(Camera::img_produced != Camera::img_processed && !Settings::force_exit) {
+				while(CamI.img_produced != CamI.img_processed && !Settings::force_exit) {
 					usleep(500);
 				}
 
@@ -199,8 +191,8 @@ void Camera::camera_thread(){
 
 			camController.Stop();
 			
-			Camera::G.release();
-			Camera::R.release();
+			CamI.G.release();
+			CamI.R.release();
 			
 			cudaEGLStreamConsumerDisconnect(&conn);
 		}
