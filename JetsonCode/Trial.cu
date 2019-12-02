@@ -349,7 +349,6 @@ void display_thread(){
 		if (Settings::force_exit) break; 
 
 		const cv::cuda::GpuMat c_img_resized(cv::Size(800, 800), CV_8U);
-		const cv::cuda::GpuMat c_img_flip(cv::Size(800, 800), CV_8U);
 		const cv::Mat img_disp(cv::Size(800, 800), CV_8U);
 
 		uint32_t last_img_processed = camI.img_processed;
@@ -386,16 +385,13 @@ void display_thread(){
 					// Resize the image so that it fits the display
 					cv::cuda::resize(c_img, c_img_resized, cv::Size(800, 800));	
 					
-					// Flip the axis so that the displayed image corresponds to the actual top view on the image sensor
-					cv::cuda::flip(c_img_resized, c_img_flip, 0);
-
-					c_img_flip.download(img_disp);
+					c_img_resized.download(img_disp);
 
 					// Draw bead positions
 					mtx_bp.lock();
 					for(int i = 0; i < bead_count; i++) {
 						uint32_t x = (bead_positions[2*i]*800)/Settings::values[STG_WIDTH];
-						uint32_t y = 800 - (bead_positions[2*i+1]*800)/Settings::values[STG_HEIGHT] - 1;
+						uint32_t y = (bead_positions[2*i+1]*800)/Settings::values[STG_HEIGHT];
 						cv::circle(img_disp, cv::Point(x, y), 20, 255);
 					}
 					mtx_bp.unlock();
