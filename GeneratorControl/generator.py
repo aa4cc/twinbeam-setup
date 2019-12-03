@@ -21,7 +21,7 @@ def binary(x, lenght):
     out = [int(i) for i in bin(x)[2:]]
     if len(out) > lenght:
         print("Unable to convert",x,"to binary of len", lenght,"- result is instead",len(out),"bits long.")
-        print("The problematic result was",out);
+        print("The problematic result was",out)
         print("Quiting.")
         sys.exit()
     while len(out) < lenght:
@@ -35,7 +35,7 @@ class Generator(object):
     OPEN_CODE_FREQ  = bytes((255,255,242))
     CLOSE_CODE_FREQ = bytes((255,255,243))
 
-    OSC_FREQUENCY = 50e6;
+    OSC_FREQUENCY = 50e6
 
     """docstring for Generator"""
     def __init__(self, port= None):
@@ -50,8 +50,8 @@ class Generator(object):
             phases = phases + [0 for x in range(64-len(phases))]
             dutys = dutys + [0 for x in range(64-len(dutys))]
 
-        phases.reverse();
-        dutys.reverse();
+        phases.reverse()
+        dutys.reverse()
 
         phases_converted = map(lambda x: in_range(x, 0, 360), phases)
         dutys_converted = map(lambda x: int(in_range(x, 0, 1)*360), dutys)
@@ -61,7 +61,7 @@ class Generator(object):
         bit_stream = "".join("{0:09b}".format(x) for x in stream)
 
         # slit by 8 bits and convert to bytes
-        assert(len(bit_stream)%8 == 0);
+        assert(len(bit_stream)%8 == 0)
         byte_stream = [int(bit_stream[8*i:8*(i+1)], 2) for i in range(len(bit_stream)//8)]
 
         byte_stream.reverse()
