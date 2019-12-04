@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <iostream>
 #include <fstream>
+#include <csignal>
 #include <chrono>
 #include <opencv2/opencv.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -46,29 +47,19 @@ void keyboard_thread(){
 	printf("INFO: keyboard_thread: started\n");
 
 	char input;
-	while(!Settings::force_exit){
+	while(!Settings::appStateIs(AppState::EXITING)){
 		input = getchar();
 		if(input == 's'){
-			printf("INFO: Putting the process to sleep.\n");
-			Settings::set_sleeping(true);
-			Settings::set_initialized(false);
-		}
-		else if(input == 'c'){
-			printf("INFO: Simulating connection to main computation unit.\n");
-			Settings::set_connected(true);
+			printf("INFO: Stop capturing the images from keyboard.\n");
+			Settings::stopTheApp();
 		}
 		else if(input == 'w'){
-			printf("INFO: Starting the program from keyboard.\n");
-			Settings::set_initialized(true);
-			Settings::set_sleeping(false);
-		}
-		else if(input == 'd'){
-			Settings::set_connected(false);
-			Settings::set_sleeping(true);
-			Settings::set_initialized(false);
+			printf("INFO: Starting capturing the images rom keyboard.\n");
+			Settings::startTheApp();
 		}
 		else if(input == 'e'){
-			Settings::set_force_exit(true);
+			printf("INFO: Exiting the program from keyboard.\n");
+			Settings::exitTheApp();
 		}		
 	}
 
@@ -88,35 +79,50 @@ void network_thread(){
 	
 	mainSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if(mainSocket == -1)
-		printf("ERROR: Couldn't create socket!\n");
+		fprintf(stderr, "ERROR: Couldn't create socket!\n");
 	sockName.sin_family = AF_INET;
 	sockName.sin_port =	htons(PORT);
-	sockName.sin_addr.s_addr = INADDR_ANY;
+	// sockName.sin_addr.s_addr = INADDR_ANY;
+	sockName.sin_addr.s_addr = inet_addr("147.32.86.177");
 
+	// Allow reusing the port
 	int yes = 1;
 	if ( setsockopt(mainSocket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1 )
 	{
-	    perror("setsockopt");
+		fprintf(stderr, "Setsocket failed!\n");
+		Settings::exitTheApp;
+		return;
 	}
+	
+	// Set the time for the rev() to 1 second
+	struct timeval tv;
+	tv.tv_sec = 1;
+	tv.tv_usec = 0;
+	if ( setsockopt(mainSocket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv) == -1 )
+	{
+		fprintf(stderr, "Setsocket failed!\n");
+		Settings::exitTheApp;
+		return;
+	}	
 
 	bind(mainSocket, (sockaddr*)&sockName, sizeof(sockName));
+
 	listen(mainSocket, 10000000);
-	while(!Settings::force_exit){
+	while(!Settings::appStateIs(AppState::EXITING)){
 		
 		addrlen = sizeof(clientInfo);
 		client = accept(mainSocket, (sockaddr*)&clientInfo, &addrlen);
-		cout << "INFO: Got a connection from " << inet_ntoa((in_addr)clientInfo.sin_addr) << endl;
-		if (client != -1)
-		 {
-			 Settings::set_connected(true);
-		 }
+		if (client == -1) continue;
 
-		while(Settings::connected && !Settings::force_exit){
+		Settings::set_connected(true);
+		cout << "INFO: Got a connection from " << inet_ntoa((in_addr)clientInfo.sin_addr) << endl;
+
+		while(Settings::connected && !Settings::appStateIs(AppState::EXITING)){
 			int msg_len = recv(client, buf, BUFSIZE - 1, 0);
 
 			if (msg_len == -1)
 			{
-				printf("ERROR: Did not properly receive data.\n");
+				continue;
 			}
 
 			if(Options::debug)
@@ -124,21 +130,19 @@ void network_thread(){
 
 			response = parseMessage(buf);
 			switch(response){
-				case MessageType::WAKEUP:
+				case MessageType::START:
 				{
-					Settings::set_sleeping(false);
-					Settings::set_initialized(true);
+					Settings::startTheApp();
 					break;
 				}
-				case MessageType::SLEEP:
+				case MessageType::STOP:
 				{
-					Settings::set_sleeping(true);
-					Settings::set_initialized(false);
+					Settings::stopTheApp();
 					break;
 				}
 				case MessageType::SETTINGS:
 				{
-					if(!Settings::sleeping)
+					if(Settings::appStateIs(AppState::RUNNING) || Settings::appStateIs(AppState::INITIALIZING))
 						printf("WARN: Can't change settings while the loop is running\n");
 					else{
 						memcpy(Settings::values, buf+1, sizeof(uint32_t)*STG_NUMBER_OF_SETTINGS);
@@ -150,8 +154,6 @@ void network_thread(){
 				case MessageType::DISCONNECT:
 				{
 					Settings::set_connected(false);
-					Settings::set_sleeping(true);
-					Settings::set_initialized(false);
 					break;
 				}
 				case MessageType::REQUEST:
@@ -190,7 +192,7 @@ void mouseEventCallback(int event, int x, int y, int flags, void* userdata)
      {
      	if(Options::debug)
         	cout << "DEBUG: Mouse move over the window - position (" << x << ", " << y << ")" << endl;
-        Settings::set_force_exit(true);
+        Settings::exitTheApp;
      }
 }
 
@@ -198,11 +200,8 @@ void datasend_thread(){
 	printf("INFO: datasend_thread: started\n");
 	uint8_t coords_buffer[BeadsFinder::MAX_NUMBER_BEADS+sizeof(uint32_t)];
 
-	while(!Settings::force_exit){
-		while(Settings::sleeping && !Settings::force_exit){}
-		if (Settings::force_exit) break;
-
-		while(Settings::connected && !Settings::sleeping && !Settings::force_exit){
+	while(!Settings::appStateIs(AppState::EXITING)){
+		while(Settings::appStateIs(AppState::RUNNING) && Settings::connected) {
 			if(Settings::requested_image){
 				ImageData<uint8_t> temp_img(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]);
 
@@ -236,6 +235,7 @@ void datasend_thread(){
 				Settings::set_sent_coords(true);
 			}
 		}
+		usleep(100);
 	}
 
 	printf("INFO: datasend_thread: ended\n");
@@ -244,10 +244,12 @@ void datasend_thread(){
 void imgproc_thread(){
 	printf("INFO: imgproc_thread: started\n");
 	
-	while(!Settings::force_exit) {
-		// Wait till the host computer connects and starts processing the images
-		while(Settings::sleeping && Settings::connected && !Settings::force_exit){}
-		if (Settings::force_exit) break;
+	while(!Settings::appStateIs(AppState::EXITING)) {
+		if(Options::debug) printf("INFO: imgproc_thread: waiting for entering the INITIALIZING state\n");
+		// Wait till the app enters the INITIALIZING state. If this fails (which could happen only in case of entering the EXITING state), break the loop.
+		if(!Settings::waitTillState(AppState::INITIALIZING)) break;
+
+		// At this point, the app is in the AppState::INITIALIZING state, thus we initialize all needed stuff
 
 		// Initialize the BackPropagator for the green image
 		BackPropagator backprop_G(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT], LAMBDA_GREEN, (float)Settings::values[STG_Z_GREEN]/1000000.0f);
@@ -260,14 +262,26 @@ void imgproc_thread(){
 		R.create(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]);
 		G_backprop.create(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]);
 
-		while(Settings::connected && !Settings::sleeping && !Settings::force_exit){
+		// Set the flag indicating that the camera was initialized
+		Settings::imgproc_is_initialized = true;
+
+		
+		if(Options::debug) printf("INFO: imgproc_thread: waiting till other App components are initialized\n");
+
+		// Wait till all the components of the App are initialized. If this fails, break the loop.
+		if(!Settings::waitTillAppIsInitialized()) break;
+
+		// At this point, the app is in the AppState::RUNNING state as the App enters RUNNING state automatically when all components are initialized.
+		if(Options::debug) printf("INFO: imgproc_thread: entering the running stage\n");
+
+		while(Settings::appStateIs(AppState::RUNNING)) {
 			auto t_cycle_start = std::chrono::system_clock::now();
 
-			// wait till new image is ready
-			while(camI.img_produced == camI.img_processed && !Settings::force_exit) {
-				usleep(200);
-			}
-			if(Settings::force_exit) break;
+			// wait till a new image is ready
+			while(camI.img_produced == camI.img_processed && Settings::appStateIs(AppState::RUNNING)) usleep(200);
+			
+			// If the app entered the EXITING state, break the loop and finish the thread
+			if(Settings::appStateIs(AppState::EXITING)) break;
 
 			// Make copies of red and green channel
 			auto t_cp_start = std::chrono::system_clock::now();
@@ -316,6 +330,8 @@ void imgproc_thread(){
 				std::cout << "| #points: " << bead_count << std::endl;
 			}
 		}
+
+		Settings::imgproc_is_initialized = false;
 	}
 	
 	printf("INFO: imgproc_thread: ended\n");
@@ -327,9 +343,10 @@ void display_thread(){
 	char ret_key;
 	char filename [50];
 
-	while(!Settings::force_exit){
-		while(Settings::sleeping && Settings::connected && !Settings::force_exit){}
-		if (Settings::force_exit) break;
+	while(!Settings::appStateIs(AppState::EXITING)){
+		if(Options::debug) printf("INFO: display_thread: waiting for entering the INITIALIZING state\n");
+		// Wait till the app enters the INITIALIZING state. If this fails (which could happen only in case of entering the EXITING state), break the loop.
+		if(!Settings::waitTillState(AppState::INITIALIZING)) break;
 
 		// Allocate the memory
 		ImageData<uint8_t> G_backprop_copy(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]);
@@ -344,16 +361,23 @@ void display_thread(){
 				cv::setMouseCallback("Basic Visualization", mouseEventCallback, NULL);
 			}
 		}
-
-		while(!Settings::initialized && Settings::connected && !Settings::force_exit){}
-		if (Settings::force_exit) break; 
-
+		
 		const cv::cuda::GpuMat c_img_resized(cv::Size(800, 800), CV_8U);
 		const cv::Mat img_disp(cv::Size(800, 800), CV_8U);
+		
+		Settings::display_is_initialized = true;
+		
+		if(Options::debug) printf("INFO: display_thread: waiting till other App components are initialized\n");
+
+		// Wait till all the components of the App are initialized. If this fails, break the loop.
+		if(!Settings::waitTillAppIsInitialized()) break;
+		
+		// At this point, the app is in the AppState::RUNNING state.
+		if(Options::debug) printf("INFO: display_thread: entering the running stage\n");
 
 		uint32_t last_img_processed = camI.img_processed;
 
-		while(!Settings::sleeping && Settings::connected && !Settings::force_exit){
+		while(Settings::appStateIs(AppState::RUNNING)) {
 			if(camI.img_processed - last_img_processed > 3){
 				auto start = std::chrono::system_clock::now();
 				if (Options::show && !Options::saveimgs)
@@ -404,8 +428,8 @@ void display_thread(){
 					}
 	
 					ret_key = (char) cv::waitKey(1);
-					if (ret_key == 27 || ret_key == 'x') Settings::set_force_exit(true);  // exit the app if `esc' or 'x' key was pressed.					
-				}				
+					if (ret_key == 27 || ret_key == 'x') Settings::exitTheApp;  // exit the app if `esc' or 'x' key was pressed.					
+				}
 
 				img_count++;
 				last_img_processed = camI.img_processed;
@@ -414,6 +438,8 @@ void display_thread(){
 				usleep(1000);
 			}
 		}
+
+		Settings::display_is_initialized = false;
 	}
 
 	printf("INFO: display_thread: ended\n");
@@ -422,6 +448,9 @@ void display_thread(){
 
 int main(int argc, char* argv[]){
 	Options::parse(argc, argv);
+
+	// register signal SIGINT and signal handler  
+	signal(SIGINT, [](int value) { Settings::exitTheApp(); });
 	
 	if(Options::debug){
 		printf("DEBUG: Initial settings:");
@@ -429,9 +458,7 @@ int main(int argc, char* argv[]){
 	}
 
 	if (Options::show) {
-		Settings::set_initialized(true);
-		Settings::set_connected(true);
-		Settings::set_sleeping(false);
+		Settings::appStateSet(AppState::INITIALIZING);
 	}
 
 	thread camera_thr (camera_thread, std::ref(camI));
@@ -444,6 +471,7 @@ int main(int argc, char* argv[]){
 	camera_thr.join();
 	imgproc_thr.join();
 	display_thr.join();
+	network_thr.join();
 	datasend_thr.join();
 	keyboard_thr.join();
 

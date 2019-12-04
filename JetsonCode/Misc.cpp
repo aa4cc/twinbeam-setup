@@ -5,9 +5,9 @@
 MessageType parseMessage(char* buf){
 		switch (buf[0]){
 			case 's':
-				return MessageType::WAKEUP;
+				return MessageType::START;
 			case 'q':
-				return MessageType::SLEEP;
+				return MessageType::STOP;
 			case 'o':
 				return MessageType::SETTINGS;
 			case 'a':

@@ -103,7 +103,10 @@ void camera_thread(CameraImgI& CamI){
 	printf("INFO: camera_thread: started\n");
 	
 	CameraController camController(0, 1, Options::verbose, Options::debug);
-	camController.Initialize();
+	if(!camController.Initialize()) {
+		fprintf(stderr, "ERROR: Unable to initialize the camer!\n");
+		Settings::exitTheApp();
+	}
 	
 	//CUDA variable declarations
 
@@ -115,89 +118,110 @@ void camera_thread(CameraImgI& CamI){
 	cudaChannelFormatDesc yChannelDesc;
 	cudaChannelFormatDesc uvChannelDesc;
 	
-	while(!Settings::force_exit){
-		while(Settings::connected && !Settings::force_exit){
-			while(Settings::sleeping && Settings::connected && !Settings::force_exit){}
-			if (Settings::force_exit) break;
-			
-			camController.Start(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT],Settings::values[STG_FPS], Settings::values[STG_EXPOSURE], Settings::values[STG_ANALOGGAIN], Settings::values[STG_DIGGAIN]);
+	while(!Settings::appStateIs(AppState::EXITING)){
+		if(Options::debug) printf("INFO: camera_thread: waiting for entering the INITIALIZING state\n");
 
-			res = cudaEGLStreamConsumerConnect(&conn, camController.GetEGLStream());
-			if (res != cudaSuccess) {
-				fprintf(stderr, "ERROR: Unable to connect CUDA to EGLStream as a consumer\n");
-				// return false;
-			}
+		// Wait till the app enters the INITIALIZING state. If this fails (which could happen only in case of entering the EXITING state), break the loop.
+		if(!Settings::waitTillState(AppState::INITIALIZING)) break;
 
-			CamI.G.create(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]);
-			CamI.R.create(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]);
-			
-			numBlocks = 1024;
-			
-			yTexRef.normalized = 0;
-			yTexRef.filterMode = cudaFilterModePoint;
-			yTexRef.addressMode[0] = cudaAddressModeClamp;
-			yTexRef.addressMode[1] = cudaAddressModeClamp;
-			cudaGetTextureReference(&yTex, &yTexRef);
-			
-			uvTexRef.normalized = 0;
-			uvTexRef.filterMode = cudaFilterModePoint;
-			uvTexRef.addressMode[0] = cudaAddressModeClamp;
-			uvTexRef.addressMode[1] = cudaAddressModeClamp;
-			cudaGetTextureReference(&uvTex, &uvTexRef);
-			
-			//CUDA initialization
-			//Main loop
-
-			CamI.img_produced = 0;
-			CamI.img_processed = 0;
-			while(!Settings::initialized && Settings::connected && !Settings::force_exit){}
-			if (Settings::force_exit) break;
-
-			while(!Settings::sleeping && Settings::connected && ! Settings::force_exit){
-				camController.NewFrameRequest();
-
-				res = cudaEGLStreamConsumerAcquireFrame(&conn, &resource, 0, 5000);
-				if(res != cudaSuccess){
-					continue;
-				}
-				cudaGraphicsResourceGetMappedEglFrame(&eglFrame, resource, 0, 0);
-				yArray = eglFrame.frame.pArray[0];
-				uvArray = eglFrame.frame.pArray[1];
-				
-				cudaGetChannelDesc(&yChannelDesc, (cudaArray_const_t)(yArray));
-				cudaBindTextureToArray(yTex, (cudaArray_const_t)(yArray), &yChannelDesc);
-				cudaGetChannelDesc(&uvChannelDesc, (cudaArray_const_t)(uvArray));
-				cudaBindTextureToArray(uvTex, (cudaArray_const_t)(uvArray), &uvChannelDesc);
-
-				numBlocks = (Settings::get_area()/2 +BLOCKSIZE -1)/BLOCKSIZE;
-				
-				CamI.G.mtx.lock();
-				CamI.R.mtx.lock();
-				yuv2bgr<<<numBlocks, BLOCKSIZE>>>(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT],
-												Settings::values[STG_OFFSET_X], Settings::values[STG_OFFSET_Y], CamI.G.devicePtr(), CamI.R.devicePtr());
-				CamI.G.mtx.unlock();
-				CamI.R.mtx.unlock();
-
-				++CamI.img_produced;
-				// printf("Produced: %d\t, processed: %d\t\n", CamI.img_produced, CamI.img_processed);
-				// Wait until the image is processed
-				while(CamI.img_produced != CamI.img_processed && !Settings::force_exit) {
-					usleep(500);
-				}
-
-				cudaUnbindTexture(yTex);
-				cudaUnbindTexture(uvTex);
-				
-				cudaEGLStreamConsumerReleaseFrame(&conn, resource, 0);
-			}
-
-			camController.Stop();
-			
-			CamI.G.release();
-			CamI.R.release();
-			
-			cudaEGLStreamConsumerDisconnect(&conn);
+		// The app is in the INITIALIZING state
+		// Initialize the camera
+		if(!camController.Start(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT],Settings::values[STG_FPS], Settings::values[STG_EXPOSURE], Settings::values[STG_ANALOGGAIN], Settings::values[STG_DIGGAIN])) {
+			fprintf(stderr, "ERROR: Unable to start capturing the images from the camera\n");
+			Settings::exitTheApp();
+			break;				
 		}
+
+		res = cudaEGLStreamConsumerConnect(&conn, camController.GetEGLStream());
+		if (res != cudaSuccess) {
+			fprintf(stderr, "ERROR: Unable to connect CUDA to EGLStream as a consumer\n");
+			Settings::exitTheApp();
+			break;
+		}
+
+		CamI.G.create(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]);
+		CamI.R.create(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]);
+		
+		numBlocks = 1024;
+		
+		yTexRef.normalized = 0;
+		yTexRef.filterMode = cudaFilterModePoint;
+		yTexRef.addressMode[0] = cudaAddressModeClamp;
+		yTexRef.addressMode[1] = cudaAddressModeClamp;
+		cudaGetTextureReference(&yTex, &yTexRef);
+		
+		uvTexRef.normalized = 0;
+		uvTexRef.filterMode = cudaFilterModePoint;
+		uvTexRef.addressMode[0] = cudaAddressModeClamp;
+		uvTexRef.addressMode[1] = cudaAddressModeClamp;
+		cudaGetTextureReference(&uvTex, &uvTexRef);
+		
+		// Set the flag indicating that the camera was initialized
+		Settings::camera_is_initialized = true;
+
+		CamI.img_produced = 0;
+		CamI.img_processed = 0;
+
+		if(Options::debug) printf("INFO: camera_thread: waiting till other App components are initialized\n");
+
+		// Wait till all the components of the App are initialized. If this fails, break the loop.
+		if(!Settings::waitTillAppIsInitialized()) break;
+
+		// At this point, the app is in the AppState::RUNNING state.
+		if(Options::debug) printf("INFO: camera_thread: entering the running stage\n");
+
+		// Capture the images for as long as the App remains in the RUNNING state
+		while(Settings::appStateIs(AppState::RUNNING)){
+			camController.NewFrameRequest();
+
+			res = cudaEGLStreamConsumerAcquireFrame(&conn, &resource, 0, 5000);
+			if(res != cudaSuccess){
+				continue;
+			}
+			cudaGraphicsResourceGetMappedEglFrame(&eglFrame, resource, 0, 0);
+			yArray = eglFrame.frame.pArray[0];
+			uvArray = eglFrame.frame.pArray[1];
+			
+			cudaGetChannelDesc(&yChannelDesc, (cudaArray_const_t)(yArray));
+			cudaBindTextureToArray(yTex, (cudaArray_const_t)(yArray), &yChannelDesc);
+			cudaGetChannelDesc(&uvChannelDesc, (cudaArray_const_t)(uvArray));
+			cudaBindTextureToArray(uvTex, (cudaArray_const_t)(uvArray), &uvChannelDesc);
+
+			numBlocks = (Settings::get_area()/2 +BLOCKSIZE -1)/BLOCKSIZE;
+			
+			CamI.G.mtx.lock();
+			CamI.R.mtx.lock();
+			yuv2bgr<<<numBlocks, BLOCKSIZE>>>(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT],
+											Settings::values[STG_OFFSET_X], Settings::values[STG_OFFSET_Y], CamI.G.devicePtr(), CamI.R.devicePtr());
+			CamI.G.mtx.unlock();
+			CamI.R.mtx.unlock();
+
+			++CamI.img_produced;
+			// printf("Produced: %d\t, processed: %d\t\n", CamI.img_produced, CamI.img_processed);
+			// Wait until the image is processed
+			while(CamI.img_produced != CamI.img_processed && !Settings::appStateIs(AppState::EXITING)) {
+				usleep(100);
+			}
+
+			cudaUnbindTexture(yTex);
+			cudaUnbindTexture(uvTex);
+			
+			cudaEGLStreamConsumerReleaseFrame(&conn, resource, 0);
+		}
+
+		// Deinitialize the camera
+		if(!camController.Stop()) {
+			fprintf(stderr, "ERROR: Unable to stop capturing the images by the camera!\n");
+			Settings::exitTheApp();
+		}			
+		
+		CamI.G.release();
+		CamI.R.release();
+		
+		cudaEGLStreamConsumerDisconnect(&conn);
+
+		// Set the flag indicating that the camera was initialized
+		Settings::camera_is_initialized = false;		
 	}
 
 	printf("INFO: camera_thread: ended\n");

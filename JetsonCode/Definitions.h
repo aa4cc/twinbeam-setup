@@ -19,8 +19,8 @@
 
 enum class MessageType{
 	HELLO,
-	WAKEUP,
-	SLEEP,
+	START,
+	STOP,
 	SETTINGS,
 	DISCONNECT,
 	REQUEST, // request on sending the backpropagated image
@@ -51,5 +51,19 @@ enum SETTINGS_TYPE{
 	STG_IMGTHRS,
 	STG_NUMBER_OF_SETTINGS
 };
+
+enum class AppState{
+	IDLING,
+	INITIALIZING,
+	RUNNING,
+	EXITING
+};
+
+/* Application state description
+ * IDLING 			- The application waits till a start() command is called.
+ * INITIALIZING 	- The camera and possibly other part are being initialized. When all parts are initialized, the app continutes to the RUNNING state.
+ * RUNNING			- The images are captured and processed.
+ * EXITING			- All the parts are deinitialized and then the app exits.
+ */
 
 #endif
