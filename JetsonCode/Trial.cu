@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <iostream>
 #include <fstream>
-#include <csignal>
+#include <signal.h>
 #include <chrono>
 #include <opencv2/opencv.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -46,7 +46,7 @@ std::chrono::duration<double> elapsed_seconds_average;
 void keyboard_thread(){
 	printf("INFO: keyboard_thread: started\n");
 
-	char input;
+	int input;
 	while(!Settings::appStateIs(AppState::EXITING)){
 		input = getchar();
 		if(input == 's'){
@@ -57,10 +57,10 @@ void keyboard_thread(){
 			printf("INFO: Starting capturing the images rom keyboard.\n");
 			Settings::startTheApp();
 		}
-		else if(input == 'e'){
+		else if(input == 'e' || input == -1){
 			printf("INFO: Exiting the program from keyboard.\n");
 			Settings::exitTheApp();
-		}		
+		}
 	}
 
 	printf("INFO: keyboard_thread: ended\n");
@@ -90,7 +90,7 @@ void network_thread(){
 	if ( setsockopt(mainSocket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1 )
 	{
 		fprintf(stderr, "Setsocket failed!\n");
-		Settings::exitTheApp;
+		Settings::exitTheApp();
 		return;
 	}
 	
@@ -101,7 +101,7 @@ void network_thread(){
 	if ( setsockopt(mainSocket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv) == -1 )
 	{
 		fprintf(stderr, "Setsocket failed!\n");
-		Settings::exitTheApp;
+		Settings::exitTheApp();
 		return;
 	}	
 
@@ -192,7 +192,7 @@ void mouseEventCallback(int event, int x, int y, int flags, void* userdata)
      {
      	if(Options::debug)
         	cout << "DEBUG: Mouse move over the window - position (" << x << ", " << y << ")" << endl;
-        Settings::exitTheApp;
+        Settings::exitTheApp();
      }
 }
 
@@ -428,7 +428,7 @@ void display_thread(){
 					}
 	
 					ret_key = (char) cv::waitKey(1);
-					if (ret_key == 27 || ret_key == 'x') Settings::exitTheApp;  // exit the app if `esc' or 'x' key was pressed.					
+					if (ret_key == 27 || ret_key == 'x') Settings::exitTheApp();  // exit the app if `esc' or 'x' key was pressed.					
 				}
 
 				img_count++;
@@ -438,7 +438,8 @@ void display_thread(){
 				usleep(1000);
 			}
 		}
-
+		// Close the windows
+		cv::destroyWindow("Basic Visualization");
 		Settings::display_is_initialized = false;
 	}
 
@@ -449,8 +450,13 @@ void display_thread(){
 int main(int argc, char* argv[]){
 	Options::parse(argc, argv);
 
-	// register signal SIGINT and signal handler  
-	signal(SIGINT, [](int value) { Settings::exitTheApp(); });
+	// register signal SIGINT and SIGTERM signal handler  
+	struct sigaction sa;
+    memset(&sa, 0, sizeof(struct sigaction));
+    sa.sa_handler = [](int value) { Settings::exitTheApp(); };
+    sa.sa_flags = 0;// not SA_RESTART!;
+    sigaction(SIGINT, &sa, NULL);
+    sigaction(SIGTERM, &sa, NULL);
 	
 	if(Options::debug){
 		printf("DEBUG: Initial settings:");
