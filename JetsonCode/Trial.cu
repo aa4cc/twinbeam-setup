@@ -217,7 +217,7 @@ void datasend_thread(){
 						break;
 				}	
 
-				send(client, temp_img.hostPtr(), sizeof(uint8_t)*Settings::get_area(), 0);
+				send(client, temp_img.hostPtr(true), sizeof(uint8_t)*Settings::get_area(), 0);
 				printf("INFO: Image sent.\n");
 				Settings::set_requested_image(false);
 			}
@@ -389,9 +389,9 @@ void display_thread(){
 				}
 				
 				if (Options::saveimgs) {					
-					const cv::Mat G_img(cv::Size(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]), CV_8U, G_copy.hostPtr());
-					const cv::Mat R_img(cv::Size(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]), CV_8U, R_copy.hostPtr());
-					const cv::Mat G_backprop_img(cv::Size(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]), CV_8U, G_backprop_copy.hostPtr());
+					const cv::Mat G_img(cv::Size(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]), CV_8U, G_copy.hostPtr(true));
+					const cv::Mat R_img(cv::Size(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]), CV_8U, R_copy.hostPtr(true));
+					const cv::Mat G_backprop_img(cv::Size(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]), CV_8U, G_backprop_copy.hostPtr(true));
 					
 					sprintf (filename, "./imgs/G_%05d.png", img_count);
 					cv::imwrite( filename, G_img );
