@@ -1,3 +1,7 @@
+/**
+ * @author  Martin Gurtner
+ * @author  Viktor-Adam Koropecky
+ */
 #ifndef CAMERA_THREAD_H
 #define CAMERA_THREAD_H
 

@@ -4,7 +4,7 @@
 
 using namespace std;
 //width, height
-int Settings::values[] = {1200, 1200, 1352, 596, 5000000, 100, 1, 3100, 2750, 30, 80};
+int Settings::values[] = {1200, 1200, 1352, 596, 5000000, 100, 1, 3100, 2400, 30, 80};
 
 bool Settings::connected = false;
 bool Settings::sleeping = true;
@@ -12,7 +12,7 @@ bool Settings::initialized = false;
 bool Settings::force_exit = false;
 bool Settings::sent_coords = false;
 bool Settings::requested_coords = false;
-REQUEST_TYPE Settings::requested_type = BACKPROPAGATED;
+RequestType Settings::requested_type = RequestType::BACKPROPAGATED;
 bool Settings::requested_image = false;
 
 void Settings::print(){
@@ -41,7 +41,7 @@ void Settings::set_sent_coords(const bool value){
 	Settings::sent_coords = value;
 }
 
-void Settings::set_requested_type(const REQUEST_TYPE value){
+void Settings::set_requested_type(const RequestType value){
 	Settings::requested_type = value;
 }
 

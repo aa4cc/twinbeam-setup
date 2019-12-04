@@ -1,3 +1,8 @@
+/**
+ * @author  Martin Gurtner
+ * @author  Viktor-Adam Koropecky
+ */
+ 
 #include "BackPropagator.h"
 
 BackPropagator::BackPropagator( int m, int n, float lambda, float backprop_dist ) :M{m}, N{n}
@@ -13,15 +18,16 @@ BackPropagator::BackPropagator( int m, int n, float lambda, float backprop_dist 
         numBlocks = (m*n/2 + BLOCKSIZE -1)/BLOCKSIZE;
 
         // Calculating the Hq matrix according to the equations in the original .m file.
-        calculate<<<numBlocks, BLOCKSIZE>>>(N, M, backprop_dist, PIXEL_DX, REFRACTION_INDEX, lambda, Hq);
+        calculateBackPropMatrix<<<numBlocks, BLOCKSIZE>>>(N, M, backprop_dist, PIXEL_DX, REFRACTION_INDEX, lambda, Hq);
     };
 
 void BackPropagator::backprop(ImageData<uint8_t>& input, ImageData<uint8_t>& output)
 {
     // Convert the uint8 image to float image 
-    input.mtx.lock();
-    u8ToFloat<<<numBlocks, BLOCKSIZE>>>(M, N, input.devicePtr(), image_float);
-    input.mtx.unlock();
+    {
+        std::lock_guard<std::mutex> l_src(input.mtx);
+        u8ToFloat<<<numBlocks, BLOCKSIZE>>>(M, N, input.devicePtr(), image_float);
+    }
 
     // Convert the real input image to complex image
     convertToComplex<<<numBlocks, BLOCKSIZE>>>(N*M, image_float, image);
@@ -35,11 +41,12 @@ void BackPropagator::backprop(ImageData<uint8_t>& input, ImageData<uint8_t>& out
 	// Executing inverse FFT
 	cufftExecC2C(fft_plan, image, image, CUFFT_INVERSE);
 	// Conversion of result matrix to a real float matrix
-	imaginary<<<numBlocks, BLOCKSIZE>>>(M,N, image, image_float);
+	absoluteValue<<<numBlocks, BLOCKSIZE>>>(M,N, image, image_float);
     // Conversion of result matrix to a real float matrix
-    output.mtx.lock();
-	floatToUInt8<<<numBlocks, BLOCKSIZE>>>(M,N, image_float, output.devicePtr());
-    output.mtx.unlock();
+    {
+        std::lock_guard<std::mutex> l_src(output.mtx);
+        floatToUInt8<<<numBlocks, BLOCKSIZE>>>(M,N, image_float, output.devicePtr());
+    }
 }
 
 BackPropagator::~BackPropagator() {

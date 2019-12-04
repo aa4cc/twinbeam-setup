@@ -1,3 +1,7 @@
+/**
+ * @author  Martin Gurtner
+ */
+
 #ifndef IMAGEDATA_H
 #define IMAGEDATA_H
 
@@ -36,7 +40,13 @@ public:
     void copyTo(const ImageData<T>& dst) {
         std::lock_guard<std::mutex> l_src(mtx);
         std::lock_guard<std::mutex> l_dst(dst.mtx);
-        copyKernel<<<(width*height/2 + BLOCKSIZE -1)/BLOCKSIZE, BLOCKSIZE>>>(width, height, d_data, dst.d_data); };
+
+        cudaStream_t stream;
+        cudaStreamCreate(&stream);
+        copyKernel<<<(width*height/2 + BLOCKSIZE -1)/BLOCKSIZE, BLOCKSIZE, 0, stream>>>(width, height, d_data, dst.d_data);
+        cudaStreamSynchronize(stream);
+        // cudaMemcpy(dst.d_data, d_data, sizeof(T)*width*height, cudaMemcpyDeviceToDevice);
+    };
 
     ~ImageData() { release(); };
 };

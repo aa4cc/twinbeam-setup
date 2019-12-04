@@ -1,3 +1,7 @@
+/**
+ * @author  Martin Gurtner
+ */
+
 #ifndef BEADSFINDER_H
 #define BEADSFINDER_H
 
@@ -14,6 +18,7 @@ public:
     const static uint32_t MAX_NUMBER_BEADS = 100;
 
 private:
+    bool debug;
     uint8_t img_threshold;
     mutable std::mutex _mtx;
     uint16_t im_width, im_height;
@@ -27,7 +32,7 @@ private:
     int numBlocks;
 
 public:
-    BeadsFinder(uint16_t m, uint16_t n, uint8_t img_thrs);
+    BeadsFinder(uint16_t m, uint16_t n, uint8_t img_thrs, bool dbg=false);
     void updateImage(ImageData<uint8_t>& inputImg) { inputImg.copyTo(img_data); };    
     void findBeads();
     uint32_t copyPositionsTo(uint16_t* data);

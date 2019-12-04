@@ -17,6 +17,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <string.h>
+#include <mutex>
 #include "Definitions.h"
 #include "Misc.h"
 #include "Settings.h"
@@ -31,6 +32,8 @@ using namespace std;
 ImageData<uint8_t> G, R, G_backprop;
 uint16_t bead_positions[2*BeadsFinder::MAX_NUMBER_BEADS];
 uint32_t bead_count;
+std::mutex mtx_bp;
+
 
 int client;
 
@@ -80,7 +83,7 @@ void network_thread(){
 	int mainSocket;
 	char buf[BUFSIZE];
 	socklen_t addrlen;
-	MESSAGE_TYPE response;
+	MessageType response;
 	
 	mainSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if(mainSocket == -1)
@@ -120,19 +123,19 @@ void network_thread(){
 
 			response = parseMessage(buf);
 			switch(response){
-				case MSG_WAKEUP:
+				case MessageType::WAKEUP:
 				{
 					Settings::set_sleeping(false);
 					Settings::set_initialized(true);
 					break;
 				}
-				case MSG_SLEEP:
+				case MessageType::SLEEP:
 				{
 					Settings::set_sleeping(true);
 					Settings::set_initialized(false);
 					break;
 				}
-				case MSG_SETTINGS:
+				case MessageType::SETTINGS:
 				{
 					if(!Settings::sleeping)
 						printf("WARN: Can't change settings while the loop is running\n");
@@ -143,29 +146,29 @@ void network_thread(){
 					}
 					break;
 				}
-				case MSG_DISCONNECT:
+				case MessageType::DISCONNECT:
 				{
 					Settings::set_connected(false);
 					Settings::set_sleeping(true);
 					Settings::set_initialized(false);
 					break;
 				}
-				case MSG_REQUEST:
+				case MessageType::REQUEST:
 					Settings::set_requested_image(true);
-					Settings::set_requested_type(BACKPROPAGATED);
+					Settings::set_requested_type(RequestType::BACKPROPAGATED);
 					break;
-				case MSG_REQUEST_RAW_G:
+				case MessageType::REQUEST_RAW_G:
 					Settings::set_requested_image(true);
-					Settings::set_requested_type(RAW_G);
+					Settings::set_requested_type(RequestType::RAW_G);
 					break;
-				case MSG_REQUEST_RAW_R:
+				case MessageType::REQUEST_RAW_R:
 					Settings::set_requested_image(true);
-					Settings::set_requested_type(RAW_R);
+					Settings::set_requested_type(RequestType::RAW_R);
 					break;
-				case MSG_COORDS:
+				case MessageType::COORDS:
 					Settings::set_requested_coords(true);
 					break;
-				case MSG_HELLO:
+				case MessageType::HELLO:
 				{
 					send(client, "Hello!",7,0);
 					break;
@@ -192,23 +195,24 @@ void mouseEventCallback(int event, int x, int y, int flags, void* userdata)
 
 void datasend_thread(){
 	printf("INFO: datasend_thread: started\n");
+	uint8_t coords_buffer[BeadsFinder::MAX_NUMBER_BEADS+sizeof(uint32_t)];
 
-	while(true){
+	while(!Settings::force_exit){
 		while(Settings::sleeping && !Settings::force_exit){}
 		if (Settings::force_exit) break;
-		
-		while(Settings::connected && !Settings::sleeping){
+
+		while(Settings::connected && !Settings::sleeping && !Settings::force_exit){
 			if(Settings::requested_image){
 				ImageData<uint8_t> temp_img(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]);
 
 				switch (Settings::requested_type){
-					case BACKPROPAGATED:
+					case RequestType::BACKPROPAGATED:
 						G_backprop.copyTo(temp_img);
 						break;
-					case RAW_G:
+					case RequestType::RAW_G:
 						G.copyTo(temp_img);
 						break;
-					case RAW_R:
+					case RequestType::RAW_R:
 						R.copyTo(temp_img);
 						break;
 				}	
@@ -218,42 +222,18 @@ void datasend_thread(){
 				Settings::set_requested_image(false);
 			}
 
-			// if(!Settings::sent_coords && Settings::requested_coords){
-			// 	int* sorted_green_positions = (int*)malloc(sizeof(int)*Settings::get_area());
-			// 	int* sorted_red_positions = (int*)malloc(sizeof(int)*Settings::get_area());
-			// 	mtx.lock();
-			// 	cudaMemcpy(temporary_green_positions, maximaGreen, sizeof(int)*Settings::get_area(), cudaMemcpyDeviceToDevice);
-			// 	cudaMemcpy(temporary_red_positions, maximaRed, sizeof(int)*Settings::get_area(), cudaMemcpyDeviceToDevice);
-			// 	mtx.unlock();
+			if(Settings::requested_coords && !Settings::sent_coords) {
+				mtx_bp.lock();
+				((uint32_t*)coords_buffer)[0] = bead_count;
+				memcpy(coords_buffer+sizeof(uint32_t), bead_positions, 2*bead_count*sizeof(uint16_t));
+				send(client, coords_buffer, sizeof(uint32_t) + 2*bead_count*sizeof(uint16_t), 0);
+				mtx_bp.unlock();
 
-			// 	int* count = (int*)malloc(sizeof(int)*2);
+				printf("INFO: Sent the found locations\n");
 
-			// 	processPoints(temporary_green_positions, temporary_red_positions, sorted_green_positions, sorted_red_positions, count);
-
-			// 	buffer = (char*)malloc(sizeof(int)*(2+count[0]+count[1]));
-
-			// 	if(opt_debug)
-			// 		printf("DEBUG: Count Green : %d ; Count Red : %d\n", count[0], count[1]);
-
-			// 	memcpy(&buffer[0], &count[0], sizeof(int));
-			// 	memcpy(&buffer[4], sorted_green_positions, count[0]*sizeof(int));
-			// 	memcpy(&buffer[4*(1+count[0])], &count[1], sizeof(int));
-			// 	memcpy(&buffer[4*(2+count[0])], sorted_red_positions, count[1]*sizeof(int));
-
-			// 	send(client, buffer, sizeof(int)*(2+count[0]+count[1]), 0);
-
-			// 	printf("INFO: Sent the found locations\n");
-
-			// 	free(buffer);
-			// 	free(count);
-			// 	free(sorted_green_positions);
-			// 	free(sorted_red_positions);
-
-			// 	Settings::set_sent_coords(true);
-			// 	Settings::set_requested_coords(false);
-			// }
-
-			if (Settings::force_exit) break;
+				Settings::set_requested_coords(false);
+				Settings::set_sent_coords(true);
+			}
 		}
 	}
 
@@ -263,69 +243,77 @@ void datasend_thread(){
 void imgproc_thread(){
 	printf("INFO: imgproc_thread: started\n");
 	
-	// Initialize the BackPropagator for the green image
-	BackPropagator backprop_G(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT], LAMBDA_GREEN, (float)Settings::values[STG_Z_GREEN]/(float)1000000);
-
-	// Initialize the BeadFinder
-	BeadsFinder beadsFinder(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT], (uint8_t)Settings::values[STG_IMGTHRS]);
-
-	// Allocate the memory for the images
-	G.create(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]);
-	R.create(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]);
-	G_backprop.create(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]);
-
-	// Allocate the memory for the backprop image on the host
-	// uint8_t* hG_backprop = (uint8_t*)malloc(sizeof(uint8_t)*Settings::get_area());
-
 	while(!Settings::force_exit) {
-		auto t_cycle_start = std::chrono::system_clock::now();
+		// Wait till the host computer connects and starts processing the images
+		while(Settings::sleeping && Settings::connected && !Settings::force_exit){}
+		if (Settings::force_exit) break;
 
-		// wait tiil new image is ready
-		while(Camera::img_produced == Camera::img_processed && !Settings::force_exit) {
-			usleep(500);
-		}
+		// Initialize the BackPropagator for the green image
+		BackPropagator backprop_G(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT], LAMBDA_GREEN, (float)Settings::values[STG_Z_GREEN]/1000000.0f);
 
-		// Make copies of red and green channel
-		auto t_cp_start = std::chrono::system_clock::now();
-		Camera::G.copyTo(G);
-		Camera::R.copyTo(R);
-		auto t_cp_end = std::chrono::system_clock::now();
+		// Initialize the BeadFinder
+		BeadsFinder beadsFinder(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT], (uint8_t)Settings::values[STG_IMGTHRS], Options::saveimgs_bp);
 
-		// increase the number of processed images so that the camera starts capturing a new image
-		++Camera::img_processed;
+		// Allocate the memory for the images
+		G.create(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]);
+		R.create(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]);
+		G_backprop.create(Settings::values[STG_WIDTH], Settings::values[STG_HEIGHT]);
 
-		// process the image
-		// backprop
-		auto t_backprop_start = std::chrono::system_clock::now();
-		backprop_G.backprop(G, G_backprop);
-		auto t_backprop_end = std::chrono::system_clock::now();
+		while(Settings::connected && !Settings::sleeping && !Settings::force_exit){
+			auto t_cycle_start = std::chrono::system_clock::now();
 
-		// Update the image in beadsFinder where the beads are to be searched for
-		auto t_beadsfinder_cp_start = std::chrono::system_clock::now();
-		beadsFinder.updateImage(G_backprop);
-		auto t_beadsfinder_cp_end = std::chrono::system_clock::now();
+			// wait till new image is ready
+			while(Camera::img_produced == Camera::img_processed && !Settings::force_exit) {
+				usleep(200);
+			}
+			if(Settings::force_exit) break;
 
-		// find the bads
-		auto t_beadsfinder_start = std::chrono::system_clock::now();
-		beadsFinder.findBeads();
-		bead_count = beadsFinder.copyPositionsTo(bead_positions);
-		auto t_beadsfinder_end = std::chrono::system_clock::now();
+			// Make copies of red and green channel
+			auto t_cp_start = std::chrono::system_clock::now();
+			Camera::G.copyTo(G);
+			Camera::R.copyTo(R);
+			auto t_cp_end = std::chrono::system_clock::now();
 
+			// increase the number of processed images so that the camera starts capturing a new image
+			++Camera::img_processed;
 
-		auto t_cycle_end = std::chrono::system_clock::now();
-		if(Options::verbose) {
-			chrono::duration<double> cycle_elapsed_seconds = t_cycle_end - t_cycle_start;
-			chrono::duration<double> cp_elapsed_seconds = t_cp_end - t_cp_start;
-			chrono::duration<double> bp_elapsed_seconds = t_backprop_end - t_backprop_start;
-			chrono::duration<double> bf_cp_elapsed_seconds = t_beadsfinder_cp_end - t_beadsfinder_cp_start;
-			chrono::duration<double> bf_elapsed_seconds = t_beadsfinder_end - t_beadsfinder_start;
+			// process the image
+			// backprop
+			auto t_backprop_start = std::chrono::system_clock::now();
+			backprop_G.backprop(G, G_backprop);
+			auto t_backprop_end = std::chrono::system_clock::now();
 
-			std::cout << "TRACE: Backprop: " << bp_elapsed_seconds.count();
-			std::cout << "| BF.cp: " << bf_cp_elapsed_seconds.count();
-			std::cout << "| BF.findBeads: " << bf_elapsed_seconds.count();
-			std::cout << "| cp: " << cp_elapsed_seconds.count();
-			std::cout << "| whole cycle: " << cycle_elapsed_seconds.count();
-			std::cout << "| #points: " << bead_count << " s\n";
+			// Update the image in beadsFinder where the beads are to be searched for
+			auto t_beadsfinder_cp_start = std::chrono::system_clock::now();
+			beadsFinder.updateImage(G_backprop);
+			auto t_beadsfinder_cp_end = std::chrono::system_clock::now();
+
+			// find the beads
+			auto t_beadsfinder_start = std::chrono::system_clock::now();
+			beadsFinder.findBeads();
+			mtx_bp.lock();
+			bead_count = beadsFinder.copyPositionsTo(bead_positions);
+			mtx_bp.unlock();
+			auto t_beadsfinder_end = std::chrono::system_clock::now();
+
+			// Set the sent_coords flag to false to indicate that new bead positions were found and can be sent to the host computer
+			Settings::set_sent_coords(false);
+
+			auto t_cycle_end = std::chrono::system_clock::now();
+			if(Options::verbose) {
+				chrono::duration<double> cycle_elapsed_seconds = t_cycle_end - t_cycle_start;
+				chrono::duration<double> cp_elapsed_seconds = t_cp_end - t_cp_start;
+				chrono::duration<double> bp_elapsed_seconds = t_backprop_end - t_backprop_start;
+				chrono::duration<double> bf_cp_elapsed_seconds = t_beadsfinder_cp_end - t_beadsfinder_cp_start;
+				chrono::duration<double> bf_elapsed_seconds = t_beadsfinder_end - t_beadsfinder_start;
+
+				std::cout << "TRACE: Backprop: " << bp_elapsed_seconds.count();
+				std::cout << "| BF.cp: " << bf_cp_elapsed_seconds.count();
+				std::cout << "| BF.findBeads: " << bf_elapsed_seconds.count();
+				std::cout << "| cp: " << cp_elapsed_seconds.count();
+				std::cout << "| whole cycle: " << cycle_elapsed_seconds.count();
+				std::cout << "| #points: " << bead_count << std::endl;
+			}
 		}
 	}
 	
@@ -338,7 +326,7 @@ void display_thread(){
 	char ret_key;
 	char filename [50];
 
-	while(true){
+	while(!Settings::force_exit){
 		while(Settings::sleeping && Settings::connected && !Settings::force_exit){}
 		if (Settings::force_exit) break;
 
@@ -357,9 +345,7 @@ void display_thread(){
 		}
 
 		while(!Settings::initialized && Settings::connected && !Settings::force_exit){}
-		if (Settings::force_exit){
-			break;
-		} 
+		if (Settings::force_exit) break; 
 
 		const cv::cuda::GpuMat c_img_resized(cv::Size(800, 800), CV_8U);
 		const cv::cuda::GpuMat c_img_flip(cv::Size(800, 800), CV_8U);
@@ -367,7 +353,7 @@ void display_thread(){
 
 		uint32_t last_img_processed = Camera::img_processed;
 
-		while(!Settings::sleeping && Settings::connected){
+		while(!Settings::sleeping && Settings::connected && !Settings::force_exit){
 			if(Camera::img_processed - last_img_processed > 3){
 				auto start = std::chrono::system_clock::now();
 				if (Options::show && !Options::saveimgs)
@@ -405,11 +391,13 @@ void display_thread(){
 					c_img_flip.download(img_disp);
 
 					// Draw bead positions
+					mtx_bp.lock();
 					for(int i = 0; i < bead_count; i++) {
 						uint32_t x = (bead_positions[2*i]*800)/Settings::values[STG_WIDTH];
 						uint32_t y = 800 - (bead_positions[2*i+1]*800)/Settings::values[STG_HEIGHT] - 1;
 						cv::circle(img_disp, cv::Point(x, y), 20, 255);
 					}
+					mtx_bp.unlock();
 					
 					cv::imshow("Basic Visualization", img_disp);
 					auto end = std::chrono::system_clock::now();
@@ -428,8 +416,6 @@ void display_thread(){
 			else{
 				usleep(1000);
 			}
-
-			if (Settings::force_exit) break;
 		}
 	}
 

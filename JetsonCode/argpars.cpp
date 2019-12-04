@@ -1,9 +1,13 @@
+/**
+ * @author  Martin Gurtner
+ */
 #include "argpars.h"
 
 bool Options::verbose 		= false;
 bool Options::debug 		= false;
 bool Options::show 			= false;
 bool Options::saveimgs 		= false;
+bool Options::saveimgs_bp	= false;
 // bool Options::savevideos 	= false;
 bool Options::mousekill 	= false;
 
@@ -20,6 +24,7 @@ cxxopts::ParseResult Options::parse(int argc, char* argv[])
       .add_options()
       ("s,show", 		"Display the processed image on the display",				cxxopts::value<bool>(Options::show))
       ("saveimgs", 		"Save images", 												cxxopts::value<bool>(Options::saveimgs))
+      ("saveimgs-bp", "Save images - BeadsFinder", 									cxxopts::value<bool>(Options::saveimgs_bp))
     //   ("savevideos", 	"Save videos", 												cxxopts::value<bool>(Options::savevideos))
       ("d,debug", 		"Prints debug information",									cxxopts::value<bool>(Options::debug))
       ("k,mousekill", 	"Moving the mouse or toching the screen kills the app",		cxxopts::value<bool>(Options::mousekill))
