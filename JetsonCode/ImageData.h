@@ -17,35 +17,36 @@ class ImageData
 private:
     T *h_data = nullptr;
     T *d_data = nullptr;         // pointers to data in host and device memory
+    cudaStream_t stream = nullptr;
     int width, height;           // dimensions of the image
-    cudaStream_t stream;
 
 public:
     mutable std::mutex mtx;
     ImageData() { };
     ImageData(uint16_t m, uint16_t n) : width{m}, height{n} {create(m, n);};
 
-    void create(uint16_t m, uint16_t n) {
-        if (h_data) release();
+    bool create(uint16_t m, uint16_t n) {
+        release();
         width = m; height = n;
         // Allocate memory on the host side
-        cudaHostAlloc((void **)&h_data,  sizeof(T)*width*height,  cudaHostAllocMapped);
+        if(cudaHostAlloc((void **)&h_data,  sizeof(T)*width*height,  cudaHostAllocMapped) != cudaSuccess) return false;
         // Allocate memory on the device side
-        cudaMalloc((void **)&d_data,  sizeof(T)*width*height);
+        if(cudaMalloc((void **)&d_data,  sizeof(T)*width*height) != cudaSuccess) return false;
+        // 
+        if(cudaStreamCreate(&stream) != cudaSuccess) return false;
 
-        cudaStreamCreate(&stream);
+        return true;
     };
     
     void release() {
         if (h_data) cudaFreeHost(h_data);
         if (d_data) cudaFree(d_data);
-        cudaStreamDestroy(stream);
+        if (stream) cudaStreamDestroy(stream);
     };
 
     bool isEmpty() {return h_data==nullptr;};
 
-    T* hostPtr(bool sync=false) {
-        if(sync) {
+    T* hostPtr(bool sync=false) {        if(sync) {
             std::lock_guard<std::mutex> l_src(mtx);
 
             cudaMemcpyAsync(h_data, d_data, sizeof(T)*width*height, cudaMemcpyDeviceToHost, stream);

@@ -138,8 +138,8 @@ void camera_thread(AppData& appData){
 			break;
 		}
 
-		appData.camI.G.create(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
-		appData.camI.R.create(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
+		appData.camIG.create(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
+		appData.camIR.create(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
 		
 		numBlocks = 1024;
 		
@@ -157,9 +157,6 @@ void camera_thread(AppData& appData){
 		
 		// Set the flag indicating that the camera was initialized
 		appData.camera_is_initialized = true;
-
-		appData.camI.img_produced = 0;
-		appData.camI.img_processed = 0;
 
 		if(Options::debug) printf("INFO: camera_thread: waiting till other App components are initialized\n");
 
@@ -188,19 +185,15 @@ void camera_thread(AppData& appData){
 
 			numBlocks = (appData.get_area()/2 +NBLOCKS -1)/NBLOCKS;
 			
-			appData.camI.G.mtx.lock();
-			appData.camI.R.mtx.lock();
-			yuv2bgr<<<numBlocks, NBLOCKS>>>(appData.values[STG_WIDTH], appData.values[STG_HEIGHT],
-											appData.values[STG_OFFSET_X], appData.values[STG_OFFSET_Y], appData.camI.G.devicePtr(), appData.camI.R.devicePtr());
-			appData.camI.G.mtx.unlock();
-			appData.camI.R.mtx.unlock();
+			{
+				std::lock_guard<std::mutex> lk(appData.cam_mtx);
+				std::lock_guard<std::mutex> G_lk(appData.camIG.mtx);
+				std::lock_guard<std::mutex> R_lk(appData.camIR.mtx);
 
-			++appData.camI.img_produced;
-			// printf("Produced: %d\t, processed: %d\t\n", appData.camI.img_produced, appData.camI.img_processed);
-			// Wait until the image is processed
-			while(appData.camI.img_produced != appData.camI.img_processed && !appData.appStateIs(AppData::AppState::EXITING)) {
-				usleep(100);
+				yuv2bgr<<<numBlocks, NBLOCKS>>>(appData.values[STG_WIDTH], appData.values[STG_HEIGHT],
+												appData.values[STG_OFFSET_X], appData.values[STG_OFFSET_Y], appData.camIG.devicePtr(), appData.camIR.devicePtr());
 			}
+			appData.cam_cv.notify_all();
 
 			cudaUnbindTexture(yTex);
 			cudaUnbindTexture(uvTex);
@@ -212,10 +205,7 @@ void camera_thread(AppData& appData){
 		if(!camController.Stop()) {
 			fprintf(stderr, "ERROR: Unable to stop capturing the images by the camera!\n");
 			appData.exitTheApp();
-		}			
-		
-		appData.camI.G.release();
-		appData.camI.R.release();
+		}					
 		
 		cudaEGLStreamConsumerDisconnect(&conn);
 

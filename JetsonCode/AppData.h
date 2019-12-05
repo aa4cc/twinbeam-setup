@@ -2,19 +2,9 @@
 #define APPDATA_H
 
 #include <mutex> 
-#include <atomic>
+#include <condition_variable>
 #include "Definitions.h"
 #include "ImageData.h"
-
-class CameraImgI{
-    public:
-    std::atomic<unsigned int> img_produced;
-    std::atomic<unsigned int> img_processed;
-    ImageData<uint8_t> G;
-    ImageData<uint8_t> R;
-
-    CameraImgI() : img_produced{0}, img_processed{0} { };
-};
 
 class AppData {
 public:
@@ -41,7 +31,10 @@ public:
 	bool requested_image;
 	bool requested_coords;
 
-	CameraImgI camI;
+	std::condition_variable cam_cv;
+	std::mutex cam_mtx;
+	ImageData<uint8_t> camIG, camIR;
+
 	ImageData<uint8_t> G, R, G_backprop;
 	uint16_t bead_positions[2*MAX_NUMBER_BEADS];
 	uint32_t bead_count;

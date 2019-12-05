@@ -8,10 +8,6 @@
 #include "stdint.h"
 #include "cuda.h"
 #include "cufft.h"
-#include "stdio.h"
-#include "math.h"
-#include <cmath>
-#include "Definitions.h"
 
 __global__ void calculateBackPropMatrix(int N, int M, float z, float dx, float n, float lambda, cufftComplex* Hq);
 

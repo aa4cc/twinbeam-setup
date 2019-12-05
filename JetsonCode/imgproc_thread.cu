@@ -43,20 +43,21 @@ void imgproc_thread(AppData& appData){
 		while(appData.appStateIs(AppData::AppState::RUNNING)) {
 			auto t_cycle_start = std::chrono::system_clock::now();
 
-			// wait till a new image is ready
-			while(appData.camI.img_produced == appData.camI.img_processed && appData.appStateIs(AppData::AppState::RUNNING)) usleep(200);
+            // wait till a new image is ready
+            std::unique_lock<std::mutex> lk(appData.cam_mtx);
+			appData.cam_cv.wait(lk);
 			
 			// If the app entered the EXITING state, break the loop and finish the thread
 			if(appData.appStateIs(AppData::AppState::EXITING)) break;
 
 			// Make copies of red and green channel
 			auto t_cp_start = std::chrono::system_clock::now();
-			appData.camI.G.copyTo(appData.G);
-			appData.camI.R.copyTo(appData.R);
+			appData.camIG.copyTo(appData.G);
+			appData.camIR.copyTo(appData.R);
 			auto t_cp_end = std::chrono::system_clock::now();
 
-			// increase the number of processed images so that the camera starts capturing a new image
-			++appData.camI.img_processed;
+			// unlock the mutex so that the camera thread can proceed to capture a new image
+			lk.unlock();
 
 			// process the image
 			// backprop

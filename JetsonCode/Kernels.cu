@@ -4,7 +4,12 @@
  */
 
 #include "Kernels.h"
+#include "math.h"
+#include <cmath>
+#include "Definitions.h"
 
+#define SQUARE(x) x*x
+#define _USE_MATH_DEFINES // to include M_PI constant
 /*
     Calculation of the Hq matrix according to the equations in original .m file
 */
@@ -22,7 +27,7 @@ __global__ void calculateBackPropMatrix(int N, int M, float z, float dx, float n
         newIndex = (i + count/2-1) % (count);
         FX = ((float)(1+(i/M)) * calc/(float)(N)) - calc/2.0f;
         FY = ((float)(1+(i%M)) * calc/(float)(M)) - calc/2.0f;
-        res = 2 * PI*z*pre * sqrt(1 - SQUARE(FX/pre) - SQUARE(FY/pre));
+        res = 2 * M_PI*z*pre * sqrt(1 - SQUARE(FX/pre) - SQUARE(FY/pre));
         //temp = (sqrt(SQUARE(FX) + SQUARE(FY)) < (pre));
         if(temp == 0.0){
             Hq[(newIndex % M) > M/2-1 ? newIndex-M/2 : newIndex+M/2] = make_cuComplex(0,0);

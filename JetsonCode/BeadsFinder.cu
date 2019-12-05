@@ -82,5 +82,4 @@ BeadsFinder::~BeadsFinder() {
     cudaFree(d_pointsCounterPtr);
     cudaFree(d_positions);
     cudaFree(img_filt_data);
-    img_data.release();
 }

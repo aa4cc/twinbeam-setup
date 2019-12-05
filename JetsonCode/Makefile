@@ -150,60 +150,6 @@ Misc.cpp.s:
 	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/Misc.cpp.s
 .PHONY : Misc.cpp.s
 
-Settings.o: Settings.cpp.o
-
-.PHONY : Settings.o
-
-# target to build an object file
-Settings.cpp.o:
-	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/Settings.cpp.o
-.PHONY : Settings.cpp.o
-
-Settings.i: Settings.cpp.i
-
-.PHONY : Settings.i
-
-# target to preprocess a source file
-Settings.cpp.i:
-	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/Settings.cpp.i
-.PHONY : Settings.cpp.i
-
-Settings.s: Settings.cpp.s
-
-.PHONY : Settings.s
-
-# target to generate assembly for a file
-Settings.cpp.s:
-	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/Settings.cpp.s
-.PHONY : Settings.cpp.s
-
-argpars.o: argpars.cpp.o
-
-.PHONY : argpars.o
-
-# target to build an object file
-argpars.cpp.o:
-	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/argpars.cpp.o
-.PHONY : argpars.cpp.o
-
-argpars.i: argpars.cpp.i
-
-.PHONY : argpars.i
-
-# target to preprocess a source file
-argpars.cpp.i:
-	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/argpars.cpp.i
-.PHONY : argpars.cpp.i
-
-argpars.s: argpars.cpp.s
-
-.PHONY : argpars.s
-
-# target to generate assembly for a file
-argpars.cpp.s:
-	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/argpars.cpp.s
-.PHONY : argpars.cpp.s
-
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -216,12 +162,6 @@ help:
 	@echo "... Misc.o"
 	@echo "... Misc.i"
 	@echo "... Misc.s"
-	@echo "... Settings.o"
-	@echo "... Settings.i"
-	@echo "... Settings.s"
-	@echo "... argpars.o"
-	@echo "... argpars.i"
-	@echo "... argpars.s"
 .PHONY : help
 
 
