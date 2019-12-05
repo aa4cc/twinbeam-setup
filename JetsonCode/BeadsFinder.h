@@ -11,12 +11,10 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/cuda.hpp>
 #include "ImageData.h"
+#include "Definitions.h"
 
 class BeadsFinder
 {
-public:
-    const static uint32_t MAX_NUMBER_BEADS = 100;
-
 private:
     bool debug;
     uint8_t img_threshold;

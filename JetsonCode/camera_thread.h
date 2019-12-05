@@ -6,21 +6,8 @@
 #define CAMERA_THREAD_H
 
 #include <stdint.h>
-#include <mutex> 
-#include <atomic>
-#include "ImageData.h"
+#include "AppData.h"
 
-
-class CameraImgI{
-    public:
-    std::atomic<unsigned int> img_produced;
-    std::atomic<unsigned int> img_processed;
-    ImageData<uint8_t> G;
-    ImageData<uint8_t> R;
-
-    CameraImgI() : img_produced{0}, img_processed{0} { };
-};
-
-void camera_thread(CameraImgI& CamI);
+void camera_thread(AppData& appData);
 
 #endif

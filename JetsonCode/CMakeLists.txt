@@ -28,12 +28,16 @@ set(SOURCES
         Trial.cu
 		Kernels.cu
 		Misc.cpp
-		Settings.cpp
 		BackPropagator.cu
 		BeadsFinder.cu
 		camera_thread.cu
+		keyboard_thread.cu
+		display_thread.cu
+		imgproc_thread.cu
 		CameraController.cu
-		argpars.cpp
+		argpars.cu
+		AppData.cu
+		network.cu
 		# Camera.cu
         )
 

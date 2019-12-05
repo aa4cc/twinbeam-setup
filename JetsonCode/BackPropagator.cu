@@ -15,10 +15,10 @@ BackPropagator::BackPropagator( int m, int n, float lambda, float backprop_dist 
         // Declaring the FFT plan
         cufftPlan2d(&fft_plan, N, M, CUFFT_C2C);
 
-        numBlocks = (m*n/2 + BLOCKSIZE -1)/BLOCKSIZE;
+        numBlocks = (m*n/2 + NBLOCKS -1)/NBLOCKS;
 
         // Calculating the Hq matrix according to the equations in the original .m file.
-        calculateBackPropMatrix<<<numBlocks, BLOCKSIZE>>>(N, M, backprop_dist, PIXEL_DX, REFRACTION_INDEX, lambda, Hq);
+        calculateBackPropMatrix<<<numBlocks, NBLOCKS>>>(N, M, backprop_dist, PIXEL_DX, REFRACTION_INDEX, lambda, Hq);
     };
 
 void BackPropagator::backprop(ImageData<uint8_t>& input, ImageData<uint8_t>& output)
@@ -26,26 +26,26 @@ void BackPropagator::backprop(ImageData<uint8_t>& input, ImageData<uint8_t>& out
     // Convert the uint8 image to float image 
     {
         std::lock_guard<std::mutex> l_src(input.mtx);
-        u8ToFloat<<<numBlocks, BLOCKSIZE>>>(M, N, input.devicePtr(), image_float);
+        u8ToFloat<<<numBlocks, NBLOCKS>>>(M, N, input.devicePtr(), image_float);
     }
 
     // Convert the real input image to complex image
-    convertToComplex<<<numBlocks, BLOCKSIZE>>>(N*M, image_float, image);
+    convertToComplex<<<numBlocks, NBLOCKS>>>(N*M, image_float, image);
     
     // Execute forward FFT on the green channel
     cufftExecC2C(fft_plan, image, image, CUFFT_FORWARD);
 
     // Element-wise multiplication of Hq matrix and the image
-	multiplyInPlace<<<numBlocks, BLOCKSIZE>>>(M, N, Hq, image);
+	multiplyInPlace<<<numBlocks, NBLOCKS>>>(M, N, Hq, image);
     
 	// Executing inverse FFT
 	cufftExecC2C(fft_plan, image, image, CUFFT_INVERSE);
 	// Conversion of result matrix to a real float matrix
-	absoluteValue<<<numBlocks, BLOCKSIZE>>>(M,N, image, image_float);
+	absoluteValue<<<numBlocks, NBLOCKS>>>(M,N, image, image_float);
     // Conversion of result matrix to a real float matrix
     {
         std::lock_guard<std::mutex> l_src(output.mtx);
-        floatToUInt8<<<numBlocks, BLOCKSIZE>>>(M,N, image_float, output.devicePtr());
+        floatToUInt8<<<numBlocks, NBLOCKS>>>(M,N, image_float, output.devicePtr());
     }
 }
 

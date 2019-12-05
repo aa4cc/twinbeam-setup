@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 #include <mutex>
+#include "cuda.h"
 #include "Kernels.h"
 #include "Definitions.h"
 
@@ -66,7 +67,7 @@ public:
     void copyTo(const ImageData<T>& dst) {
         std::lock_guard<std::mutex> l_src(mtx);
         std::lock_guard<std::mutex> l_dst(dst.mtx);
-        // copyKernel<<<(width*height/2 + BLOCKSIZE -1)/BLOCKSIZE, BLOCKSIZE, 0, stream>>>(width, height, d_data, dst.d_data);
+        // copyKernel<<<(width*height/2 + NBLOCKS -1)/NBLOCKS, NBLOCKS, 0, stream>>>(width, height, d_data, dst.d_data);
         cudaMemcpyAsync(dst.d_data, d_data, sizeof(T)*width*height, cudaMemcpyDeviceToDevice, stream);
         cudaStreamSynchronize(stream);
     };

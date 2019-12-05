@@ -16,7 +16,7 @@ BeadsFinder::BeadsFinder(uint16_t m, uint16_t n, uint8_t img_thrs, bool dbg): im
     // Initialize the Gaussian filter
     gaussianFilter = cv::cuda::createGaussianFilter(CV_8U, CV_32F, cv::Size(29, 29), 10);
 
-    numBlocks = (im_width*im_height/2 + BLOCKSIZE -1)/BLOCKSIZE;
+    numBlocks = (im_width*im_height/2 + NBLOCKS -1)/NBLOCKS;
 
     // Allocate the memory for the local copy of the image where the beads are to be searched for
     img_data.create(m, n);
@@ -45,7 +45,7 @@ void BeadsFinder::findBeads()
     cudaMemset(d_pointsCounterPtr, 0, sizeof(uint32_t));
 
     // Find the local minimums smaller than a given threshold and store their positions to d_positions[]
-    getLocalMinima<<<numBlocks, BLOCKSIZE>>>(im_width, im_height, (float*)img_filt.data, d_positions, MAX_NUMBER_BEADS, d_pointsCounterPtr, img_threshold);
+    getLocalMinima<<<numBlocks, NBLOCKS>>>(im_width, im_height, (float*)img_filt.data, d_positions, MAX_NUMBER_BEADS, d_pointsCounterPtr, img_threshold);
 
     // Copy back the value of the counter and the array to the CPU memory
     {

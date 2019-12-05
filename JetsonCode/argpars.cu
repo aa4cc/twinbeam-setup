@@ -11,7 +11,7 @@ bool Options::saveimgs_bp	= false;
 // bool Options::savevideos 	= false;
 bool Options::mousekill 	= false;
 
-cxxopts::ParseResult Options::parse(int argc, char* argv[])
+cxxopts::ParseResult Options::parse(AppData& appData, int argc, char* argv[])
 {
   try
   {
@@ -56,34 +56,34 @@ cxxopts::ParseResult Options::parse(int argc, char* argv[])
 	}
 	
 	if (result.count("exp") > 0)
-		Settings::values[STG_EXPOSURE] 	= result["exp"].as<uint32_t>()*1e3;
+		appData.values[STG_EXPOSURE] 	= result["exp"].as<uint32_t>()*1e3;
 	if (result.count("digitalgain") > 0)
-		Settings::values[STG_DIGGAIN] 	= result["digitalgain"].as<uint32_t>();
+		appData.values[STG_DIGGAIN] 	= result["digitalgain"].as<uint32_t>();
 	if (result.count("analoggain") > 0)
-		Settings::values[STG_ANALOGGAIN]= result["analoggain"].as<uint32_t>();
+		appData.values[STG_ANALOGGAIN]= result["analoggain"].as<uint32_t>();
 
 	if (result.count("fps") > 0)
-		Settings::values[STG_FPS]= result["fps"].as<uint32_t>();
+		appData.values[STG_FPS]= result["fps"].as<uint32_t>();
 
 	if (result.count("resolution") > 0) {
 		const auto values = result["resolution"].as<std::vector<uint32_t>>();
-		Settings::values[STG_WIDTH] 	= values[0];
-		Settings::values[STG_HEIGHT] 	= values[1];
+		appData.values[STG_WIDTH] 	= values[0];
+		appData.values[STG_HEIGHT] 	= values[1];
 	}
 	if (result.count("offset") > 0) {
 		const auto values = result["offset"].as<std::vector<uint32_t>>();
-		Settings::values[STG_OFFSET_X] 	= values[0];
-		Settings::values[STG_OFFSET_Y] 	= values[1];
+		appData.values[STG_OFFSET_X] 	= values[0];
+		appData.values[STG_OFFSET_Y] 	= values[1];
 	}		
 	
 	if (result.count("img_threshold") > 0) {
-		Settings::values[STG_IMGTHRS]= result["img_threshold"].as<uint32_t>();
+		appData.values[STG_IMGTHRS]= result["img_threshold"].as<uint32_t>();
 	}
 	if (result.count("r_dist") > 0) {
-		Settings::values[STG_Z_RED]= result["r_dist"].as<uint32_t>();
+		appData.values[STG_Z_RED]= result["r_dist"].as<uint32_t>();
 	}
 	if (result.count("g_dist") > 0) {
-		Settings::values[STG_Z_GREEN]= result["g_dist"].as<uint32_t>();
+		appData.values[STG_Z_GREEN]= result["g_dist"].as<uint32_t>();
 	}
 
     if (Options::debug) {

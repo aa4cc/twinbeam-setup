@@ -7,7 +7,7 @@
 #define HEIGHT 2160
 #define LAMBDA_GREEN 520e-9f
 #define LAMBDA_RED 625e-9f
-#define BLOCKSIZE 1024
+#define NBLOCKS 1024
 #define REFRACTION_INDEX 1.45f
 #define PIXEL_DX 1.55e-6f
 #define BUFSIZE 1000
@@ -16,6 +16,7 @@
 #define SQUARE(x) x*x
 #define CONVO_DIM_RED 60
 #define CONVO_DIM_GREEN 160
+#define MAX_NUMBER_BEADS 100
 
 enum class MessageType{
 	HELLO,
@@ -51,19 +52,5 @@ enum SETTINGS_TYPE{
 	STG_IMGTHRS,
 	STG_NUMBER_OF_SETTINGS
 };
-
-enum class AppState{
-	IDLING,
-	INITIALIZING,
-	RUNNING,
-	EXITING
-};
-
-/* Application state description
- * IDLING 			- The application waits till a start() command is called.
- * INITIALIZING 	- The camera and possibly other part are being initialized. When all parts are initialized, the app continutes to the RUNNING state.
- * RUNNING			- The images are captured and processed.
- * EXITING			- All the parts are deinitialized and then the app exits.
- */
 
 #endif

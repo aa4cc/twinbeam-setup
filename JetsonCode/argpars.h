@@ -5,7 +5,7 @@
 #define ARGPARS_H
 
 #include "cxxopts.hpp"
-#include "Settings.h"
+#include "AppData.h"
 
 class Options{
 public:
@@ -17,7 +17,7 @@ public:
     // static bool savevideos;
     static bool mousekill;
 
-    static cxxopts::ParseResult parse(int argc, char* argv[]);
+    static cxxopts::ParseResult parse(AppData& appData, int argc, char* argv[]);
 };
 
 #endif
