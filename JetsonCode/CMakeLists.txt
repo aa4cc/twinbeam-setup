@@ -25,18 +25,19 @@ SET(HEADERS_FOLDER "{CMAKE_CURRENT_SOURCE_DIR}")
 FIND_PACKAGE(OpenCV REQUIRED COMPONENTS core highgui cudaarithm cudawarping cudaimgproc cudafilters)
 
 set(SOURCES
-        Trial.cu
+        Trial.cpp
 		Kernels.cu
 		Misc.cpp
 		BackPropagator.cu
 		BeadsFinder.cu
 		camera_thread.cu
-		keyboard_thread.cu
+		keyboard_thread.cpp
 		display_thread.cu
 		imgproc_thread.cu
 		CameraController.cu
-		argpars.cu
-		AppData.cu
+		argpars.cpp
+		AppData.cpp
+		ImageData.cu
 		network.cu
 		# Camera.cu
         )

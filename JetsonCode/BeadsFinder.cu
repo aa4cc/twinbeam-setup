@@ -18,9 +18,6 @@ BeadsFinder::BeadsFinder(uint16_t m, uint16_t n, uint8_t img_thrs, bool dbg): im
 
     numBlocks = (im_width*im_height/2 + NBLOCKS -1)/NBLOCKS;
 
-    // Allocate the memory for the local copy of the image where the beads are to be searched for
-    img_data.create(m, n);
-
     // Allocate memory for the array storing positions of the beads
     cudaMalloc(&d_positions, 2*MAX_NUMBER_BEADS*sizeof(uint16_t));
     // Allocate the memory for the counter of the found beads
@@ -32,14 +29,17 @@ BeadsFinder::BeadsFinder(uint16_t m, uint16_t n, uint8_t img_thrs, bool dbg): im
 };
 
 uint32_t cnt = 0;
-void BeadsFinder::findBeads()
+void BeadsFinder::findBeads(ImageData<uint8_t>& inputImg)
 { 
-    const cv::cuda::GpuMat img_in(cv::Size(im_width, im_height), CV_8U, img_data.devicePtr());
+    const cv::cuda::GpuMat img_in(cv::Size(im_width, im_height), CV_8U, inputImg.devicePtr());
     const cv::cuda::GpuMat img_filt(cv::Size(im_width, im_height), CV_32F, img_filt_data);
     const cv::Mat img_write(cv::Size(im_width, im_height), CV_8U);
 
-    // Blur the image by the gaussian filter
-    gaussianFilter->apply(img_in, img_filt);
+    {// Limit the scope of the mutex
+        std::lock_guard<std::mutex> l(inputImg.mtx);
+        // Blur the image by the gaussian filter
+        gaussianFilter->apply(img_in, img_filt);
+    }
 
     // Set the counter to zero
     cudaMemset(d_pointsCounterPtr, 0, sizeof(uint32_t));

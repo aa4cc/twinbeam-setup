@@ -65,14 +65,9 @@ void imgproc_thread(AppData& appData){
 			backprop_G.backprop(appData.G, appData.G_backprop);
 			auto t_backprop_end = std::chrono::system_clock::now();
 
-			// Update the image in beadsFinder where the beads are to be searched for
-			auto t_beadsfinder_cp_start = std::chrono::system_clock::now();
-			beadsFinder.updateImage(appData.G_backprop);
-			auto t_beadsfinder_cp_end = std::chrono::system_clock::now();
-
 			// find the beads
 			auto t_beadsfinder_start = std::chrono::system_clock::now();
-			beadsFinder.findBeads();
+			beadsFinder.findBeads(appData.G_backprop);
 			{ // Limit the scope of the mutex
 				std::lock_guard<std::mutex> mtx_bp(appData.mtx_bp);
 				appData.bead_count = beadsFinder.copyPositionsTo(appData.bead_positions);
@@ -87,11 +82,9 @@ void imgproc_thread(AppData& appData){
 				chrono::duration<double> cycle_elapsed_seconds = t_cycle_end - t_cycle_start;
 				chrono::duration<double> cp_elapsed_seconds = t_cp_end - t_cp_start;
 				chrono::duration<double> bp_elapsed_seconds = t_backprop_end - t_backprop_start;
-				chrono::duration<double> bf_cp_elapsed_seconds = t_beadsfinder_cp_end - t_beadsfinder_cp_start;
 				chrono::duration<double> bf_elapsed_seconds = t_beadsfinder_end - t_beadsfinder_start;
 
 				std::cout << "TRACE: Backprop: " << bp_elapsed_seconds.count();
-				std::cout << "| BF.cp: " << bf_cp_elapsed_seconds.count();
 				std::cout << "| BF.findBeads: " << bf_elapsed_seconds.count();
 				std::cout << "| cp: " << cp_elapsed_seconds.count();
 				std::cout << "| whole cycle: " << cycle_elapsed_seconds.count();

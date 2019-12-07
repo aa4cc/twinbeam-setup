@@ -123,6 +123,33 @@ depend:
 	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/build
 .PHONY : 3D_scanning/fast
 
+AppData.o: AppData.cpp.o
+
+.PHONY : AppData.o
+
+# target to build an object file
+AppData.cpp.o:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/AppData.cpp.o
+.PHONY : AppData.cpp.o
+
+AppData.i: AppData.cpp.i
+
+.PHONY : AppData.i
+
+# target to preprocess a source file
+AppData.cpp.i:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/AppData.cpp.i
+.PHONY : AppData.cpp.i
+
+AppData.s: AppData.cpp.s
+
+.PHONY : AppData.s
+
+# target to generate assembly for a file
+AppData.cpp.s:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/AppData.cpp.s
+.PHONY : AppData.cpp.s
+
 Misc.o: Misc.cpp.o
 
 .PHONY : Misc.o
@@ -150,6 +177,87 @@ Misc.cpp.s:
 	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/Misc.cpp.s
 .PHONY : Misc.cpp.s
 
+Trial.o: Trial.cpp.o
+
+.PHONY : Trial.o
+
+# target to build an object file
+Trial.cpp.o:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/Trial.cpp.o
+.PHONY : Trial.cpp.o
+
+Trial.i: Trial.cpp.i
+
+.PHONY : Trial.i
+
+# target to preprocess a source file
+Trial.cpp.i:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/Trial.cpp.i
+.PHONY : Trial.cpp.i
+
+Trial.s: Trial.cpp.s
+
+.PHONY : Trial.s
+
+# target to generate assembly for a file
+Trial.cpp.s:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/Trial.cpp.s
+.PHONY : Trial.cpp.s
+
+argpars.o: argpars.cpp.o
+
+.PHONY : argpars.o
+
+# target to build an object file
+argpars.cpp.o:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/argpars.cpp.o
+.PHONY : argpars.cpp.o
+
+argpars.i: argpars.cpp.i
+
+.PHONY : argpars.i
+
+# target to preprocess a source file
+argpars.cpp.i:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/argpars.cpp.i
+.PHONY : argpars.cpp.i
+
+argpars.s: argpars.cpp.s
+
+.PHONY : argpars.s
+
+# target to generate assembly for a file
+argpars.cpp.s:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/argpars.cpp.s
+.PHONY : argpars.cpp.s
+
+keyboard_thread.o: keyboard_thread.cpp.o
+
+.PHONY : keyboard_thread.o
+
+# target to build an object file
+keyboard_thread.cpp.o:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/keyboard_thread.cpp.o
+.PHONY : keyboard_thread.cpp.o
+
+keyboard_thread.i: keyboard_thread.cpp.i
+
+.PHONY : keyboard_thread.i
+
+# target to preprocess a source file
+keyboard_thread.cpp.i:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/keyboard_thread.cpp.i
+.PHONY : keyboard_thread.cpp.i
+
+keyboard_thread.s: keyboard_thread.cpp.s
+
+.PHONY : keyboard_thread.s
+
+# target to generate assembly for a file
+keyboard_thread.cpp.s:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/keyboard_thread.cpp.s
+.PHONY : keyboard_thread.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -159,9 +267,21 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... 3D_scanning"
 	@echo "... edit_cache"
+	@echo "... AppData.o"
+	@echo "... AppData.i"
+	@echo "... AppData.s"
 	@echo "... Misc.o"
 	@echo "... Misc.i"
 	@echo "... Misc.s"
+	@echo "... Trial.o"
+	@echo "... Trial.i"
+	@echo "... Trial.s"
+	@echo "... argpars.o"
+	@echo "... argpars.i"
+	@echo "... argpars.s"
+	@echo "... keyboard_thread.o"
+	@echo "... keyboard_thread.i"
+	@echo "... keyboard_thread.s"
 .PHONY : help
 
 

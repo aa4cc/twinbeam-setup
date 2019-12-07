@@ -20,7 +20,6 @@ private:
     uint8_t img_threshold;
     mutable std::mutex _mtx;
     uint16_t im_width, im_height;
-    ImageData<uint8_t> img_data;
     cv::Ptr<cv::cuda::Filter> gaussianFilter;
     float* img_filt_data;
     uint32_t pointsCounter;
@@ -30,9 +29,8 @@ private:
     int numBlocks;
 
 public:
-    BeadsFinder(uint16_t m, uint16_t n, uint8_t img_thrs, bool dbg=false);
-    void updateImage(ImageData<uint8_t>& inputImg) { inputImg.copyTo(img_data); };    
-    void findBeads();
+    BeadsFinder(uint16_t m, uint16_t n, uint8_t img_thrs, bool dbg=false); 
+    void findBeads(ImageData<uint8_t>& inputImg);
     uint32_t copyPositionsTo(uint16_t* data);
     ~BeadsFinder();
 };
