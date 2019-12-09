@@ -1,15 +1,5 @@
-In order for the Jetson TX2 unit to work properly with the LI-TX1-CB and the IMX477 camera, the process given in https://www.dropbox.com/s/5kthn4b6vfz1koa/IMX477_R28.2_TX2_CB_Tri_20180629.txt?dl=0 has to be followed.
+In order for the Jetson TX2 unit to work properly with the LI-TX1-CB and the IMX477 camera, the process given in https://www.dropbox.com/s/m0p3p5y70d7nmj0/IMX477-MIPI_R32.2.1_TX2_Tri-CB_20190905_Driver_Guide.pdf?dl=0 has to be followed.
 
-In order to skip later installations of additional packages it is recommended to install Jetpack 3.2.1 in the first step.
+In order to skip later installations of additional packages it is recommended to install Jetpack 4.2.2 in the first step.
 
-Later, it is necessary to install the following packages for the accompanying software to work:
-
-- CUDA 9.0 and CuFFT (included in Jetpack 3.2.1)
-- LibArgus and EGLStream (included in Jetpack 3.2.1)
-- OpenCV 2 (included in Jetpack 3.2.1)
-- G++ (included in Jetpack 3.2.1)
-
-In order to be able to Make further changes in the software, CMake 3.8.2 needs to be installed from source by following the process given in https://devtalk.nvidia.com/default/topic/1048533/jetson-tx2/how-to-install-cmake-3-8-in-jetson-tx2-/post/5321379/#5321379
-
-
-
+Install OpenCV 4 with CUDA support by running the following script https://raw.githubusercontent.com/AastaNV/JEP/master/script/install_opencv4.1.1_Jetson.sh
