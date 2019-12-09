@@ -1,3 +1,8 @@
+/**
+ * @author  Viktor-Adam Koropecky
+ * @author  Martin Gurtner
+ */
+ 
 #ifndef NETWORK_H
 #define NETWORK_H
 

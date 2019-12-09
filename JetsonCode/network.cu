@@ -1,3 +1,8 @@
+/**
+ * @author  Viktor-Adam Koropecky
+ * @author  Martin Gurtner
+ */
+ 
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>

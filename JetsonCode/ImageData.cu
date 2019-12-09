@@ -1,3 +1,7 @@
+/**
+ * @author  Martin Gurtner
+ */
+
 #include "ImageData.h"
 
 template<typename T>

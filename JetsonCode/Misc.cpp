@@ -1,3 +1,7 @@
+/**
+ * @author  Viktor-Adam Koropecky
+ */
+
 #include "Definitions.h"
 #include "Misc.h"
 #include <iostream>

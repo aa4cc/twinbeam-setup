@@ -1,3 +1,8 @@
+/**
+ * @author  Viktor-Adam Koropecky
+ * @author  Martin Gurtner
+ */
+ 
 #ifndef CAMERA_CONTROLLER_H
 #define CAMERA_CONTROLLER_H
 

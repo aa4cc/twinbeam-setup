@@ -1,3 +1,8 @@
+/**
+ * @author  Martin Gurtner
+ * @author  Viktor-Adam Koropecky
+ */
+
 #include <iostream>
 #include <unistd.h>
 #include <opencv2/opencv.hpp>
@@ -5,17 +10,6 @@
 #include <opencv2/core/cuda.hpp>
 #include "display_thread.h"
 #include "argpars.h"
-
-// void mouseEventCallback(AppData& appData, int event, int x, int y, int flags, void* userdata)
-// {
-// 	// https://www.opencv-srf.com/2011/11/mouse-events.html
-// 	if ( event == cv::EVENT_MOUSEMOVE )
-//      {
-//      	if(Options::debug)
-//         	cout << "DEBUG: Mouse move over the window - position (" << x << ", " << y << ")" << endl;
-//         appData.exitTheApp();
-//      }
-// }
 
 void display_thread(AppData& appData){
 	printf("INFO: display_thread: started\n");
@@ -37,10 +31,6 @@ void display_thread(AppData& appData){
 		if (Options::show) {
 			cv::namedWindow("Basic Visualization", cv::WINDOW_NORMAL);
 			cv::setWindowProperty("Basic Visualization", cv::WND_PROP_FULLSCREEN, cv::WINDOW_FULLSCREEN);
-			//set the callback function for any mouse event
-			// if (Options::mousekill) {
-			// 	cv::setMouseCallback("Basic Visualization", mouseEventCallback, NULL);
-			// }
 		}
 		
 		const cv::cuda::GpuMat c_img_resized(cv::Size(800, 800), CV_8U);

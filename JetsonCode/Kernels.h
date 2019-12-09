@@ -1,5 +1,6 @@
 /**
  * @author  Viktor-Adam Koropecky
+ * @author  Martin Gurtner
  */
 
 #ifndef KERNELS_H

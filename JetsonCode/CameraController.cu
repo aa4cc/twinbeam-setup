@@ -1,3 +1,8 @@
+/**
+ * @author  Viktor-Adam Koropecky
+ * @author  Martin Gurtner
+ */
+ 
 #include <stdio.h>
 #include "CameraController.h"
 #include "Argus/Argus.h"

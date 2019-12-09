@@ -1,3 +1,8 @@
+/**
+ * @author  Martin Gurtner
+ * @author  Viktor-Adam Koropecky
+ */
+
 #include <iostream>
 #include <unistd.h>
 #include "imgproc_thread.h"

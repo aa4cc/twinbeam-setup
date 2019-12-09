@@ -1,3 +1,8 @@
+/**
+ * @author  Viktor-Adam Koropecky
+ * @author  Martin Gurtner
+ */
+ 
 #include "keyboard_thread.h"
 
 void keyboard_thread(AppData& appData){

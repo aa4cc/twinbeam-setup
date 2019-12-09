@@ -1,3 +1,8 @@
+/**
+ * @author  Martin Gurtner
+ * @author  Viktor-Adam Koropecky
+ */
+
 #ifndef APPDATA_H
 #define APPDATA_H
 

@@ -1,3 +1,8 @@
+/**
+ * @author  Martin Gurtner
+ * @author  Viktor-Adam Koropecky
+ */
+ 
 #include <cstdio>
 #include "AppData.h"
 #include <unistd.h>

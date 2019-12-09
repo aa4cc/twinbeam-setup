@@ -1,3 +1,8 @@
+/**
+ * @author  Viktor-Adam Koropecky
+ * @author  Martin Gurtner
+ */
+ 
 #ifndef KEYBOARD_THREAD_H
 #define KEYBOARD_THREAD_H
 

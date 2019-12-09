@@ -1,3 +1,8 @@
+/**
+ * @author  Martin Gurtner
+ * @author  Viktor-Adam Koropecky
+ */
+
 #ifndef DISPLAY_THREAD_H
 #define DISPLAY_THREAD_H
 
