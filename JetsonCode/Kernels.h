@@ -25,10 +25,6 @@ __global__ void u16ToFloat(int N, int M, uint16_t* input, float* result);
 __global__ void floatToUInt8(int N, int M, float* input, uint8_t* result);
 __global__ void floatToUInt16(int N, int M, float* input, uint16_t* result);
 
-
 __global__ void getLocalMinima(int M, int N, float* input, uint16_t* points, uint32_t pointsMaxSize, uint32_t* pointsCounter, float thrs);
-
-template<typename T>
-__global__ void copyKernel(int M, int N, T* input, T* output);
 
 #endif

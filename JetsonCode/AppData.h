@@ -35,6 +35,7 @@ public:
 	RequestType requested_type;
 	bool requested_image;
 	bool requested_coords;
+	bool requested_coords_closest;
 
 	std::condition_variable cam_cv;
 	std::mutex cam_mtx;
@@ -43,6 +44,8 @@ public:
 	ImageData<uint8_t> G, R, G_backprop;
 	uint16_t bead_positions[2*MAX_NUMBER_BEADS];
 	uint32_t bead_count;
+	uint16_t bead_positions_received[2*MAX_NUMBER_BEADS];
+	uint32_t bead_count_received;
 	std::mutex mtx_bp;
 	
     // Construction
@@ -59,11 +62,13 @@ public:
 
 
 	void print();
+	void saveReceivedBeadPos(uint32_t bead_count, uint16_t* bead_positions);
 	void set_connected(const bool value);
 	void set_sent_coords(const bool value);
 	void set_requested_type(const RequestType value);
 	void set_requested_image(const bool value);
 	void set_requested_coords(const bool value);
+	void set_requested_coords_closest(const bool value);
 
 	int get_area();
 };

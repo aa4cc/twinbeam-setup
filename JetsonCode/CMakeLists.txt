@@ -17,7 +17,7 @@ find_package(EGL REQUIRED)
 set(CUDA_NVCC_FLAGS #TX2
 		${CUDA_NVCC_FLAGS};
 		-gencode arch=compute_62,code=sm_62
-		-rdc=true -std=c++14
+		-rdc=true -std=c++14 -O3
         )
 
 SET(OpenCV_DIR "usr/lib")
@@ -37,8 +37,8 @@ set(SOURCES
 		CameraController.cu
 		argpars.cpp
 		AppData.cpp
+		network.cpp
 		ImageData.cu
-		network.cu
 		# Camera.cu
         )
 

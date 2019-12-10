@@ -114,9 +114,12 @@ void display_thread(AppData& appData){
             }
 
             img_count++;
-		}
-		// Close the windows
-		cv::destroyWindow("Basic Visualization");
+        }
+        
+        if (Options::show) {
+            // Close the windows
+            cv::destroyWindow("Basic Visualization");
+        }
 		appData.display_is_initialized = false;
 	}
 

@@ -26,6 +26,8 @@ MessageType parseMessage(char* buf){
 				return MessageType::REQUEST_RAW_R;
 			case 'g':
 				return MessageType::COORDS;
+			case 'h':
+				return MessageType::COORDS_CLOSEST;
 			default:
 				return MessageType::UNKNOWN_TYPE;
 		}

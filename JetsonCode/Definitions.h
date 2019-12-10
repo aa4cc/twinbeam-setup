@@ -14,7 +14,6 @@
 #define BUFSIZE 1000
 #define PORT 30000
 #define PI 3.14159265358979323846
-#define SQUARE(x) x*x
 #define CONVO_DIM_RED 60
 #define CONVO_DIM_GREEN 160
 #define MAX_NUMBER_BEADS 100
@@ -29,6 +28,7 @@ enum class MessageType{
 	REQUEST_RAW_G, // request on sending the unprocessed green channel
 	REQUEST_RAW_R, // request on sending the unprocessed red channel
 	COORDS,
+	COORDS_CLOSEST,
 	UNKNOWN_TYPE
 };
 

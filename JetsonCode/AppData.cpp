@@ -6,6 +6,7 @@
 #include <cstdio>
 #include "AppData.h"
 #include <unistd.h>
+#include <cstring>
 
 AppData::AppData() {
     camera_is_initialized 	= false;
@@ -73,6 +74,15 @@ void AppData::print(){
 	}
 }
 
+void AppData::saveReceivedBeadPos(uint32_t b_count, uint16_t* b_pos) {
+	bead_count_received = b_count;
+	memcpy(bead_positions_received, b_pos, 2*b_count*sizeof(uint16_t));
+
+	// for(uint32_t i = 0 ; i < b_count; i++){
+	// 	printf("(%d, %d)\n", b_pos[2*i], b_pos[2*i + 1]);
+	// }
+}
+
 void AppData::set_connected(const bool value){
 	connected = value;
 }
@@ -91,6 +101,10 @@ void AppData::set_requested_image(const bool value){
 
 void AppData::set_requested_coords(const bool value){
 	requested_coords = value;
+}
+
+void AppData::set_requested_coords_closest(const bool value){
+	requested_coords_closest = value;
 }
 
 int AppData::get_area(){
