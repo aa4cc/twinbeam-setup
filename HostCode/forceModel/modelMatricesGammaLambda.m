@@ -1,4 +1,4 @@
-function [ Gamma, Lambda_x, Lambda_y, Lambda_z] = modelMatrices( x, y, z )
+function [ Gamma, Lambda_x, Lambda_y, Lambda_z] = modelMatricesGammaLambda( p )
 
 elNum = 56;
 
@@ -16,17 +16,17 @@ Psixz = zeros(elNum,1);
 Psiyz = zeros(elNum,1);
 
 for k = 1:elNum
-    Ex(k) = ExElab( k, x, y, z, a, b );
-    Ey(k) = EyElab( k, x, y, z, a, b );
-    Ez(k) = EzElab( k, x, y, z, a, b );
+    Ex(k) = ExElab( k, p(1), p(2), p(3), a, b );
+    Ey(k) = EyElab( k, p(1), p(2), p(3), a, b );
+    Ez(k) = EzElab( k, p(1), p(2), p(3), a, b );
     
-    Psixx(k) = PsixxElab( k, x, y, z, a, b );
-    Psiyy(k) = PsiyyElab( k, x, y, z, a, b );
-    Psizz(k) = PsizzElab( k, x, y, z, a, b );
+    Psixx(k) = PsixxElab( k, p(1), p(2), p(3), a, b );
+    Psiyy(k) = PsiyyElab( k, p(1), p(2), p(3), a, b );
+    Psizz(k) = PsizzElab( k, p(1), p(2), p(3), a, b );
     
-    Psixy(k) = PsixyElab( k, x, y, z, a, b );
-    Psixz(k) = PsixzElab( k, x, y, z, a, b );
-    Psiyz(k) = PsiyzElab( k, x, y, z, a, b );
+    Psixy(k) = PsixyElab( k, p(1), p(2), p(3), a, b );
+    Psixz(k) = PsixzElab( k, p(1), p(2), p(3), a, b );
+    Psiyz(k) = PsiyzElab( k, p(1), p(2), p(3), a, b );
 end
 
 Gamma       = [Ex Ey Ez];
