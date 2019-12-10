@@ -16,17 +16,7 @@ Psixz = zeros(elNum,1);
 Psiyz = zeros(elNum,1);
 
 for k = 1:elNum
-    Ex(k) = ExElab( k, p(1), p(2), p(3), a, b );
-    Ey(k) = EyElab( k, p(1), p(2), p(3), a, b );
-    Ez(k) = EzElab( k, p(1), p(2), p(3), a, b );
-    
-    Psixx(k) = PsixxElab( k, p(1), p(2), p(3), a, b );
-    Psiyy(k) = PsiyyElab( k, p(1), p(2), p(3), a, b );
-    Psizz(k) = PsizzElab( k, p(1), p(2), p(3), a, b );
-    
-    Psixy(k) = PsixyElab( k, p(1), p(2), p(3), a, b );
-    Psixz(k) = PsixzElab( k, p(1), p(2), p(3), a, b );
-    Psiyz(k) = PsiyzElab( k, p(1), p(2), p(3), a, b );
+    [ ~, Ex(k), Ey(k), Ez(k), Psixx(k), Psixy(k), Psixz(k), Psiyy(k), Psiyz(k), Psizz(k) ] = potDeriv_oneEl( k, p(1), p(2), p(3), a, b );
 end
 
 Gamma       = [Ex Ey Ez];
