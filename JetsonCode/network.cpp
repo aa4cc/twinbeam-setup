@@ -64,7 +64,7 @@ void network_thread(AppData& appData){
 		
 		addrlen = sizeof(clientInfo);
 		client = accept(mainSocket, (sockaddr*)&clientInfo, &addrlen);
-		if (client == -1) continue;
+		if (client < 1) continue;
 
 		appData.set_connected(true);
 		cout << "INFO: Got a connection from " << inet_ntoa((in_addr)clientInfo.sin_addr) << endl;
@@ -72,7 +72,11 @@ void network_thread(AppData& appData){
 		while(appData.connected && !appData.appStateIs(AppData::AppState::EXITING)){
 			int msg_len = recv(client, buf, BUFSIZE - 1, 0);
 
+			// If no message was received within one second, continue
 			if (msg_len == -1)	continue;
+
+			// If the connection was closed, break the loop
+			if (msg_len == 0)	break;
 
 			if(Options::debug)
 				printf("DEBUG: Received %d bytes.\n", msg_len);
