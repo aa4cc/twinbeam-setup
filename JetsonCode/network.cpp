@@ -21,6 +21,9 @@ int client;
 void network_thread(AppData& appData){
 	printf("INFO: network_thread: started\n");
 
+	uint8_t coords_buffer[sizeof(uint32_t) + 2*MAX_NUMBER_BEADS*sizeof(uint16_t)];
+	uint32_t* beadCount;
+
 	std::string text;
 	sockaddr_in sockName;
 	sockaddr_in clientInfo; 
@@ -79,7 +82,7 @@ void network_thread(AppData& appData){
 			if (msg_len == 0)	break;
 
 			if(Options::debug)
-				printf("DEBUG: Received %d bytes.\n", msg_len);
+				printf("DEBUG: Received %d bytes. MessageType: %c \n", msg_len, buf[0]);
 
 			response = parseMessage(buf);
 			switch(response){
@@ -91,7 +94,7 @@ void network_thread(AppData& appData){
 					break;
 				case MessageType::SETTINGS:
 					if(appData.appStateIs(AppData::AppState::RUNNING) || appData.appStateIs(AppData::AppState::INITIALIZING))
-						printf("WARN: Can't change settings while the loop is running\n");
+						fprintf(stderr, "WARN: Can't change settings while the loop is running\n");
 					else{
 						memcpy(appData.values, buf+1, sizeof(uint32_t)*STG_NUMBER_OF_SETTINGS);
 						appData.print();
@@ -102,23 +105,83 @@ void network_thread(AppData& appData){
 					appData.set_connected(false);
 					break;
 				case MessageType::REQUEST:
-					appData.set_requested_image(true);
-					appData.set_requested_type(RequestType::BACKPROPAGATED);
+					if(!appData.appStateIs(AppData::AppState::RUNNING)) {
+						fprintf(stderr, "WARN: Image cannot be sent since the application is not running.\n");
+					} else {
+						ImageData<uint8_t> temp_img(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
+						appData.G_backprop.copyTo(temp_img);
+
+						send(client, temp_img.hostPtr(true), sizeof(uint8_t)*appData.get_area(), 0);
+						printf("INFO: Image sent.\n");
+					}
 					break;
 				case MessageType::REQUEST_RAW_G:
-					appData.set_requested_image(true);
-					appData.set_requested_type(RequestType::RAW_G);
+					if(!appData.appStateIs(AppData::AppState::RUNNING)) {
+						fprintf(stderr, "WARN: Image cannot be sent since the application is not running.\n");
+					} else {
+						ImageData<uint8_t> temp_img(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
+						appData.G.copyTo(temp_img);
+
+						send(client, temp_img.hostPtr(true), sizeof(uint8_t)*appData.get_area(), 0);
+						printf("INFO: Image sent.\n");
+					}
 					break;
 				case MessageType::REQUEST_RAW_R:
-					appData.set_requested_image(true);
-					appData.set_requested_type(RequestType::RAW_R);
+					if(!appData.appStateIs(AppData::AppState::RUNNING)) {
+						fprintf(stderr, "WARN: The positions cannot be sent since the application is not running.\n");
+					} else {
+						ImageData<uint8_t> temp_img(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
+						appData.R.copyTo(temp_img);
+
+						send(client, temp_img.hostPtr(true), sizeof(uint8_t)*appData.get_area(), 0);
+						printf("INFO: Image sent.\n");
+					}
 					break;
 				case MessageType::COORDS:
-					appData.set_requested_coords(true);
+					beadCount = (uint32_t*)coords_buffer;
+
+					{ // Limit the scope of the mutex
+						std::lock_guard<std::mutex> mtx_bp(appData.mtx_bp);
+						*beadCount = appData.bead_count;
+						memcpy(coords_buffer+sizeof(uint32_t), appData.bead_positions, 2*(*beadCount)*sizeof(uint16_t));
+					}
+
+					send(client, coords_buffer, sizeof(uint32_t) + 2*(*beadCount)*sizeof(uint16_t), 0);
+
 					break;
 				case MessageType::COORDS_CLOSEST:
-					appData.saveReceivedBeadPos( ((uint32_t*)(buf+sizeof(uint8_t)))[0],  (uint16_t*)(buf+sizeof(uint8_t)+sizeof(uint32_t)) );
-					appData.set_requested_coords_closest(true);
+					if(!appData.appStateIs(AppData::AppState::RUNNING)) {
+						fprintf(stderr, "WARN: The positions cannot be sent since the application is not running.\n");
+					} else {
+						appData.saveReceivedBeadPos( ((uint32_t*)(buf+sizeof(uint8_t)))[0],  (uint16_t*)(buf+sizeof(uint8_t)+sizeof(uint32_t)) );
+					
+						std::lock_guard<std::mutex> mtx_bp(appData.mtx_bp);			
+						// Store the number of beads to be sent to the buffer		
+						((uint32_t*)coords_buffer)[0] = appData.bead_count_received;
+						uint16_t* coords_buffer_pos = (uint16_t*)(coords_buffer+sizeof(uint32_t)); 
+
+						// Iterate over all the received positions and find the closest measured position in appData.bead_positions
+						printf("INFO: Closest bead pos\n");
+						for(int i=0; i<appData.bead_count_received; i++) {
+							// printf("\t %d -> ", i);
+							int min_j = -1;
+							int min_dist = INT_MAX;
+							for(int j=0; j<appData.bead_count; j++) {
+								int dist = SQUARE((int)appData.bead_positions[2*j]-(int)appData.bead_positions_received[2*i]) + SQUARE((int)appData.bead_positions[2*j+1]-(int)appData.bead_positions_received[2*i+1]);
+								if (dist < min_dist) {
+									min_dist = dist;
+									min_j = j;
+								}
+								// printf("\t(%d, %d): %d\n", appData.bead_positions[2*j], appData.bead_positions[2*j+1], dist);
+							}
+							// printf("\t %d <- %d | dist: %d\n", i, min_j, min_dist);
+
+							// Store the closest bead position to the buffer
+							coords_buffer_pos[2*i] = appData.bead_positions[2*min_j];
+							coords_buffer_pos[2*i+1] = appData.bead_positions[2*min_j+1];
+						}
+						send(client, coords_buffer, sizeof(uint32_t) + 2*appData.bead_count_received*sizeof(uint16_t), 0);
+					}
 					break;
 				case MessageType::HELLO:
 					send(client, "Hello!",7,0);
@@ -130,87 +193,4 @@ void network_thread(AppData& appData){
 	close(mainSocket);
 
 	printf("INFO: network_thread: ended\n");
-}
-
-void datasend_thread(AppData& appData){
-	printf("INFO: datasend_thread: started\n");
-	uint8_t coords_buffer[sizeof(uint32_t) + 2*MAX_NUMBER_BEADS*sizeof(uint16_t)];
-
-	while(!appData.appStateIs(AppData::AppState::EXITING)){
-		while(appData.appStateIs(AppData::AppState::RUNNING) && appData.connected) {
-			if(appData.requested_image){
-				ImageData<uint8_t> temp_img(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
-
-				switch (appData.requested_type){
-					case RequestType::BACKPROPAGATED:
-						appData.G_backprop.copyTo(temp_img);
-						break;
-					case RequestType::RAW_G:
-						appData.G.copyTo(temp_img);
-						break;
-					case RequestType::RAW_R:
-						appData.R.copyTo(temp_img);
-						break;
-				}	
-
-				send(client, temp_img.hostPtr(true), sizeof(uint8_t)*appData.get_area(), 0);
-				printf("INFO: Image sent.\n");
-				appData.set_requested_image(false);
-			}
-
-			if(appData.requested_coords && !appData.sent_coords) {
-				{ // Limit the scope of the mutex
-					std::lock_guard<std::mutex> mtx_bp(appData.mtx_bp);
-					((uint32_t*)coords_buffer)[0] = appData.bead_count;
-					memcpy(coords_buffer+sizeof(uint32_t), appData.bead_positions, 2*appData.bead_count*sizeof(uint16_t));
-					send(client, coords_buffer, sizeof(uint32_t) + 2*appData.bead_count*sizeof(uint16_t), 0);
-				}
-
-				printf("INFO: Sent the found locations\n");
-
-				appData.set_requested_coords(false);
-				appData.set_sent_coords(true);
-			}
-
-			if(appData.requested_coords_closest && !appData.sent_coords) {
-				{ // Limit the scope of the mutex
-					std::lock_guard<std::mutex> mtx_bp(appData.mtx_bp);			
-					// Store the number of beads to be sent to the buffer		
-					((uint32_t*)coords_buffer)[0] = appData.bead_count_received;
-					uint16_t* coords_buffer_pos = (uint16_t*)(coords_buffer+sizeof(uint32_t)); 
-
-					// Iterate over all the received positions and find the closest measured position in appData.bead_positions
-					for(int i=0; i<appData.bead_count_received; i++) {
-						int min_j = -1;
-						int min_dist = INT_MAX;
-						for(int j=0; j<appData.bead_count; j++) {
-							int dist = SQUARE((int)appData.bead_positions[2*j]-(int)appData.bead_positions_received[2*i]) + SQUARE((int)appData.bead_positions[2*j+1]-(int)appData.bead_positions_received[2*i+1]);
-							if (dist < min_dist) {
-								min_dist = dist;
-								min_j = j;
-							}
-							// printf("INFO: (%d, %d) dist: %d\n", i, j, dist);
-						}
-						// printf("INFO: %d <- %d | dist: %d\n", i, min_j, min_dist);
-
-						// Store the closest bead position to the buffer
-						coords_buffer_pos[2*i] = appData.bead_positions[2*min_j];
-						coords_buffer_pos[2*i+1] = appData.bead_positions[2*min_j+1];
-					}
-					send(client, coords_buffer, sizeof(uint32_t) + 2*appData.bead_count_received*sizeof(uint16_t), 0);
-
-					appData.set_requested_coords_closest(false);
-					appData.set_sent_coords(true);
-				}
-
-				printf("INFO: Sent the found locations\n");
-
-				appData.set_requested_coords(false);
-				appData.set_sent_coords(true);
-			}
-		}
-		usleep(100);
-	}
-
-	printf("INFO: datasend_thread: ended\n");
 }

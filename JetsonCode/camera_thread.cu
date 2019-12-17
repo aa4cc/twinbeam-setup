@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <thread>
 
 using namespace std;
 using namespace Argus;
@@ -167,8 +168,11 @@ void camera_thread(AppData& appData){
 		// At this point, the app is in the AppData::AppState::RUNNING state.
 		if(Options::debug) printf("INFO: camera_thread: entering the running stage\n");
 
+		// chrono::microseconds period_us(33333);
 		// Capture the images for as long as the App remains in the RUNNING state
 		while(appData.appStateIs(AppData::AppState::RUNNING)){
+			// chrono::steady_clock::time_point next_time = chrono::steady_clock::now() + period_us;
+
 			camController.NewFrameRequest();
 
 			res = cudaEGLStreamConsumerAcquireFrame(&conn, &resource, 0, 5000);
@@ -187,9 +191,9 @@ void camera_thread(AppData& appData){
 			numBlocks = (appData.get_area()/2 +NBLOCKS -1)/NBLOCKS;
 			
 			{
-				std::lock_guard<std::mutex> lk(appData.cam_mtx);
-				std::lock_guard<std::mutex> G_lk(appData.camIG.mtx);
-				std::lock_guard<std::mutex> R_lk(appData.camIR.mtx);
+				lock_guard<mutex> lk(appData.cam_mtx);
+				lock_guard<mutex> G_lk(appData.camIG.mtx);
+				lock_guard<mutex> R_lk(appData.camIR.mtx);
 
 				yuv2bgr<<<numBlocks, NBLOCKS>>>(appData.values[STG_WIDTH], appData.values[STG_HEIGHT],
 												appData.values[STG_OFFSET_X], appData.values[STG_OFFSET_Y], appData.camIG.devicePtr(), appData.camIR.devicePtr());
@@ -200,6 +204,8 @@ void camera_thread(AppData& appData){
 			cudaUnbindTexture(uvTex);
 			
 			cudaEGLStreamConsumerReleaseFrame(&conn, resource, 0);
+
+			// this_thread::sleep_until(next_time);
 		}
 
 		// Deinitialize the camera

@@ -23,7 +23,7 @@ public:
 
     // Member variables
 
-	int values[STG_NUMBER_OF_SETTINGS] = {1200, 1200, 1352, 596, 5000000, 50, 1, 3100, 2400, 30, 80};
+	int values[STG_NUMBER_OF_SETTINGS] = {1200, 1200, 1352, 504, 5000000, 50, 1, 3100, 2400, 30, 80};
 	AppState appState = AppState::IDLING;
 	
 	bool camera_is_initialized;
@@ -31,11 +31,6 @@ public:
 	bool display_is_initialized;
 
 	bool connected;
-	bool sent_coords;
-	RequestType requested_type;
-	bool requested_image;
-	bool requested_coords;
-	bool requested_coords_closest;
 
 	std::condition_variable cam_cv;
 	std::mutex cam_mtx;
@@ -64,11 +59,6 @@ public:
 	void print();
 	void saveReceivedBeadPos(uint32_t bead_count, uint16_t* bead_positions);
 	void set_connected(const bool value);
-	void set_sent_coords(const bool value);
-	void set_requested_type(const RequestType value);
-	void set_requested_image(const bool value);
-	void set_requested_coords(const bool value);
-	void set_requested_coords_closest(const bool value);
 
 	int get_area();
 };

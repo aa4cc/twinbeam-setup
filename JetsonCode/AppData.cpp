@@ -12,11 +12,7 @@ AppData::AppData() {
     camera_is_initialized 	= false;
     imgproc_is_initialized	= false;
     display_is_initialized 	= false;
-    connected = false;
-    sent_coords = false;
-    requested_coords = false;
-    requested_type = RequestType::BACKPROPAGATED;
-    requested_image = false;
+    connected = false;    
 }
 
 void AppData::startTheApp() {
@@ -85,26 +81,6 @@ void AppData::saveReceivedBeadPos(uint32_t b_count, uint16_t* b_pos) {
 
 void AppData::set_connected(const bool value){
 	connected = value;
-}
-
-void AppData::set_sent_coords(const bool value){
-	sent_coords = value;
-}
-
-void AppData::set_requested_type(const RequestType value){
-	requested_type = value;
-}
-
-void AppData::set_requested_image(const bool value){
-	requested_image = value;
-}
-
-void AppData::set_requested_coords(const bool value){
-	requested_coords = value;
-}
-
-void AppData::set_requested_coords_closest(const bool value){
-	requested_coords_closest = value;
 }
 
 int AppData::get_area(){

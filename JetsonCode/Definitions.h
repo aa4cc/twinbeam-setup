@@ -32,13 +32,6 @@ enum class MessageType{
 	UNKNOWN_TYPE
 };
 
-
-enum class RequestType{
-	BACKPROPAGATED,
-	RAW_G,
-	RAW_R
-};
-
 enum SETTINGS_TYPE{
 	STG_WIDTH,
 	STG_HEIGHT,

@@ -35,7 +35,6 @@ void imgproc_thread(AppData& appData){
 
 		// Set the flag indicating that the camera was initialized
 		appData.imgproc_is_initialized = true;
-
 		
 		if(Options::debug) printf("INFO: imgproc_thread: waiting till other App components are initialized\n");
 
@@ -78,9 +77,6 @@ void imgproc_thread(AppData& appData){
 				appData.bead_count = beadsFinder.copyPositionsTo(appData.bead_positions);
 			}
 			auto t_beadsfinder_end = std::chrono::system_clock::now();
-
-			// Set the sent_coords flag to false to indicate that new bead positions were found and can be sent to the host computer
-			appData.set_sent_coords(false);
 
 			auto t_cycle_end = std::chrono::system_clock::now();
 			if(Options::verbose) {
