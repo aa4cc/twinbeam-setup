@@ -19,12 +19,11 @@ using namespace std;
 
 int client;
 void network_thread(AppData& appData){
-	printf("INFO: network_thread: started\n");
+	if(Options::debug) printf("INFO: network_thread: started\n");
 
 	uint8_t coords_buffer[sizeof(uint32_t) + 2*MAX_NUMBER_BEADS*sizeof(uint16_t)];
 	uint32_t* beadCount;
 
-	std::string text;
 	sockaddr_in sockName;
 	sockaddr_in clientInfo; 
 	int mainSocket;
@@ -70,7 +69,7 @@ void network_thread(AppData& appData){
 		if (client < 1) continue;
 
 		appData.set_connected(true);
-		cout << "INFO: Got a connection from " << inet_ntoa((in_addr)clientInfo.sin_addr) << endl;
+		if(Options::debug) cout << "INFO: Got a connection from " << inet_ntoa((in_addr)clientInfo.sin_addr) << endl;
 
 		while(appData.connected && !appData.appStateIs(AppData::AppState::EXITING)){
 			int msg_len = recv(client, buf, BUFSIZE - 1, 0);
@@ -81,8 +80,7 @@ void network_thread(AppData& appData){
 			// If the connection was closed, break the loop
 			if (msg_len == 0)	break;
 
-			if(Options::debug)
-				printf("DEBUG: Received %d bytes. MessageType: %c \n", msg_len, buf[0]);
+			if(Options::debug) printf("DEBUG: Received %d bytes. MessageType: %c \n", msg_len, buf[0]);
 
 			response = parseMessage(buf);
 			switch(response){
@@ -98,7 +96,7 @@ void network_thread(AppData& appData){
 					else{
 						memcpy(appData.values, buf+1, sizeof(uint32_t)*STG_NUMBER_OF_SETTINGS);
 						appData.print();
-						printf("INFO: Changed settings\n");
+						if(Options::debug) printf("INFO: Changed settings\n");
 					}
 					break;
 				case MessageType::DISCONNECT:
@@ -112,7 +110,7 @@ void network_thread(AppData& appData){
 						appData.G_backprop.copyTo(temp_img);
 
 						send(client, temp_img.hostPtr(true), sizeof(uint8_t)*appData.get_area(), 0);
-						printf("INFO: Image sent.\n");
+						if(Options::debug) printf("INFO: Image sent.\n");
 					}
 					break;
 				case MessageType::REQUEST_RAW_G:
@@ -123,7 +121,7 @@ void network_thread(AppData& appData){
 						appData.G.copyTo(temp_img);
 
 						send(client, temp_img.hostPtr(true), sizeof(uint8_t)*appData.get_area(), 0);
-						printf("INFO: Image sent.\n");
+						if(Options::debug) printf("INFO: Image sent.\n");
 					}
 					break;
 				case MessageType::REQUEST_RAW_R:
@@ -134,7 +132,7 @@ void network_thread(AppData& appData){
 						appData.R.copyTo(temp_img);
 
 						send(client, temp_img.hostPtr(true), sizeof(uint8_t)*appData.get_area(), 0);
-						printf("INFO: Image sent.\n");
+						if(Options::debug) printf("INFO: Image sent.\n");
 					}
 					break;
 				case MessageType::COORDS:
@@ -161,7 +159,6 @@ void network_thread(AppData& appData){
 						uint16_t* coords_buffer_pos = (uint16_t*)(coords_buffer+sizeof(uint32_t)); 
 
 						// Iterate over all the received positions and find the closest measured position in appData.bead_positions
-						printf("INFO: Closest bead pos\n");
 						for(int i=0; i<appData.bead_count_received; i++) {
 							// printf("\t %d -> ", i);
 							int min_j = -1;
@@ -181,6 +178,8 @@ void network_thread(AppData& appData){
 							coords_buffer_pos[2*i+1] = appData.bead_positions[2*min_j+1];
 						}
 						send(client, coords_buffer, sizeof(uint32_t) + 2*appData.bead_count_received*sizeof(uint16_t), 0);
+
+						if(Options::debug) printf("INFO: Closest bead positions sent\n");
 					}
 					break;
 				case MessageType::HELLO:
@@ -188,9 +187,10 @@ void network_thread(AppData& appData){
 					break;
 			} 
 		}
+		if(Options::debug) cout << "INFO: Closing the connection from " << inet_ntoa((in_addr)clientInfo.sin_addr) << endl;
 		close(client);
 	}
 	close(mainSocket);
 
-	printf("INFO: network_thread: ended\n");
+	if(Options::debug) printf("INFO: network_thread: ended\n");
 }

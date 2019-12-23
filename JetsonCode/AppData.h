@@ -23,7 +23,7 @@ public:
 
     // Member variables
 
-	int values[STG_NUMBER_OF_SETTINGS] = {1200, 1200, 1352, 504, 5000000, 50, 1, 3100, 2400, 30, 80};
+	int values[STG_NUMBER_OF_SETTINGS] = {1200, 1200, 1352, 504, 5000000, 200, 2, 3100, 2400, 30, 80};
 	AppState appState = AppState::IDLING;
 	
 	bool camera_is_initialized;

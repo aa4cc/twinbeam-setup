@@ -42,7 +42,7 @@ public:
 
 	CameraController(uint32_t cam_id, uint32_t sens_mode, bool verb=false, bool dbg=false) : camera_id{cam_id}, sensore_mode{sens_mode}, f_verbose{verb}, f_debug{dbg} {};
 	bool Initialize();
-	bool Start(uint32_t imgWidth, uint32_t imgHeight, uint32_t fps, uint32_t exposure, float analogGain, float digitalGain);
+	bool Start(uint32_t imgWidth, uint32_t imgHeight, uint32_t exposure, float analogGain, float digitalGain);
 	EGLStreamKHR GetEGLStream();
 	void NewFrameRequest();
 	bool Stop();

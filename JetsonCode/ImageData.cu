@@ -25,7 +25,7 @@ void ImageData<T>::release() {
 template<typename T>
 T* ImageData<T>::hostPtr(bool sync) {
     if(sync) {
-        std::lock_guard<std::mutex> l_src(mtx);
+        std::shared_lock<std::shared_timed_mutex> lck(mtx);
 
         cudaMemcpy(h_data, d_data, sizeof(T)*width*height, cudaMemcpyDeviceToHost);
     }
@@ -33,18 +33,13 @@ T* ImageData<T>::hostPtr(bool sync) {
 };
 
 template<typename T>
-T* ImageData<T>::devicePtr(bool sync) {
-    if(sync) {
-        std::lock_guard<std::mutex> l_src(mtx);
-
-        cudaMemcpy(d_data, h_data, sizeof(T)*width*height, cudaMemcpyHostToDevice);
-    }
+T* ImageData<T>::devicePtr() {
     return d_data;
 };
 
 template<typename T>
 void ImageData<T>::copyTo(const ImageData<T>& dst) {
-    std::lock_guard<std::mutex> l_src(mtx);
-    std::lock_guard<std::mutex> l_dst(dst.mtx);
+    std::shared_lock<std::shared_timed_mutex> l_src(mtx);
+    std::unique_lock<std::shared_timed_mutex> l_dst(dst.mtx);
     cudaMemcpy(dst.d_data, d_data, sizeof(T)*width*height, cudaMemcpyDeviceToDevice);
 };

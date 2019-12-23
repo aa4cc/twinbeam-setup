@@ -11,8 +11,11 @@
 #include "display_thread.h"
 #include "argpars.h"
 
+using namespace std;
+using namespace chrono;
+
 void display_thread(AppData& appData){
-	printf("INFO: display_thread: started\n");
+	if(Options::debug) printf("INFO: display_thread: started\n");
 	
 	char ret_key;
 	char filename [50];
@@ -50,8 +53,9 @@ void display_thread(AppData& appData){
 
 		while(appData.appStateIs(AppData::AppState::RUNNING)) {
             // Wait for a new image
-            std::unique_lock<std::mutex> lck(appData.cam_mtx);
+            unique_lock<mutex> lck(appData.cam_mtx);
             appData.cam_cv.wait(lck);
+            // unlock the mutex so that the camera thread can proceed to capture a new image
             lck.unlock();
 
             if (++img_since_last_time >= 6) {
@@ -60,7 +64,7 @@ void display_thread(AppData& appData){
                 continue;
             }            
 			
-            auto start = std::chrono::system_clock::now();
+            auto start = steady_clock::now();
             if (Options::show && !Options::saveimgs)
                 appData.G_backprop.copyTo(G_backprop_copy);
             if (Options::saveimgs) {
@@ -94,7 +98,7 @@ void display_thread(AppData& appData){
 
                 // Draw bead positions
                 { // Limit the scope of the mutex
-                    std::lock_guard<std::mutex> mtx_bp(appData.mtx_bp);
+                    lock_guard<mutex> mtx_bp(appData.mtx_bp);
                     for(int i = 0; i < appData.bead_count; i++) {
                         uint32_t x = (appData.bead_positions[2*i]*800)/appData.values[STG_WIDTH];
                         uint32_t y = (appData.bead_positions[2*i+1]*800)/appData.values[STG_HEIGHT];
@@ -103,10 +107,9 @@ void display_thread(AppData& appData){
                 }
                 
                 cv::imshow("Basic Visualization", img_disp);
-                auto end = std::chrono::system_clock::now();
-                std::chrono::duration<double> elapsed_seconds = end-start;
+                auto end = steady_clock::now();
                 if(Options::verbose) {
-                    std::cout << "TRACE: Stroring the image took: " << elapsed_seconds.count() << "s\n";
+                    cout << "TRACE: Stroring the image took: " << duration_cast<microseconds>(end-start).count()/1000.0 << " ms\n";
                 }
 
                 ret_key = (char) cv::waitKey(1);
@@ -123,5 +126,5 @@ void display_thread(AppData& appData){
 		appData.display_is_initialized = false;
 	}
 
-	printf("INFO: display_thread: ended\n");
+	if(Options::debug) printf("INFO: display_thread: ended\n");
 }

@@ -131,7 +131,7 @@ __global__ void floatToUInt8(int N, int M, float* input, uint8_t* result)
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     int stride = blockDim.x * gridDim.x;
     for(int i = index; i < N*M; i += stride){
-        result[i] = (uint8_t)input[i];
+        result[i] = (uint8_t) fmin(fmax(input[i], 0.0f), 255.0f);
     }
 }
 

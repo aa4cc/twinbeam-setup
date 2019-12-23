@@ -38,7 +38,7 @@ cxxopts::ParseResult Options::parse(AppData& appData, int argc, char* argv[])
 	  ("digitalgain", 	"Digital gain [1,256]", 									cxxopts::value<uint32_t>())
       ("r,resolution", 	"Resolution (example -r 1024,1024)",						cxxopts::value<std::vector<uint32_t>>())
 	  ("o,offset", 		"Offset of the image (example -o 123,523)", 				cxxopts::value<std::vector<uint32_t>>())
-	  ("f,fps", 		"Frame rate [1,60]", 										cxxopts::value<uint32_t>())
+	  ("f,fps", 		"Frame rate [1,50]", 										cxxopts::value<uint32_t>())
 	  ;
 	  
 	options.add_options("Image Processing")

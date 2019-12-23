@@ -6,9 +6,6 @@
 #include <cstddef>
 #include <cstdlib>
 #include "stdio.h"
-#include "thrust/copy.h"
-#include "thrust/execution_policy.h"
-#include "thrust/device_ptr.h"
 #include "Kernels.h"
 
 BeadsFinder::BeadsFinder(uint16_t m, uint16_t n, uint8_t img_thrs, bool dbg): im_width{m}, im_height{n}, img_threshold{img_thrs}, debug{dbg}
@@ -36,7 +33,7 @@ void BeadsFinder::findBeads(ImageData<uint8_t>& inputImg)
     const cv::Mat img_write(cv::Size(im_width, im_height), CV_8U);
 
     {// Limit the scope of the mutex
-        std::lock_guard<std::mutex> l(inputImg.mtx);
+        std::shared_lock<std::shared_timed_mutex> l(inputImg.mtx);
         // Blur the image by the gaussian filter
         gaussianFilter->apply(img_in, img_filt);
     }
