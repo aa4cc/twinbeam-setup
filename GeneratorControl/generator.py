@@ -50,6 +50,8 @@ class Generator(object):
             phases = phases + [0 for x in range(64-len(phases))]
             dutys = dutys + [0 for x in range(64-len(dutys))]
 
+        # print(len(phases))
+
         phases.reverse()
         dutys.reverse()
 
