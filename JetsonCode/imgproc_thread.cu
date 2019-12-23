@@ -6,6 +6,7 @@
 #include <iostream>
 #include <unistd.h>
 #include <cmath>
+#include <pthread.h>
 #include "imgproc_thread.h"
 #include "argpars.h"
 #include "BeadsFinder.h"
@@ -16,6 +17,16 @@ using namespace std::chrono;
 
 void imgproc_thread(AppData& appData){
 	if(Options::debug) printf("INFO: imgproc_thread: started\n");
+
+	if(Options::rtprio) {
+		struct sched_param schparam;
+		schparam.sched_priority = 50;
+		
+		if(Options::debug) printf("INFO: imgproc_thread: setting rt priority to %d\n", schparam.sched_priority);
+
+		int s = pthread_setschedparam(pthread_self(), SCHED_FIFO, &schparam);
+		if (s != 0) fprintf(stderr, "WARNING: setting the priority of image processing thread failed.\n");
+	}
 	
 	while(!appData.appStateIs(AppData::AppState::EXITING)) {
 		if(Options::debug) printf("INFO: imgproc_thread: waiting for entering the INITIALIZING state\n");

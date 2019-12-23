@@ -10,6 +10,7 @@ bool Options::saveimgs 		= false;
 bool Options::saveimgs_bp	= false;
 // bool Options::savevideos 	= false;
 bool Options::mousekill 	= false;
+bool Options::rtprio		= false;
 
 cxxopts::ParseResult Options::parse(AppData& appData, int argc, char* argv[])
 {
@@ -29,6 +30,7 @@ cxxopts::ParseResult Options::parse(AppData& appData, int argc, char* argv[])
       ("d,debug", 		"Prints debug information",									cxxopts::value<bool>(Options::debug))
       ("k,mousekill", 	"Moving the mouse or toching the screen kills the app",		cxxopts::value<bool>(Options::mousekill))
       ("v,verbose", 	"Prints some additional information",						cxxopts::value<bool>(Options::verbose))
+      ("p,rtprio", 		"Set real-time priorities",									cxxopts::value<bool>(Options::rtprio))
       ("help", 			"Prints help")
 	  ;
 	  
@@ -85,24 +87,6 @@ cxxopts::ParseResult Options::parse(AppData& appData, int argc, char* argv[])
 	if (result.count("g_dist") > 0) {
 		appData.values[STG_Z_GREEN]= result["g_dist"].as<uint32_t>();
 	}
-
-    if (Options::debug) {
-	    if (Options::show)
-	    {
-	      std::cout << "Saw option ‘s’" << std::endl;
-	    }
-
-	    if (Options::debug)
-	    {
-	      std::cout << "Saw option ‘d’" << std::endl;
-	    }
-
-	    if (Options::verbose)
-	    {
-	      std::cout << "Saw option ‘v’" << std::endl;
-	    }
-	}
-
 
     return result;
 

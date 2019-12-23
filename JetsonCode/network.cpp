@@ -9,6 +9,7 @@
 #include <iostream>
 #include <climits>
 #include <unistd.h>
+#include <pthread.h>
 #include "network.h"
 #include "Misc.h"
 #include "argpars.h"
@@ -20,6 +21,18 @@ using namespace std;
 int client;
 void network_thread(AppData& appData){
 	if(Options::debug) printf("INFO: network_thread: started\n");
+
+	if(Options::rtprio) {
+		struct sched_param schparam;
+		schparam.sched_priority = 30;
+		
+		if(Options::debug) printf("INFO: netwrok_thread: setting rt priority to %d\n", schparam.sched_priority);
+
+		int s = pthread_setschedparam(pthread_self(), SCHED_FIFO, &schparam);
+		if (s != 0) {
+			fprintf(stderr, "WARNING: setting the priority of network thread failed.\n");
+		}
+	}	
 
 	uint8_t coords_buffer[sizeof(uint32_t) + 2*MAX_NUMBER_BEADS*sizeof(uint16_t)];
 	uint32_t* beadCount;

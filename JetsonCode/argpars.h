@@ -16,6 +16,7 @@ public:
     static bool saveimgs_bp;
     // static bool savevideos;
     static bool mousekill;
+    static bool rtprio;
 
     static cxxopts::ParseResult parse(AppData& appData, int argc, char* argv[]);
 };

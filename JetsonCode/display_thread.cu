@@ -8,6 +8,7 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core/cuda.hpp>
+#include <pthread.h>
 #include "display_thread.h"
 #include "argpars.h"
 
@@ -16,7 +17,17 @@ using namespace chrono;
 
 void display_thread(AppData& appData){
 	if(Options::debug) printf("INFO: display_thread: started\n");
-	
+    
+    if(Options::rtprio) {
+		struct sched_param schparam;
+        schparam.sched_priority = 20;
+        
+		if(Options::debug) printf("INFO: display_thread: setting rt priority to %d\n", schparam.sched_priority);
+
+		int s = pthread_setschedparam(pthread_self(), SCHED_FIFO, &schparam);
+		if (s != 0) fprintf(stderr, "WARNING: setting the priority of display thread failed.\n");
+    }
+    
 	char ret_key;
 	char filename [50];
 	int img_count = 0;

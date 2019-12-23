@@ -3,11 +3,22 @@
  * @author  Martin Gurtner
  */
  
+#include <pthread.h>
 #include "keyboard_thread.h"
 #include "argpars.h"
 
 void keyboard_thread(AppData& appData){
 	if(Options::debug) printf("INFO: keyboard_thread: started\n");
+
+	if(Options::rtprio) {
+		struct sched_param schparam;
+		schparam.sched_priority = 20;
+
+		if(Options::debug) printf("INFO: keyboard_thread: setting rt priority to %d\n", schparam.sched_priority);
+
+		int s = pthread_setschedparam(pthread_self(), SCHED_FIFO, &schparam);
+		if (s != 0) fprintf(stderr, "WARNING: setting the priority of keyboard thread failed.\n");
+	}	
 
 	int input;
 	while(!appData.appStateIs(AppData::AppState::EXITING)){

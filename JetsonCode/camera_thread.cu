@@ -3,7 +3,13 @@
  * @author  Viktor-Adam Koropecky
  */
  
-#include "camera_thread.h"
+ #include <unistd.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <thread>
+ #include <cmath>
+ #include <pthread.h>
+ #include "camera_thread.h"
 #include "Definitions.h"
 #include "Kernels.h"
 #include "cuda.h"
@@ -14,11 +20,6 @@
 #include "cuda_egl_interop.h"
 #include "argpars.h"
 #include "CameraController.h"
-#include <unistd.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <thread>
-#include <cmath>
 
 using namespace std;
 using namespace Argus;
@@ -105,6 +106,16 @@ __global__ void yuv2bgr(int width, int height, int offset_x, int offset_y,
 
 void camera_thread(AppData& appData){
 	if(Options::debug) printf("INFO: camera_thread: started\n");
+
+	if(Options::rtprio) {
+		struct sched_param schparam;
+		schparam.sched_priority = 50;
+		
+		if(Options::debug) printf("INFO: camera_thread: setting rt priority to %d\n", schparam.sched_priority);
+
+		int s = pthread_setschedparam(pthread_self(), SCHED_FIFO, &schparam);
+		if (s != 0) fprintf(stderr, "WARNING: setting the priority of camera thread failed.\n");
+	}
 	
 	CameraController camController(0, 1, Options::verbose, Options::debug);
 	if(!camController.Initialize()) {
