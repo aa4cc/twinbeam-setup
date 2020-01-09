@@ -10,7 +10,7 @@
 #include "genControl.h"
 
 #define PORT 30001
-#define BUFSIZE 200
+#define BUFSIZE 400
 
 using namespace std;
 using namespace std::chrono_literals;
@@ -102,7 +102,13 @@ int main( int argc, char** argv ) {
 
             switch(buf[0]) {
                 case 'p':
-                    generator_setPhases(fp, (uint16_t *)(buf+1), enables);
+					if (msg_len==113) {
+                    	generator_setPhases(fp, (uint16_t *)(buf+1), enables);
+					} else if ( (msg_len%113) == 0 ) {
+						int numberOfMessages = msg_len/113;
+						uint16_t* lastMessage = (uint16_t*)(buf + 113*(numberOfMessages-1) + 1);
+						generator_setPhases(fp, lastMessage, enables);
+					}
                     break;
                 case 'd':
                     generator_setPhases(fp, phases, disables);
