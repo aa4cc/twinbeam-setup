@@ -69,9 +69,7 @@ void display_thread(AppData& appData){
             // unlock the mutex so that the camera thread can proceed to capture a new image
             lck.unlock();
 
-            if (++img_since_last_time >= 6) {
-                img_since_last_time = 0;
-            } else {
+            if(steady_clock::now() < next_time) {
                 continue;
             }            
 			

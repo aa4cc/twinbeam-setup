@@ -73,6 +73,8 @@ class Generator(object):
 
         packet = self.OPEN_CODE + bytes(byte_stream) + self.CLOSE_CODE + struct.pack(">H", chcksum)
 
+        # print(packet)
+
         if self.port:
             self.port.write(packet)
         return packet
