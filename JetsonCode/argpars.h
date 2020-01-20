@@ -9,16 +9,24 @@
 
 class Options{
 public:
+
+    enum class ImageType {
+        RAW_G,
+        RAW_R,
+        BACKPROP_G,
+        BACKPROP_R,
+    };
+
     static bool verbose;
     static bool debug;
     static bool show;
-    static bool saveimgs;
-    static bool saveimgs_bp;
+    static bool show_markers;
+    static ImageType displayImageType;
     static bool savevideo;
     static bool mousekill;
     static bool rtprio;
     static bool beadsearch;
-
+    
     static cxxopts::ParseResult parse(AppData& appData, int argc, char* argv[]);
 };
 

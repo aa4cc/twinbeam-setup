@@ -31,8 +31,7 @@ void display_thread(AppData& appData){
     }
     
 	char ret_key;
-	char filename [50];
-    int img_count = 0;
+	int img_count = 0;
 
 	while(!appData.appStateIs(AppData::AppState::EXITING)){
 		if(Options::debug) printf("INFO: display_thread: waiting for entering the INITIALIZING state\n");
@@ -40,14 +39,10 @@ void display_thread(AppData& appData){
 		if(!appData.waitTillState(AppData::AppState::INITIALIZING)) break;
 
 		// Allocate the memory
-		ImageData<uint8_t> G_backprop_copy(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
-		ImageData<uint8_t> G_copy(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
-		ImageData<uint8_t> R_copy(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
+		ImageData<uint8_t> img_copy(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
 
-		if (Options::show) {
-			cv::namedWindow("Basic Visualization", cv::WINDOW_NORMAL);
-			cv::setWindowProperty("Basic Visualization", cv::WND_PROP_FULLSCREEN, cv::WINDOW_FULLSCREEN);
-		}
+        // Set the flag indicatinf whether the window is opened or not to false
+        bool windowOpened = false;
 		
 		const cv::cuda::GpuMat c_img_resized(cv::Size(800, 800), CV_8U);
         const cv::Mat img_disp(cv::Size(800, 800), CV_8U);        
@@ -91,31 +86,32 @@ void display_thread(AppData& appData){
             } 
 
             auto start = steady_clock::now();
-            if (Options::show && !Options::saveimgs)
-                appData.G_backprop.copyTo(G_backprop_copy);
-            if (Options::saveimgs) {
-                appData.G_backprop.copyTo(G_backprop_copy);
-                appData.G.copyTo(G_copy);
-                appData.R.copyTo(R_copy);
-            }
-            
-            if (Options::saveimgs) {					
-                const cv::Mat G_img(cv::Size(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]), CV_8U, G_copy.hostPtr(true));
-                const cv::Mat R_img(cv::Size(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]), CV_8U, R_copy.hostPtr(true));
-                const cv::Mat G_backprop_img(cv::Size(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]), CV_8U, G_backprop_copy.hostPtr(true));
-                
-                sprintf (filename, "./imgs/G_%05d.png", img_count);
-                cv::imwrite( filename, G_img );
-                
-                sprintf (filename, "./imgs/R_%05d.png", img_count);
-                cv::imwrite( filename, R_img );
-                
-                sprintf (filename, "./imgs/G_bp_%05d.png", img_count);
-                cv::imwrite( filename, G_backprop_img );
-            }				
             
             if (Options::show) {
-                const cv::cuda::GpuMat c_img(cv::Size(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]), CV_8U, G_backprop_copy.devicePtr());
+                // if the window has not been opened yet, open it
+                if (!windowOpened) {
+                    cv::namedWindow("Basic Visualization", cv::WINDOW_NORMAL);
+                    cv::setWindowProperty("Basic Visualization", cv::WND_PROP_FULLSCREEN, cv::WINDOW_FULLSCREEN);
+                    windowOpened = true;
+                }
+
+                // Copy the image to the local copy
+                switch(Options::displayImageType) {
+                    case Options::ImageType::RAW_G:
+                        appData.G.copyTo(img_copy);
+                        break;
+                    case Options::ImageType::RAW_R:
+                        appData.R.copyTo(img_copy);
+                        break;
+                    case Options::ImageType::BACKPROP_G:
+                        appData.G_backprop.copyTo(img_copy);
+                        break;
+                    case Options::ImageType::BACKPROP_R:
+                        appData.R_backprop.copyTo(img_copy);
+                        break;
+                }
+
+                const cv::cuda::GpuMat c_img(cv::Size(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]), CV_8U, img_copy.devicePtr());
 
                 // Resize the image so that it fits the display
                 cv::cuda::resize(c_img, c_img_resized, cv::Size(800, 800));	
@@ -124,8 +120,8 @@ void display_thread(AppData& appData){
 
                 if (Options::savevideo) video_writer.write(img_disp);
 
-                // Draw bead positions (if beadsearch enabled)
-                if(Options::beadsearch) {
+                // Draw bead positions (if beadsearch enabled and show_markers flag active)
+                if(Options::beadsearch && Options::show_markers) {
                     lock_guard<mutex> mtx_bp(appData.mtx_bp);
                     for(auto &b : appData.bead_positions) {
                         auto x = (b.x*800)/appData.values[STG_WIDTH];
@@ -148,16 +144,23 @@ void display_thread(AppData& appData){
 
             auto end = steady_clock::now();
             if(Options::verbose) {
-                cout << "TRACE: Stroring the image took: " << duration_cast<microseconds>(end-start).count()/1000.0 << " ms\n";
+                cout << "TRACE: Displaying/recording the image took: " << duration_cast<microseconds>(end-start).count()/1000.0 << " ms\n";
+            }
+
+            if(!Options::show && windowOpened) {
+                // just in case the Options::show flag was disabled during the run-time, close the window
+                cv::destroyWindow("Basic Visualization");
+                windowOpened = false;
             }
 
             img_count++;
         }
         
-        if (Options::show) {
+        if (windowOpened) {
             // Close the windows
             cv::destroyWindow("Basic Visualization");
         }
+
 		appData.display_is_initialized = false;
 	}
 

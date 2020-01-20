@@ -48,11 +48,30 @@ void keyboard_thread(AppData& appData){
 			}
 		}
 		else if(input == 'o'){
-			Options::show = !Options::show;
-			if(Options::show) {
+			if(!Options::show) {
+				// If the display was disabled, enable it and set the image type to the backpropagated green channel
+				Options::show = true;
+				Options::displayImageType = Options::ImageType::BACKPROP_G;
 				if(Options::debug) printf("INFO: Switching ON the DISPLAY mode.\n");
 			} else {
-				if(Options::debug) printf("INFO: Switching OFF the DISPLAY mode.\n");
+                switch(Options::displayImageType) {
+                    case Options::ImageType::RAW_G:
+						Options::displayImageType = Options::ImageType::RAW_R;
+						if(Options::debug) printf("INFO: Setting the type of the displayed image to RAW_R\n");
+                        break;
+                    case Options::ImageType::RAW_R:
+						Options::show = false;
+						if(Options::debug) printf("INFO: Switching OFF the DISPLAY mode.\n");
+                        break;
+                    case Options::ImageType::BACKPROP_G:
+						Options::displayImageType = Options::ImageType::BACKPROP_R;
+						if(Options::debug) printf("INFO: Setting the type of the displayed image to BACKPROP_R\n");
+                        break;
+                    case Options::ImageType::BACKPROP_R:
+						Options::displayImageType = Options::ImageType::RAW_G;
+						if(Options::debug) printf("INFO: Setting the type of the displayed image to RAW_G\n");
+                        break;
+                }
 			}
 		}
 		else if(input == 'l'){

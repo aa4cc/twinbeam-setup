@@ -6,11 +6,12 @@
 bool Options::verbose 		= false;
 bool Options::debug 		= false;
 bool Options::show 			= false;
-bool Options::saveimgs 		= false;
+bool Options::show_markers	= true;
 bool Options::savevideo 	= false;
 bool Options::mousekill 	= false;
 bool Options::rtprio		= false;
 bool Options::beadsearch	= false;
+Options::ImageType Options::displayImageType = Options::ImageType::BACKPROP_G;
 
 cxxopts::ParseResult Options::parse(AppData& appData, int argc, char* argv[])
 {
@@ -24,7 +25,7 @@ cxxopts::ParseResult Options::parse(AppData& appData, int argc, char* argv[])
     options
       .add_options()
       ("s,show", 		"Display the processed image on the display",				cxxopts::value<bool>(Options::show))
-      ("saveimgs", 		"Save images", 												cxxopts::value<bool>(Options::saveimgs))
+      ("showmarkers", 	"Display markers at the positions of found/tracked objects",cxxopts::value<bool>(Options::show_markers))
       ("savevideo", 	"Save video - works only if 'show' argument is used as well",cxxopts::value<bool>(Options::savevideo))
       ("d,debug", 		"Prints debug information",									cxxopts::value<bool>(Options::debug))
       ("k,mousekill", 	"Moving the mouse or toching the screen kills the app",		cxxopts::value<bool>(Options::mousekill))
