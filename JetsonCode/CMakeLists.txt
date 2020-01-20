@@ -30,6 +30,7 @@ set(SOURCES
 		Misc.cpp
 		BackPropagator.cu
 		BeadsFinder.cu
+		BeadTracker.cpp
 		camera_thread.cu
 		keyboard_thread.cpp
 		display_thread.cu

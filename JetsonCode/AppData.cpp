@@ -12,7 +12,9 @@ AppData::AppData() {
     camera_is_initialized 	= false;
     imgproc_is_initialized	= false;
     display_is_initialized 	= false;
-    connected = false;    
+
+	// Allocate the memory for the bead_position array so that the dynamic memory allocation is avoided
+	bead_positions.reserve(MAX_NUMBER_BEADS);
 }
 
 void AppData::startTheApp() {
@@ -68,19 +70,6 @@ void AppData::print(){
 	for(int i = 0 ; i < STG_NUMBER_OF_SETTINGS; i++){
 		printf("%d\n", values[i]);
 	}
-}
-
-void AppData::saveReceivedBeadPos(uint32_t b_count, uint16_t* b_pos) {
-	bead_count_received = b_count;
-	memcpy(bead_positions_received, b_pos, 2*b_count*sizeof(uint16_t));
-
-	// for(uint32_t i = 0 ; i < b_count; i++){
-	// 	printf("(%d, %d)\n", b_pos[2*i], b_pos[2*i + 1]);
-	// }
-}
-
-void AppData::set_connected(const bool value){
-	connected = value;
 }
 
 int AppData::get_area(){

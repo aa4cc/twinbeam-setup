@@ -7,10 +7,10 @@ bool Options::verbose 		= false;
 bool Options::debug 		= false;
 bool Options::show 			= false;
 bool Options::saveimgs 		= false;
-bool Options::saveimgs_bp	= false;
-// bool Options::savevideos 	= false;
+bool Options::savevideo 	= false;
 bool Options::mousekill 	= false;
 bool Options::rtprio		= false;
+bool Options::beadsearch	= false;
 
 cxxopts::ParseResult Options::parse(AppData& appData, int argc, char* argv[])
 {
@@ -25,8 +25,7 @@ cxxopts::ParseResult Options::parse(AppData& appData, int argc, char* argv[])
       .add_options()
       ("s,show", 		"Display the processed image on the display",				cxxopts::value<bool>(Options::show))
       ("saveimgs", 		"Save images", 												cxxopts::value<bool>(Options::saveimgs))
-      ("saveimgs-bp", "Save images - BeadsFinder", 									cxxopts::value<bool>(Options::saveimgs_bp))
-    //   ("savevideos", 	"Save videos", 												cxxopts::value<bool>(Options::savevideos))
+      ("savevideo", 	"Save video - works only if 'show' argument is used as well",cxxopts::value<bool>(Options::savevideo))
       ("d,debug", 		"Prints debug information",									cxxopts::value<bool>(Options::debug))
       ("k,mousekill", 	"Moving the mouse or toching the screen kills the app",		cxxopts::value<bool>(Options::mousekill))
       ("v,verbose", 	"Prints some additional information",						cxxopts::value<bool>(Options::verbose))
@@ -44,9 +43,11 @@ cxxopts::ParseResult Options::parse(AppData& appData, int argc, char* argv[])
 	  ;
 	  
 	options.add_options("Image Processing")
-      ("t,img_threshold", 		"Prints debug information",							cxxopts::value<uint32_t>())
-      ("g_dist", 				"Green channel backpropagation distance",			cxxopts::value<uint32_t>())
-      ("r_dist", 				"Red channel backpropagation distance",				cxxopts::value<uint32_t>())
+      ("imthrs_g", 		"Upper threshold for the green channel",							cxxopts::value<uint32_t>())
+      ("imthrs_r", 		"Prints debug information",							cxxopts::value<uint32_t>())
+      ("g_dist", 		"Green channel backpropagation distance",			cxxopts::value<uint32_t>())
+      ("r_dist", 		"Red channel backpropagation distance",				cxxopts::value<uint32_t>())
+      ("b,beadsearch", 	"Enable searching the beads in the image",			cxxopts::value<bool>(Options::beadsearch))
 	  ;
 	
     auto result = options.parse(argc, argv);
@@ -78,8 +79,11 @@ cxxopts::ParseResult Options::parse(AppData& appData, int argc, char* argv[])
 		appData.values[STG_OFFSET_Y] 	= values[1];
 	}		
 	
-	if (result.count("img_threshold") > 0) {
-		appData.values[STG_IMGTHRS]= result["img_threshold"].as<uint32_t>();
+	if (result.count("imthrs_g") > 0) {
+		appData.values[STG_IMGTHRS_G]= result["imthrs_g"].as<uint32_t>();
+	}
+	if (result.count("imthrs_r") > 0) {
+		appData.values[STG_IMGTHRS_R]= result["imthrs_r"].as<uint32_t>();
 	}
 	if (result.count("r_dist") > 0) {
 		appData.values[STG_Z_RED]= result["r_dist"].as<uint32_t>();

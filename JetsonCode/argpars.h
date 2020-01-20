@@ -14,9 +14,10 @@ public:
     static bool show;
     static bool saveimgs;
     static bool saveimgs_bp;
-    // static bool savevideos;
+    static bool savevideo;
     static bool mousekill;
     static bool rtprio;
+    static bool beadsearch;
 
     static cxxopts::ParseResult parse(AppData& appData, int argc, char* argv[]);
 };

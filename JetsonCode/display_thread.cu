@@ -5,6 +5,8 @@
 
 #include <iostream>
 #include <unistd.h>
+#include <iomanip>
+#include <ctime>
 #include <opencv2/opencv.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core/cuda.hpp>
@@ -30,7 +32,7 @@ void display_thread(AppData& appData){
     
 	char ret_key;
 	char filename [50];
-	int img_count = 0;
+    int img_count = 0;
 
 	while(!appData.appStateIs(AppData::AppState::EXITING)){
 		if(Options::debug) printf("INFO: display_thread: waiting for entering the INITIALIZING state\n");
@@ -48,19 +50,32 @@ void display_thread(AppData& appData){
 		}
 		
 		const cv::cuda::GpuMat c_img_resized(cv::Size(800, 800), CV_8U);
-		const cv::Mat img_disp(cv::Size(800, 800), CV_8U);
+        const cv::Mat img_disp(cv::Size(800, 800), CV_8U);        
+        cv::VideoWriter video_writer;
+        if (Options::savevideo) {
+            // Define the codec and create VideoWriter object.The output is stored in 'outcpp.avi' file. 
+            time_t t = time(nullptr);
+            tm tm = *localtime(&t);
+            stringstream filename;
+            filename << put_time(&tm, "%H%M%S_%d%m%Y.avi");
+            video_writer.open(filename.str(), cv::VideoWriter::fourcc('M','J','P','G'), 10, cv::Size(800,800), false);
+
+            if (!video_writer.isOpened()) {
+                fprintf(stderr, "ERROR: failed to open the video file.\n");
+                appData.exitTheApp();
+            }
+        }
 		
 		appData.display_is_initialized = true;
 		
 		if(Options::debug) printf("INFO: display_thread: waiting till other App components are initialized\n");
-
 		// Wait till all the components of the App are initialized. If this fails, break the loop.
 		if(!appData.waitTillAppIsInitialized()) break;
 		
 		// At this point, the app is in the AppData::AppState::RUNNING state.
 		if(Options::debug) printf("INFO: display_thread: entering the running stage\n");
 
-		uint32_t img_since_last_time = 0;
+        uint32_t img_since_last_time = 0;
 
 		while(appData.appStateIs(AppData::AppState::RUNNING)) {
             // Wait for a new image
@@ -69,10 +84,12 @@ void display_thread(AppData& appData){
             // unlock the mutex so that the camera thread can proceed to capture a new image
             lck.unlock();
 
-            if(steady_clock::now() < next_time) {
+            if (++img_since_last_time >= 3) {
+                img_since_last_time = 0;
+            } else {
                 continue;
-            }            
-			
+            } 
+
             auto start = steady_clock::now();
             if (Options::show && !Options::saveimgs)
                 appData.G_backprop.copyTo(G_backprop_copy);
@@ -105,24 +122,33 @@ void display_thread(AppData& appData){
                 
                 c_img_resized.download(img_disp);
 
-                // Draw bead positions
-                { // Limit the scope of the mutex
+                if (Options::savevideo) video_writer.write(img_disp);
+
+                // Draw bead positions (if beadsearch enabled)
+                if(Options::beadsearch) {
                     lock_guard<mutex> mtx_bp(appData.mtx_bp);
-                    for(int i = 0; i < appData.bead_count; i++) {
-                        uint32_t x = (appData.bead_positions[2*i]*800)/appData.values[STG_WIDTH];
-                        uint32_t y = (appData.bead_positions[2*i+1]*800)/appData.values[STG_HEIGHT];
+                    for(auto &b : appData.bead_positions) {
+                        auto x = (b.x*800)/appData.values[STG_WIDTH];
+                        auto y = (b.y*800)/appData.values[STG_HEIGHT];
                         cv::circle(img_disp, cv::Point(x, y), 20, 255);
+                    }
+                    
+                    for(auto &b : appData.beadTracker.getBeadPositions()) {
+                        auto x = (b.x*800)/appData.values[STG_WIDTH];
+                        auto y = (b.y*800)/appData.values[STG_HEIGHT];
+                        cv::drawMarker(img_disp, cv::Point(x, y), 255);
                     }
                 }
                 
-                cv::imshow("Basic Visualization", img_disp);
-                auto end = steady_clock::now();
-                if(Options::verbose) {
-                    cout << "TRACE: Stroring the image took: " << duration_cast<microseconds>(end-start).count()/1000.0 << " ms\n";
-                }
+                cv::imshow("Basic Visualization", img_disp);                
 
                 ret_key = (char) cv::waitKey(1);
                 if (ret_key == 27 || ret_key == 'x') appData.exitTheApp();  // exit the app if `esc' or 'x' key was pressed.					
+            }
+
+            auto end = steady_clock::now();
+            if(Options::verbose) {
+                cout << "TRACE: Stroring the image took: " << duration_cast<microseconds>(end-start).count()/1000.0 << " ms\n";
             }
 
             img_count++;

@@ -8,8 +8,10 @@
 
 #include <mutex> 
 #include <condition_variable>
+#include <vector>
 #include "Definitions.h"
 #include "ImageData.h"
+#include "BeadTracker.h"
 
 class AppData {
 public:
@@ -23,27 +25,24 @@ public:
 
     // Member variables
 
-	int values[STG_NUMBER_OF_SETTINGS] = {1200, 1200, 1352, 504, 5000000, 200, 2, 3100, 2400, 30, 80};
+	int values[STG_NUMBER_OF_SETTINGS] = {1024, 1024, 1440, 592, 550, 20, 5000000, 200, 2, 3100, 2400, 30, 90, 140};
 	AppState appState = AppState::IDLING;
 	
 	bool camera_is_initialized;
-	bool imgproc_is_initialized;
-	bool display_is_initialized;
-
-	bool connected;
+	bool imgproc_is_initialized;	bool display_is_initialized;
 
 	std::condition_variable cam_cv;
 	std::mutex cam_mtx;
 	ImageData<uint8_t> camIG, camIR;
 
-	ImageData<uint8_t> G, R, G_backprop;
-	uint16_t bead_positions[2*MAX_NUMBER_BEADS];
-	uint32_t bead_count;
-	uint16_t bead_positions_received[2*MAX_NUMBER_BEADS];
-	uint32_t bead_count_received;
+	ImageData<uint8_t> G, R, G_backprop, R_backprop;
+
+	std::vector<Position> bead_positions;
 	std::mutex mtx_bp;
+
+	BeadTracker beadTracker;
 	
-    // Construction
+    // Constructor
     AppData();
 
     // Member methods
@@ -55,10 +54,7 @@ public:
 	void appStateSet(AppState appState);
 	void exitTheApp();
 
-
 	void print();
-	void saveReceivedBeadPos(uint32_t bead_count, uint16_t* bead_positions);
-	void set_connected(const bool value);
 
 	int get_area();
 };

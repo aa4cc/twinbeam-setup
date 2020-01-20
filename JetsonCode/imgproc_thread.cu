@@ -37,14 +37,18 @@ void imgproc_thread(AppData& appData){
 
 		// Initialize the BackPropagator for the green image
 		BackPropagator backprop_G(appData.values[STG_WIDTH], appData.values[STG_HEIGHT], LAMBDA_GREEN, (float)appData.values[STG_Z_GREEN]/1000000.0f);
+		// Initialize the BackPropagator for the red image
+		BackPropagator backprop_R(appData.values[STG_WIDTH], appData.values[STG_HEIGHT], LAMBDA_RED, (float)appData.values[STG_Z_RED]/1000000.0f);
 
-		// Initialize the BeadFinder
-		BeadsFinder beadsFinder(appData.values[STG_WIDTH], appData.values[STG_HEIGHT], (uint8_t)appData.values[STG_IMGTHRS], Options::saveimgs_bp);
+		// Initialize the BeadFinders
+		BeadsFinder beadsFinder_G(appData.values[STG_WIDTH], appData.values[STG_HEIGHT], (uint8_t)appData.values[STG_IMGTHRS_G]);
+		BeadsFinder beadsFinder_R(appData.values[STG_WIDTH], appData.values[STG_HEIGHT], (uint8_t)appData.values[STG_IMGTHRS_R]);
 
 		// Allocate the memory for the images
 		appData.G.create(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
 		appData.R.create(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
 		appData.G_backprop.create(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
+		appData.R_backprop.create(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
 
 		// Initialize the counters for measuring the cycle duration and jitter
 		double iteration_count 			= 0;
@@ -85,14 +89,20 @@ void imgproc_thread(AppData& appData){
 			// backprop
 			auto t_backprop_start = steady_clock::now();
 			backprop_G.backprop(appData.G, appData.G_backprop);
+			backprop_R.backprop(appData.R, appData.R_backprop);
+			cudaDeviceSynchronize();
 			auto t_backprop_end = steady_clock::now();
 
-			// find the beads
+			// find the beads (if enabled)
 			auto t_beadsfinder_start = steady_clock::now();
-			beadsFinder.findBeads(appData.G_backprop);
-			{ // Limit the scope of the mutex
-				std::lock_guard<std::mutex> mtx_bp(appData.mtx_bp);
-				appData.bead_count = beadsFinder.copyPositionsTo(appData.bead_positions);
+			if(Options::beadsearch) {
+				beadsFinder_G.findBeads(appData.G_backprop);
+				{ // Limit the scope of the mutex
+					std::lock_guard<std::mutex> mtx_bp(appData.mtx_bp);
+					beadsFinder_G.copyPositionsTo(appData.bead_positions);
+
+					appData.beadTracker.update(appData.bead_positions);
+				}
 			}
 			auto t_beadsfinder_end = steady_clock::now();
 			
@@ -108,7 +118,7 @@ void imgproc_thread(AppData& appData){
 				printf("| BF.findBeads: %6.3f ms", 		duration_cast<microseconds>(t_beadsfinder_end - t_beadsfinder_start).count()/1000.0);
 				printf("| cp: %6.3f ms", 				duration_cast<microseconds>(t_cp_end - t_cp_start).count()/1000.0);
 				printf("| whole cycle: %6.3f ms", 		duration_cast<microseconds>(cycle_elapsed_seconds).count()/1000.0);
-				printf("| #points: %d", 				appData.bead_count);
+				printf("| #points: %d", 				(int)appData.bead_positions.size());
 				printf("\n");
 			}			
 		}

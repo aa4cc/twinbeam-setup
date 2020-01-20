@@ -7,6 +7,7 @@
 
 #include <stdint.h> 
 #include <mutex>
+#include <vector>
 #include "cuda.h"
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/cuda.hpp>
@@ -31,7 +32,7 @@ private:
 public:
     BeadsFinder(uint16_t m, uint16_t n, uint8_t img_thrs, bool dbg=false); 
     void findBeads(ImageData<uint8_t>& inputImg);
-    uint32_t copyPositionsTo(uint16_t* data);
+    void copyPositionsTo(std::vector<Position>& bead_pos);
     ~BeadsFinder();
 };
 

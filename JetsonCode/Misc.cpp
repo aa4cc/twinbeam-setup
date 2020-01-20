@@ -24,6 +24,8 @@ MessageType parseMessage(char* buf){
 				return MessageType::REQUEST_RAW_G;
 			case 'y':
 				return MessageType::REQUEST_RAW_R;
+			case 't':
+				return MessageType::TRACKER;
 			case 'g':
 				return MessageType::COORDS;
 			case 'h':

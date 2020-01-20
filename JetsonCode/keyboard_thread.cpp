@@ -55,6 +55,14 @@ void keyboard_thread(AppData& appData){
 				if(Options::debug) printf("INFO: Switching OFF the DISPLAY mode.\n");
 			}
 		}
+		else if(input == 'l'){
+			Options::savevideo = !Options::savevideo;
+			if(Options::savevideo) {
+				if(Options::debug) printf("INFO: Switching ON the SAVEVIDEO mode.\n");
+			} else {
+				if(Options::debug) printf("INFO: Switching OFF the SAVEVIDEO mode.\n");
+			}
+		}
 		else if(input == 'e' || input == -1){
 			if(Options::debug) printf("INFO: Exiting the program from keyboard.\n");
 			appData.exitTheApp();

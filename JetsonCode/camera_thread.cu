@@ -43,7 +43,7 @@ __device__ uint8_t clampfloat2uint8(float in) {
 
 // Converts the captured image in YUV format stored in yTexRef and uvTexRef to red and green channel stored in G and R arrays
 // !Important: the y-axis is flipped and red channel is shifted with respect to the green channel by an offset.
-__global__ void yuv2bgr(int width, int height, int offset_x, int offset_y,
+__global__ void yuv2bgr(int width, int height, int offset_x, int offset_y, int offset_R2G_x, int offset_R2G_y,
 						uint8_t* G, uint8_t* R)
         {
             int index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -55,9 +55,9 @@ __global__ void yuv2bgr(int width, int height, int offset_x, int offset_y,
             for (int i = index; i < count; i += stride)
             {
             	ty 	= height - i/width - 1 + offset_y;
-            	ty2 = height - i/width - 1 + offset_y;
+            	ty2 = height - i/width - 1 + offset_y + offset_R2G_y;
 				tx 	= i%width + offset_x;
-				tx2 = i%width + offset_x + (512);
+				tx2 = i%width + offset_x + offset_R2G_x;
             	y1 = (float)((tex2D<unsigned char>(yTexRef, (float)tx+0.5f, (float)ty+0.5f) - (float)16) * 1.164383f);
             	y2 = (float)((tex2D<unsigned char>(yTexRef, (float)tx2+0.5f, (float)ty2+0.5f) - (float)16) * 1.164383f);
             	u1 = (float)(tex2D<uchar2>(uvTexRef, (float)(tx/2)+(float)(tx%2)+0.5f,
@@ -213,7 +213,9 @@ void camera_thread(AppData& appData){
 				unique_lock<shared_timed_mutex> R_lk(appData.camIR.mtx, adopt_lock);
 
 				yuv2bgr<<<numBlocks, NBLOCKS>>>(appData.values[STG_WIDTH], appData.values[STG_HEIGHT],
-												appData.values[STG_OFFSET_X], appData.values[STG_OFFSET_Y], appData.camIG.devicePtr(), appData.camIR.devicePtr());
+												appData.values[STG_OFFSET_X], appData.values[STG_OFFSET_Y],
+												appData.values[STG_OFFSET_R2G_X], appData.values[STG_OFFSET_R2G_Y],
+												appData.camIG.devicePtr(), appData.camIR.devicePtr());
 			}
 			appData.cam_cv.notify_all();
 

@@ -150,6 +150,33 @@ AppData.cpp.s:
 	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/AppData.cpp.s
 .PHONY : AppData.cpp.s
 
+BeadTracker.o: BeadTracker.cpp.o
+
+.PHONY : BeadTracker.o
+
+# target to build an object file
+BeadTracker.cpp.o:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/BeadTracker.cpp.o
+.PHONY : BeadTracker.cpp.o
+
+BeadTracker.i: BeadTracker.cpp.i
+
+.PHONY : BeadTracker.i
+
+# target to preprocess a source file
+BeadTracker.cpp.i:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/BeadTracker.cpp.i
+.PHONY : BeadTracker.cpp.i
+
+BeadTracker.s: BeadTracker.cpp.s
+
+.PHONY : BeadTracker.s
+
+# target to generate assembly for a file
+BeadTracker.cpp.s:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/BeadTracker.cpp.s
+.PHONY : BeadTracker.cpp.s
+
 Misc.o: Misc.cpp.o
 
 .PHONY : Misc.o
@@ -297,6 +324,9 @@ help:
 	@echo "... AppData.o"
 	@echo "... AppData.i"
 	@echo "... AppData.s"
+	@echo "... BeadTracker.o"
+	@echo "... BeadTracker.i"
+	@echo "... BeadTracker.s"
 	@echo "... Misc.o"
 	@echo "... Misc.i"
 	@echo "... Misc.s"

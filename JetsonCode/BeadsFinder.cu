@@ -69,10 +69,12 @@ void BeadsFinder::findBeads(ImageData<uint8_t>& inputImg)
     }
 }
 
-uint32_t BeadsFinder::copyPositionsTo(uint16_t* data) {
+void BeadsFinder::copyPositionsTo(std::vector<Position>& bead_pos) {
     std::lock_guard<std::mutex> l(_mtx);
-    memcpy(data, positions, 2*pointsCounter*sizeof(uint16_t));
-    return pointsCounter;
+    bead_pos.clear();
+    for (size_t i=0; i<pointsCounter; i++) {
+        bead_pos.push_back({positions[2*i], positions[2*i+1]});
+    }
 }
 
 BeadsFinder::~BeadsFinder() {
