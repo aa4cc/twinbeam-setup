@@ -12,6 +12,7 @@ bool Options::savevideo 	= false;
 bool Options::mousekill 	= false;
 bool Options::rtprio		= false;
 bool Options::beadsearch	= false;
+uint16_t Options::tcp_port  = 30000;
 Options::ImageType Options::displayImageType = Options::ImageType::BACKPROP_G;
 
 cxxopts::ParseResult Options::parse(AppData& appData, int argc, char* argv[])
@@ -33,6 +34,7 @@ cxxopts::ParseResult Options::parse(AppData& appData, int argc, char* argv[])
       ("k,mousekill", 	"Moving the mouse or toching the screen kills the app",		cxxopts::value<bool>(Options::mousekill))
       ("v,verbose", 	"Prints some additional information",						cxxopts::value<bool>(Options::verbose))
       ("p,rtprio", 		"Set real-time priorities",									cxxopts::value<bool>(Options::rtprio))
+      ("tcpport", 		"TCP port of the server",									cxxopts::value<uint32_t>())
       ("help", 			"Prints help")
 	  ;
 	  
@@ -60,7 +62,8 @@ cxxopts::ParseResult Options::parse(AppData& appData, int argc, char* argv[])
       std::cout << options.help({"", "Camera", "Image Processing"}) << std::endl;
       exit(0);
 	}
-	
+	if (result.count("tcpport") > 0)
+		Options::tcp_port	= result["tcpport"].as<uint16_t>();
 	if (result.count("exp") > 0)
 		appData.values[STG_EXPOSURE] 	= result["exp"].as<uint32_t>()*1e3;
 	if (result.count("digitalgain") > 0)
