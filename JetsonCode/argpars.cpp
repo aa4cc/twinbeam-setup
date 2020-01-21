@@ -6,7 +6,8 @@
 bool Options::verbose 		= false;
 bool Options::debug 		= false;
 bool Options::show 			= false;
-bool Options::show_markers	= true;
+bool Options::show_markers	= false;
+bool Options::show_labels	= false;
 bool Options::savevideo 	= false;
 bool Options::mousekill 	= false;
 bool Options::rtprio		= false;
@@ -26,6 +27,7 @@ cxxopts::ParseResult Options::parse(AppData& appData, int argc, char* argv[])
       .add_options()
       ("s,show", 		"Display the processed image on the display",				cxxopts::value<bool>(Options::show))
       ("showmarkers", 	"Display markers at the positions of found/tracked objects",cxxopts::value<bool>(Options::show_markers))
+      ("showlabels", 	"Display labels at the positions of tracked objects",		cxxopts::value<bool>(Options::show_labels))
       ("savevideo", 	"Save video - works only if 'show' argument is used as well",cxxopts::value<bool>(Options::savevideo))
       ("d,debug", 		"Prints debug information",									cxxopts::value<bool>(Options::debug))
       ("k,mousekill", 	"Moving the mouse or toching the screen kills the app",		cxxopts::value<bool>(Options::mousekill))

@@ -3,14 +3,14 @@
  * @author  Martin Gurtner
  */
  
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+
 #include <iostream>
 #include <climits>
-#include <unistd.h>
 #include <thread>
+#include <chrono>
 #include <pthread.h>
+#include "sockpp/tcp_acceptor.h"
+#include "sockpp/version.h"
 #include "network.h"
 #include "Misc.h"
 #include "argpars.h"
@@ -19,7 +19,8 @@
 
 using namespace std;
 
-void client_thread(AppData& appData, int client, sockaddr_in clientInfo) {
+void client_thread(AppData& appData, sockpp::tcp_socket sock) {
+	ssize_t msg_len;
 	char buf[BUFSIZE];
 	uint8_t coords_buffer[sizeof(uint32_t) + 2*MAX_NUMBER_BEADS*sizeof(uint16_t)];
 	uint32_t* beadCountP;
@@ -33,13 +34,17 @@ void client_thread(AppData& appData, int client, sockaddr_in clientInfo) {
 
 		int s = pthread_setschedparam(pthread_self(), SCHED_FIFO, &schparam);
 		if (s != 0) {
-			fprintf(stderr, "WARNING: setting the priority of network_client_thread failed.\n");
+			cerr << "WARNING: setting the priority of network_client_thread failed." << endl;
 		}
 	}		
 
-	if(Options::debug) cout << "INFO: Got a connection from " << inet_ntoa((in_addr)clientInfo.sin_addr) << endl;
+	if(Options::debug) cout << "INFO: Got a connection from " << sock.peer_address() << endl;
+
+	// Set a timeout for the socket so that the app can be killed from the outside
+	if(!sock.read_timeout(chrono::seconds(1))) cerr << "ERROR: setting timeout on TCP stream failed: " << sock.last_error_str() << endl;
+
 	while(!appData.appStateIs(AppData::AppState::EXITING)){
-		int msg_len = recv(client, buf, BUFSIZE - 1, 0);
+		msg_len = sock.read(buf, sizeof(buf));
 
 		// If no message was received within one second, continue
 		if (msg_len == -1)	continue;
@@ -47,7 +52,7 @@ void client_thread(AppData& appData, int client, sockaddr_in clientInfo) {
 		// If the connection was closed, break the loop
 		if (msg_len == 0)	break;
 
-		if(Options::debug) printf("DEBUG: Received %d bytes. MessageType: %c \n", msg_len, buf[0]);
+		if(Options::debug) printf("DEBUG: Received %d bytes. MessageType: %c \n", (int)msg_len, buf[0]);
 
 		response = parseMessage(buf);
 		switch(response){
@@ -59,7 +64,7 @@ void client_thread(AppData& appData, int client, sockaddr_in clientInfo) {
 				break;
 			case MessageType::SETTINGS:
 				if(appData.appStateIs(AppData::AppState::RUNNING) || appData.appStateIs(AppData::AppState::INITIALIZING))
-					fprintf(stderr, "WARN: Can't change settings while the loop is running\n");
+					cerr << "WARN: Can't change settings while the loop is running" << endl;
 				else{
 					memcpy(appData.values, buf+1, sizeof(uint32_t)*STG_NUMBER_OF_SETTINGS);
 					appData.print();
@@ -68,34 +73,34 @@ void client_thread(AppData& appData, int client, sockaddr_in clientInfo) {
 				break;
 			case MessageType::REQUEST:
 				if(!appData.appStateIs(AppData::AppState::RUNNING)) {
-					fprintf(stderr, "WARN: Image cannot be sent since the application is not running.\n");
+					cerr << "WARN: Image cannot be sent since the application is not running." << endl;
 				} else {
 					ImageData<uint8_t> temp_img(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
 					appData.G_backprop.copyTo(temp_img);
 
-					send(client, temp_img.hostPtr(true), sizeof(uint8_t)*appData.get_area(), 0);
+					sock.write_n(temp_img.hostPtr(true), sizeof(uint8_t)*appData.get_area());
 					if(Options::debug) printf("INFO: Image sent.\n");
 				}
 				break;
 			case MessageType::REQUEST_RAW_G:
 				if(!appData.appStateIs(AppData::AppState::RUNNING)) {
-					fprintf(stderr, "WARN: Image cannot be sent since the application is not running.\n");
+					cerr << "WARN: Image cannot be sent since the application is not running." << endl;
 				} else {
 					ImageData<uint8_t> temp_img(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
 					appData.G.copyTo(temp_img);
 
-					send(client, temp_img.hostPtr(true), sizeof(uint8_t)*appData.get_area(), 0);
+					sock.write_n(temp_img.hostPtr(true), sizeof(uint8_t)*appData.get_area());
 					if(Options::debug) printf("INFO: Image sent.\n");
 				}
 				break;
 			case MessageType::REQUEST_RAW_R:
 				if(!appData.appStateIs(AppData::AppState::RUNNING)) {
-					fprintf(stderr, "WARN: The positions cannot be sent since the application is not running.\n");
+					cerr << "WARN: The positions cannot be sent since the application is not running." << endl;
 				} else {
 					ImageData<uint8_t> temp_img(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
 					appData.R.copyTo(temp_img);
 
-					send(client, temp_img.hostPtr(true), sizeof(uint8_t)*appData.get_area(), 0);
+					sock.write_n(temp_img.hostPtr(true), sizeof(uint8_t)*appData.get_area());
 					if(Options::debug) printf("INFO: Image sent.\n");
 				}
 				break;
@@ -108,12 +113,12 @@ void client_thread(AppData& appData, int client, sockaddr_in clientInfo) {
 					memcpy(coords_buffer+sizeof(uint32_t), appData.bead_positions.data(), 2*(*beadCountP)*sizeof(uint16_t));
 				}
 
-				send(client, coords_buffer, sizeof(uint32_t) + 2*(*beadCountP)*sizeof(uint16_t), 0);
+				sock.write_n(coords_buffer, sizeof(uint32_t) + 2*(*beadCountP)*sizeof(uint16_t));
 
 				break;
 			case MessageType::COORDS_CLOSEST:
 				if(!appData.appStateIs(AppData::AppState::RUNNING)) {
-					fprintf(stderr, "WARN: The positions cannot be sent since the application is not running.\n");
+					cerr << "WARN: The positions cannot be sent since the application is not running." << endl;
 				} else {
 					uint32_t bead_count_received = ((uint32_t*)(buf+sizeof(uint8_t)))[0];
 					uint16_t *bead_positions_received = (uint16_t*)(buf+sizeof(uint8_t)+sizeof(uint32_t));
@@ -138,7 +143,7 @@ void client_thread(AppData& appData, int client, sockaddr_in clientInfo) {
 							}
 						}
 					}
-					send(client, coords_buffer, sizeof(uint32_t) + 2*bead_count_received*sizeof(uint16_t), 0);
+					sock.write_n(coords_buffer, sizeof(uint32_t) + 2*bead_count_received*sizeof(uint16_t));
 
 					if(Options::debug) printf("INFO: Closest bead positions sent\n");
 				}
@@ -186,69 +191,48 @@ void client_thread(AppData& appData, int client, sockaddr_in clientInfo) {
 							memcpy(coords_buffer+sizeof(uint32_t), bp.data(), 2*(*beadCountP)*sizeof(uint16_t));
 
 							// Send coords_buffer to the client
-							send(client, coords_buffer, sizeof(uint32_t) + 2*(*beadCountP)*sizeof(uint16_t), 0);
+							sock.write_n(coords_buffer, sizeof(uint32_t) + 2*(*beadCountP)*sizeof(uint16_t));
 							break;
 						}
 				}
 				break;
 			case MessageType::HELLO:
-				send(client, "Hello!",7,0);
+				sock.write_n("Hello!",7);
 				break;
 		} 
 	}
-	if(Options::debug) cout << "INFO: Closing the connection from " << inet_ntoa((in_addr)clientInfo.sin_addr) << endl;
-	close(client);
+	if(Options::debug) cout << "INFO: Closing the connection from " << sock.peer_address() << endl;
 }
 
 void network_thread(AppData& appData){
-	if(Options::debug) printf("INFO: network_thread: started\n");
+	if(Options::debug) cout << "INFO: network_thread: started" << endl;
 
-	sockaddr_in sockName;
-	int mainSocket;	
-	
-	mainSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if(mainSocket == -1)
-		fprintf(stderr, "ERROR: Couldn't create socket!\n");
-	sockName.sin_family = AF_INET;
-	sockName.sin_port =	htons(PORT);
-	// sockName.sin_addr.s_addr = INADDR_ANY;
-	sockName.sin_addr.s_addr = inet_addr("147.32.86.177");
-
-	// Allow reusing the port
-	int yes = 1;
-	if ( setsockopt(mainSocket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1 )
-	{
-		fprintf(stderr, "Setsocket failed!\n");
-		appData.exitTheApp();
+	sockpp::tcp_acceptor acc(Options::tcp_port);
+	if (!acc) {
+		cerr << "ERROR: Couldn't open the socket." << endl;
 		return;
 	}
-	
-	// Set the time for the rev() to 1 second
-	struct timeval tv;
-	tv.tv_sec = 1;
-	tv.tv_usec = 0;
-	if ( setsockopt(mainSocket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv) == -1 )
-	{
-		fprintf(stderr, "Setsocket failed!\n");
-		appData.exitTheApp();
-		return;
-	}	
 
-	bind(mainSocket, (sockaddr*)&sockName, sizeof(sockName));
+	// Set the acceptor to te non-blocking mode
+	acc.set_non_blocking();
 
-	listen(mainSocket, 10000000);
-	sockaddr_in clientInfo; 
-	socklen_t addrlen = sizeof(clientInfo);;
-	int client;
 	while(!appData.appStateIs(AppData::AppState::EXITING)){		
-		
-		client = accept(mainSocket, (sockaddr*)&clientInfo, &addrlen);
-		if (client < 1) continue;
+		sockpp::inet_address peer;
 
-		thread client_thr (client_thread, std::ref(appData), client, clientInfo);
-		client_thr.detach();
+		// Accept a new client connection - since the non-blocking mode is used,
+		// this function return immidiately a socket which is valid only if there
+		// has been already a client waiting for connection. If not, the socket
+		// is invalid, we wait 100 ms and check again for the awaiting clients. 
+		sockpp::tcp_socket sock = acc.accept(&peer);
+
+		if (sock) {
+			// Create a thread and transfer the new stream to it.
+			thread client_thr (client_thread, std::ref(appData), std::move(sock));
+			client_thr.detach();
+		}
+
+		this_thread::sleep_for(chrono::milliseconds(100));
 	}
-	close(mainSocket);
 
-	if(Options::debug) printf("INFO: network_thread: ended\n");
+	if(Options::debug) cout << "INFO: network_thread: ended" << endl;
 }

@@ -21,6 +21,7 @@ public:
     static bool debug;
     static bool show;
     static bool show_markers;
+    static bool show_labels;
     static ImageType displayImageType;
     static bool savevideo;
     static bool mousekill;
