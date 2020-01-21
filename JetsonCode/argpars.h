@@ -27,6 +27,7 @@ public:
     static bool mousekill;
     static bool rtprio;
     static bool beadsearch;
+    static uint16_t tcp_port;
     
     static cxxopts::ParseResult parse(AppData& appData, int argc, char* argv[]);
 };

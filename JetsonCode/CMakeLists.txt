@@ -60,6 +60,7 @@ target_link_libraries(${PROJECT_NAME}
 		${CUDA_LIBRARIES}
         ${CUDA_CUFFT_LIBRARIES}
 		${OpenCV_LIBS}
+		sockpp
         )
 
 
