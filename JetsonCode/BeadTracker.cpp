@@ -1,4 +1,5 @@
 #include "BeadTracker.h"
+#include <climits>
 
 using namespace std;
 
@@ -33,7 +34,7 @@ const vector<Position>& BeadTracker::getBeadPositions() {
 }
 
 vector<Position>::const_iterator BeadTracker::closestBead(const vector<Position>& bp_all, const Position& bp_i) {
-    int min_dist = -1;
+    int min_dist = INT_MAX;
     auto min_b = bp_all.begin();
     for(auto b=bp_all.begin(); b!=bp_all.end(); ++b) {
         int dist = ((int)b->x - (int)bp_i.x)*((int)b->x - (int)bp_i.x) + ((int)b->y - (int)bp_i.y)*((int)b->y - (int)bp_i.y);

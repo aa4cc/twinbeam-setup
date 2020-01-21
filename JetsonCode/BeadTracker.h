@@ -5,6 +5,7 @@
 #ifndef BEADSTRACKER_H
 #define BEADSTRACKER_H
 
+#include <iostream>
 #include <vector>
 #include "Definitions.h"
 
