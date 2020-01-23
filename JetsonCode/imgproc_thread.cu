@@ -8,6 +8,7 @@
 #include <cmath>
 #include <pthread.h>
 #include "imgproc_thread.h"
+#include "sockpp/udp_socket.h"
 #include "argpars.h"
 #include "BeadsFinder.h"
 #include "BackPropagator.h"
@@ -27,6 +28,17 @@ void imgproc_thread(AppData& appData){
 		int s = pthread_setschedparam(pthread_self(), SCHED_FIFO, &schparam);
 		if (s != 0) fprintf(stderr, "WARNING: setting the priority of image processing thread failed.\n");
 	}
+
+	sockpp::udp_socket udp_sock;
+	if (!udp_sock) {
+		cerr << "ERROR: creating the UDP v4 socket: " << udp_sock.last_error_str() << endl;
+	}
+	int sendbuff = 2*sizeof(uint8_t)*appData.get_area();
+	socklen_t optlen = sizeof(sendbuff);
+	if(!udp_sock.set_option(SOL_SOCKET, SO_SNDBUF, &sendbuff, optlen)) {
+		cerr << "ERROR: failed to increase the send buffer size for the UDP communication " << udp_sock.last_error_str() << endl;
+	}
+	char coords_buffer[2*sizeof(uint16_t)*MAX_NUMBER_BEADS + sizeof(uint32_t)];
 	
 	while(!appData.appStateIs(AppData::AppState::EXITING)) {
 		if(Options::debug) printf("INFO: imgproc_thread: waiting for entering the INITIALIZING state\n");
@@ -45,10 +57,10 @@ void imgproc_thread(AppData& appData){
 		BeadsFinder beadsFinder_R(appData.values[STG_WIDTH], appData.values[STG_HEIGHT], (uint8_t)appData.values[STG_IMGTHRS_R]);
 
 		// Allocate the memory for the images
-		appData.G.create(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
-		appData.R.create(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
-		appData.G_backprop.create(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
-		appData.R_backprop.create(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
+		appData.img[ImageType::RAW_G].create(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
+		appData.img[ImageType::RAW_R].create(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
+		appData.img[ImageType::BACKPROP_G].create(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
+		appData.img[ImageType::BACKPROP_R].create(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
 
 		// Initialize the counters for measuring the cycle duration and jitter
 		double iteration_count 			= 0;
@@ -81,22 +93,22 @@ void imgproc_thread(AppData& appData){
 
 			// Make copies of red and green channel
 			auto t_cp_start = steady_clock::now();
-			appData.camIG.copyTo(appData.G);
-			appData.camIR.copyTo(appData.R);
+			appData.camIG.copyTo(appData.img[ImageType::RAW_G]);
+			appData.camIR.copyTo(appData.img[ImageType::RAW_R]);
 			auto t_cp_end = steady_clock::now();
 
 			// process the image
 			// backprop
 			auto t_backprop_start = steady_clock::now();
-			backprop_G.backprop(appData.G, appData.G_backprop);
-			backprop_R.backprop(appData.R, appData.R_backprop);
+			backprop_G.backprop(appData.img[ImageType::RAW_G], appData.img[ImageType::BACKPROP_G]);
+			backprop_R.backprop(appData.img[ImageType::RAW_R], appData.img[ImageType::BACKPROP_R]);
 			cudaDeviceSynchronize();
 			auto t_backprop_end = steady_clock::now();
 
 			// find the beads (if enabled)
 			auto t_beadsfinder_start = steady_clock::now();
 			if(Options::beadsearch) {
-				beadsFinder_G.findBeads(appData.G_backprop);
+				beadsFinder_G.findBeads(appData.img[ImageType::BACKPROP_G]);
 				{ // Limit the scope of the mutex
 					std::lock_guard<std::mutex> mtx_bp(appData.mtx_bp);
 					beadsFinder_G.copyPositionsTo(appData.bead_positions);
@@ -105,6 +117,37 @@ void imgproc_thread(AppData& appData){
 				}
 			}
 			auto t_beadsfinder_end = steady_clock::now();
+
+			// Send the images to the subscribers
+			for(auto const& subs: appData.img_subs) {
+				ImageType imgType = subs.first;
+				bool img_sync = false;
+				for(auto const& sub_addr: subs.second) {
+					for (size_t i=0; i<128; ++i) {
+						// synchronize the image (copy it from the device memory to the host memory) only if it hasn't been already synchronized
+						ssize_t sent_bytes = udp_sock.send_to(appData.img[imgType].hostPtr(!img_sync) + i*1024*8, sizeof(uint8_t)*appData.get_area()/128, sub_addr);
+						img_sync = true;
+					}
+
+					if(Options::debug) cout << "INFO: sending image via UDP to " << sub_addr << endl;
+				}
+			}
+
+			// Send the coordinates to the subscribers
+			if (!appData.coords_subs.empty()) {
+				uint32_t *beadCountP = (uint32_t*)coords_buffer;
+				const vector<Position>& bp = appData.beadTracker.getBeadPositions();
+				// Store the number of tracked objects
+				*beadCountP = (uint32_t)bp.size();
+				// Copy the tracked positions to the coords_buffer
+				memcpy(coords_buffer+sizeof(uint32_t), bp.data(), 2*(*beadCountP)*sizeof(uint16_t));
+
+				for(auto const& sub_addr: appData.coords_subs) {
+					ssize_t sent_bytes = udp_sock.send_to(coords_buffer, sizeof(uint32_t) + 2*(*beadCountP)*sizeof(uint16_t), sub_addr);
+
+					if(Options::debug) cout << "INFO: sending coordinates via UDP to " << sub_addr << " - " << sent_bytes << " bytes sent" << endl;
+				}
+			}
 			
 			auto t_cycle_end = steady_clock::now();
 

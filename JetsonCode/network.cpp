@@ -71,35 +71,29 @@ void client_thread(AppData& appData, sockpp::tcp_socket sock) {
 					if(Options::debug) printf("INFO: Changed settings\n");
 				}
 				break;
-			case MessageType::REQUEST:
+			case MessageType::IMG_REQUEST:
 				if(!appData.appStateIs(AppData::AppState::RUNNING)) {
 					cerr << "WARN: Image cannot be sent since the application is not running." << endl;
 				} else {
 					ImageData<uint8_t> temp_img(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
-					appData.G_backprop.copyTo(temp_img);
-
-					sock.write_n(temp_img.hostPtr(true), sizeof(uint8_t)*appData.get_area());
-					if(Options::debug) printf("INFO: Image sent.\n");
-				}
-				break;
-			case MessageType::REQUEST_RAW_G:
-				if(!appData.appStateIs(AppData::AppState::RUNNING)) {
-					cerr << "WARN: Image cannot be sent since the application is not running." << endl;
-				} else {
-					ImageData<uint8_t> temp_img(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
-					appData.G.copyTo(temp_img);
-
-					sock.write_n(temp_img.hostPtr(true), sizeof(uint8_t)*appData.get_area());
-					if(Options::debug) printf("INFO: Image sent.\n");
-				}
-				break;
-			case MessageType::REQUEST_RAW_R:
-				if(!appData.appStateIs(AppData::AppState::RUNNING)) {
-					cerr << "WARN: The positions cannot be sent since the application is not running." << endl;
-				} else {
-					ImageData<uint8_t> temp_img(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
-					appData.R.copyTo(temp_img);
-
+					switch(buf[1]) {
+						case 0:
+							appData.img[ImageType::BACKPROP_G].copyTo(temp_img);
+							break;
+						case 1:
+							appData.img[ImageType::BACKPROP_R].copyTo(temp_img);
+							break;
+						case 2:
+							appData.img[ImageType::RAW_G].copyTo(temp_img);
+							break;
+						case 3:
+							appData.img[ImageType::RAW_R].copyTo(temp_img);
+							break;
+						default:
+							cerr << "ERROR: Unknown image type recieved with image request" << endl;
+							break;
+					}
+					
 					sock.write_n(temp_img.hostPtr(true), sizeof(uint8_t)*appData.get_area());
 					if(Options::debug) printf("INFO: Image sent.\n");
 				}
@@ -196,11 +190,54 @@ void client_thread(AppData& appData, sockpp::tcp_socket sock) {
 						}
 				}
 				break;
+			case MessageType::IMG_SUBSCRIBE:
+				if(msg_len == 1) {
+					// Empty packet means: unsubscribe me from the the list
+					appData.removeImageSubs(sock.peer_address());
+
+					if(Options::debug) cout << "INFO: unsubscribing from the image (ignore the port number) " << sock.peer_address() << endl;
+				} else if(msg_len == 3) {
+					// the packet two more bytes which specify the port to which the images are supposed to be sent
+					uint16_t port = ((uint16_t*)(buf+1))[0];
+
+					sockpp::inet_address inaddr(sock.peer_address().address(), port);
+					// If the list already contains the IP address of this subscriber, delete it from the list
+					appData.addImageSubs(inaddr, ImageType::BACKPROP_G);
+
+					if(Options::debug) cout << "INFO: subscribing to the BACKPROP_G image publisher from " << inaddr << endl;
+				} else {
+					cerr << "ERROR: The subscription was not succseful as the received packet was not of the correct length." << endl;
+				}
+				break;
+			case MessageType::COORDS_SUBSCRIBE:
+				if(msg_len == 1) {
+					// Empty packet means: unsubscribe me from the the list
+					appData.removeCoordsSubs(sock.peer_address());
+
+					if(Options::debug) cout << "INFO: unsubscribing from the coordinate publisher (ignore the port number) " << sock.peer_address() << endl;
+				} else if(msg_len == 3) {
+					// the packet two more bytes which specify the port to which the images are supposed to be sent
+					uint16_t port = ((uint16_t*)(buf+1))[0];
+
+					sockpp::inet_address inaddr(sock.peer_address().address(), port);
+					// If the list already contains the IP address of this subscriber, delete it from the list
+					appData.addCoordsSubs(inaddr);
+
+					if(Options::debug) cout << "INFO: subscribing to the coordinate UDP publisher from " << inaddr << endl;
+				} else {
+					cerr << "ERROR: The subscription was not succseful as the received packet was not of the correct length." << endl;
+				}
+				break;
 			case MessageType::HELLO:
 				sock.write_n("Hello!",7);
 				break;
 		} 
 	}
+
+	// Just in case this host has been subscribed to image or coordinate publisher, remove it from the list
+	appData.removeImageSubs(sock.peer_address());
+	appData.removeCoordsSubs(sock.peer_address());
+
 	if(Options::debug) cout << "INFO: Closing the connection from " << sock.peer_address() << endl;
 }
 

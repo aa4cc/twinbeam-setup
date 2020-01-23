@@ -51,24 +51,24 @@ void keyboard_thread(AppData& appData){
 			if(!Options::show) {
 				// If the display was disabled, enable it and set the image type to the backpropagated green channel
 				Options::show = true;
-				Options::displayImageType = Options::ImageType::BACKPROP_G;
+				Options::displayImageType = ImageType::BACKPROP_G;
 				if(Options::debug) printf("INFO: Switching ON the DISPLAY mode.\n");
 			} else {
                 switch(Options::displayImageType) {
-                    case Options::ImageType::RAW_G:
-						Options::displayImageType = Options::ImageType::RAW_R;
+                    case ImageType::RAW_G:
+						Options::displayImageType = ImageType::RAW_R;
 						if(Options::debug) printf("INFO: Setting the type of the displayed image to RAW_R\n");
                         break;
-                    case Options::ImageType::RAW_R:
+                    case ImageType::RAW_R:
 						Options::show = false;
 						if(Options::debug) printf("INFO: Switching OFF the DISPLAY mode.\n");
                         break;
-                    case Options::ImageType::BACKPROP_G:
-						Options::displayImageType = Options::ImageType::BACKPROP_R;
+                    case ImageType::BACKPROP_G:
+						Options::displayImageType = ImageType::BACKPROP_R;
 						if(Options::debug) printf("INFO: Setting the type of the displayed image to BACKPROP_R\n");
                         break;
-                    case Options::ImageType::BACKPROP_R:
-						Options::displayImageType = Options::ImageType::RAW_G;
+                    case ImageType::BACKPROP_R:
+						Options::displayImageType = ImageType::RAW_G;
 						if(Options::debug) printf("INFO: Setting the type of the displayed image to RAW_G\n");
                         break;
                 }

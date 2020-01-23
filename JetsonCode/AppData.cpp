@@ -15,6 +15,12 @@ AppData::AppData() {
 
 	// Allocate the memory for the bead_position array so that the dynamic memory allocation is avoided
 	bead_positions.reserve(MAX_NUMBER_BEADS);
+
+	ImageData<uint8_t> G, R, G_bckp, R_bckp;
+	img[ImageType::RAW_G] = G;
+	img[ImageType::RAW_R] = R;
+	img[ImageType::BACKPROP_G] = G_bckp;
+	img[ImageType::BACKPROP_R] = R_bckp;
 }
 
 void AppData::startTheApp() {
@@ -70,6 +76,50 @@ void AppData::print(){
 	for(int i = 0 ; i < STG_NUMBER_OF_SETTINGS; i++){
 		printf("%d\n", values[i]);
 	}
+}
+
+/* Subscribe utility functions */
+void AppData::addSubs(std::vector<sockpp::inet_address>& listOfSubs, sockpp::inet_address inaddr) {
+	// Remove the subscriber, if it has already been in the list but possibly with a different port number
+	removeSubs(listOfSubs, inaddr);
+	// Add the subscriber to the list
+	listOfSubs.push_back(inaddr);
+}
+
+void AppData::removeSubs(std::vector<sockpp::inet_address>& listOfSubs, sockpp::inet_address inaddr) {
+	// Remove the subscriber also in the case when the port number does not match
+	for(auto addr = listOfSubs.begin(); addr != listOfSubs.end();) {
+		if(addr->address() == inaddr.address()) {
+			listOfSubs.erase(addr);
+			break;
+		}
+	}
+}
+
+/* Image subscribe utility functions */
+void AppData::removeImageSubs(sockpp::inet_address inaddr) {
+	// Remove the subsriber from subscription of all the image types
+	removeImageSubs(inaddr, ImageType::RAW_G);
+	removeImageSubs(inaddr, ImageType::RAW_R);
+	removeImageSubs(inaddr, ImageType::BACKPROP_G);
+	removeImageSubs(inaddr, ImageType::BACKPROP_R);
+}
+
+void AppData::removeImageSubs(sockpp::inet_address inaddr, ImageType imgType) {
+	removeSubs(img_subs[imgType], inaddr);
+}
+
+void AppData::addImageSubs(sockpp::inet_address inaddr, ImageType imgType) {
+	addSubs(img_subs[imgType], inaddr);
+}
+
+/* Coordinates subscribe utility functions */
+void AppData::removeCoordsSubs(sockpp::inet_address inaddr) {
+	removeSubs(coords_subs, inaddr);
+}
+
+void AppData::addCoordsSubs(sockpp::inet_address inaddr) {
+	addSubs(coords_subs, inaddr);
 }
 
 int AppData::get_area(){

@@ -23,18 +23,25 @@ struct Position {
 	uint16_t y;
 };
 
+enum class ImageType {
+	RAW_G,
+	RAW_R,
+	BACKPROP_G,
+	BACKPROP_R,
+};
+
 enum class MessageType{
 	HELLO,
 	START,
 	STOP,
 	SETTINGS,
 	DISCONNECT,
-	REQUEST, // request on sending the backpropagated image
-	REQUEST_RAW_G, // request on sending the unprocessed green channel
-	REQUEST_RAW_R, // request on sending the unprocessed red channel
+	IMG_REQUEST, // request on sending the backpropagated image
 	TRACKER,
 	COORDS,
 	COORDS_CLOSEST,
+	IMG_SUBSCRIBE,
+	COORDS_SUBSCRIBE,
 	UNKNOWN_TYPE
 };
 

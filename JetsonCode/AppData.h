@@ -9,6 +9,8 @@
 #include <mutex> 
 #include <condition_variable>
 #include <vector>
+#include <map>
+#include "sockpp/inet_address.h"
 #include "Definitions.h"
 #include "ImageData.h"
 #include "BeadTracker.h"
@@ -35,10 +37,21 @@ public:
 	std::mutex cam_mtx;
 	ImageData<uint8_t> camIG, camIR;
 
-	ImageData<uint8_t> G, R, G_backprop, R_backprop;
+	std::map<ImageType, ImageData<uint8_t>> img;
 
 	std::vector<Position> bead_positions;
 	std::mutex mtx_bp;
+
+	// Subscribers of the images
+	std::map<ImageType, std::vector<sockpp::inet_address>> img_subs {
+			{ImageType::RAW_G, {}},
+			{ImageType::RAW_R, {}},
+			{ImageType::BACKPROP_G, {}},
+			{ImageType::BACKPROP_R, {}}
+		};
+
+	// Subscribers of the coordinates of the tracked objects
+	std::vector<sockpp::inet_address> coords_subs;		
 
 	BeadTracker beadTracker;
 	
@@ -54,9 +67,22 @@ public:
 	void appStateSet(AppState appState);
 	void exitTheApp();
 
+	// Image subscribe utility functions
+	void removeImageSubs(sockpp::inet_address);
+	void removeImageSubs(sockpp::inet_address, ImageType);
+	void addImageSubs(sockpp::inet_address, ImageType);
+
+	// Coordinates subscribe utility functions
+	void removeCoordsSubs(sockpp::inet_address);
+	void addCoordsSubs(sockpp::inet_address);
+
 	void print();
 
 	int get_area();
+
+private:
+	void addSubs(std::vector<sockpp::inet_address>&, sockpp::inet_address);
+	void removeSubs(std::vector<sockpp::inet_address>&, sockpp::inet_address);
 };
 
 #endif

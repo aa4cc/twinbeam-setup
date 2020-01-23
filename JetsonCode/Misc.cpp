@@ -19,17 +19,17 @@ MessageType parseMessage(char* buf){
 			case 'd':
 				return MessageType::DISCONNECT;
 			case 'r':
-				return MessageType::REQUEST;
-			case 'x':
-				return MessageType::REQUEST_RAW_G;
-			case 'y':
-				return MessageType::REQUEST_RAW_R;
+				return MessageType::IMG_REQUEST;
 			case 't':
 				return MessageType::TRACKER;
 			case 'g':
 				return MessageType::COORDS;
 			case 'h':
 				return MessageType::COORDS_CLOSEST;
+			case 'b':
+				return MessageType::IMG_SUBSCRIBE;
+			case 'c':
+				return MessageType::COORDS_SUBSCRIBE;
 			default:
 				return MessageType::UNKNOWN_TYPE;
 		}

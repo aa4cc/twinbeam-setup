@@ -23,6 +23,15 @@ private:
 public:
     mutable std::shared_timed_mutex mtx;
     ImageData() { };
+    // ImageData(const ImageData<T>&) = default;
+    ImageData<T>& operator=(const ImageData<T>& id) {
+        width = id.width;
+        height = id.height;
+        h_data = nullptr;
+        d_data = nullptr;
+        return *this;
+    };
+
     ImageData(uint16_t m, uint16_t n) : width{m}, height{n} {create(m, n);};
 
     bool create(uint16_t m, uint16_t n);

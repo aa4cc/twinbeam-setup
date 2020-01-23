@@ -13,7 +13,7 @@ bool Options::mousekill 	= false;
 bool Options::rtprio		= false;
 bool Options::beadsearch	= false;
 uint16_t Options::tcp_port  = 30000;
-Options::ImageType Options::displayImageType = Options::ImageType::BACKPROP_G;
+ImageType Options::displayImageType = ImageType::BACKPROP_G;
 
 cxxopts::ParseResult Options::parse(AppData& appData, int argc, char* argv[])
 {

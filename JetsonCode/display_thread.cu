@@ -97,20 +97,7 @@ void display_thread(AppData& appData){
                 }
 
                 // Copy the image to the local copy
-                switch(Options::displayImageType) {
-                    case Options::ImageType::RAW_G:
-                        appData.G.copyTo(img_copy);
-                        break;
-                    case Options::ImageType::RAW_R:
-                        appData.R.copyTo(img_copy);
-                        break;
-                    case Options::ImageType::BACKPROP_G:
-                        appData.G_backprop.copyTo(img_copy);
-                        break;
-                    case Options::ImageType::BACKPROP_R:
-                        appData.R_backprop.copyTo(img_copy);
-                        break;
-                }
+                appData.img[Options::displayImageType].copyTo(img_copy);
 
                 const cv::cuda::GpuMat c_img(cv::Size(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]), CV_8U, img_copy.devicePtr());
 

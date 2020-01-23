@@ -9,14 +9,6 @@
 
 class Options{
 public:
-
-    enum class ImageType {
-        RAW_G,
-        RAW_R,
-        BACKPROP_G,
-        BACKPROP_R,
-    };
-
     static bool verbose;
     static bool debug;
     static bool show;
