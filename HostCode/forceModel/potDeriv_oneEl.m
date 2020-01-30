@@ -21,7 +21,7 @@ if i <= NQ_el
     y_el = +x - v_shift(i);    
     for i=1:numel(a)
         [ phi_i, Ex_i, Ey_i, Ez_i, Psixx_i, Psixy_i, Psixz_i, Psiyy_i, Psiyz_i, Psizz_i ] = ...
-            potDeriv_baseEl(x_el-(b(i)-1)*25e-6, y_el, z, b(i)*50e-6);
+            potDeriv_baseEl_optim(x_el-(b(i)-1)*25e-6, y_el, z, b(i)*50e-6);
         phi     = phi   + a(i) * phi_i;
         Ex      = Ex    + a(i) * Ey_i;
         Ey      = Ey    - a(i) * Ex_i;
@@ -39,7 +39,7 @@ elseif i > NQ_el && i<=2*NQ_el
     y_el = -y - v_shift(i-NQ_el);    
     for i=1:numel(a)
         [ phi_i, Ex_i, Ey_i, Ez_i, Psixx_i, Psixy_i, Psixz_i, Psiyy_i, Psiyz_i, Psizz_i ] = ...
-            potDeriv_baseEl(x_el-(b(i)-1)*25e-6, y_el, z, b(i)*50e-6);
+            potDeriv_baseEl_optim(x_el-(b(i)-1)*25e-6, y_el, z, b(i)*50e-6);
         phi     = phi   + a(i) * phi_i;
         Ex      = Ex    - a(i) * Ex_i;
         Ey      = Ey    - a(i) * Ey_i;
@@ -57,7 +57,7 @@ elseif i > 2*NQ_el && i<=3*NQ_el
     y_el = -x - v_shift(i-2*NQ_el);    
     for i=1:numel(a)
         [ phi_i, Ex_i, Ey_i, Ez_i, Psixx_i, Psixy_i, Psixz_i, Psiyy_i, Psiyz_i, Psizz_i ] = ...
-            potDeriv_baseEl(x_el-(b(i)-1)*25e-6, y_el, z, b(i)*50e-6);
+            potDeriv_baseEl_optim(x_el-(b(i)-1)*25e-6, y_el, z, b(i)*50e-6);
         phi     = phi   + a(i) * phi_i;
         Ex      = Ex    - a(i) * Ey_i;
         Ey      = Ey    + a(i) * Ex_i;
@@ -75,7 +75,7 @@ elseif i > 3*NQ_el && i<=4*NQ_el
     y_el = y - v_shift(i-3*NQ_el);
     for i=1:numel(a)
         [ phi_i, Ex_i, Ey_i, Ez_i, Psixx_i, Psixy_i, Psixz_i, Psiyy_i, Psiyz_i, Psizz_i ] = ...
-            potDeriv_baseEl(x_el-(b(i)-1)*25e-6, y_el, z, b(i)*50e-6);
+            potDeriv_baseEl_optim(x_el-(b(i)-1)*25e-6, y_el, z, b(i)*50e-6);
         phi     = phi   + a(i) * phi_i;
         Ex      = Ex    + a(i) * Ex_i;
         Ey      = Ey    + a(i) * Ey_i;
