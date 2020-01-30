@@ -15,13 +15,12 @@ int main(int argc, char* argv[]){
 
 	Options::parse(appData, argc, argv);
 
-	// register signal SIGINT and SIGTERM signal handler  
+	// register signal SIGINT signal handler  
 	struct sigaction sa;
     memset(&sa, 0, sizeof(struct sigaction));
     sa.sa_handler = [](int value) { appData.exitTheApp(); };
     sa.sa_flags = 0;// not SA_RESTART!;
     sigaction(SIGINT, &sa, NULL);
-    sigaction(SIGTERM, &sa, NULL);
 	
 	if(Options::debug){
 		printf("DEBUG: Initial settings:");
@@ -35,14 +34,12 @@ int main(int argc, char* argv[]){
 	thread imgproc_thr (imgproc_thread, std::ref(appData));
 	thread display_thr (display_thread, std::ref(appData));
 	thread network_thr (network_thread, std::ref(appData));
-	thread datasend_thr (datasend_thread, std::ref(appData));
 	thread keyboard_thr (keyboard_thread, std::ref(appData));
 	
 	camera_thr.join();
 	imgproc_thr.join();
 	display_thr.join();
 	network_thr.join();
-	datasend_thr.join();
 	keyboard_thr.join();
 
 	return 0;

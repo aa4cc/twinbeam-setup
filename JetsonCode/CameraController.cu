@@ -81,7 +81,7 @@ bool CameraController::Initialize(){
 	return true;
 }
 
-bool CameraController::Start(uint32_t imgWidth, uint32_t imgHeight, uint32_t fps, uint32_t exposure, float analogGain, float digitalGain){
+bool CameraController::Start(uint32_t imgWidth, uint32_t imgHeight, uint32_t exposure, float analogGain, float digitalGain){
 	// Managing the settings for the capture session
 	streamSettings = UniqueObj<OutputStreamSettings>(iCaptureSession->createOutputStreamSettings(STREAM_TYPE_EGL));
 	iEGLStreamSettings = interface_cast<IEGLOutputStreamSettings>(streamSettings);
@@ -115,7 +115,7 @@ bool CameraController::Start(uint32_t imgWidth, uint32_t imgHeight, uint32_t fps
 		return false;
 	}
 	iSourceSettings->setSensorMode(sensorMode);
-	iSourceSettings->setFrameDurationRange(Range<uint64_t>(1e9/fps));
+	iSourceSettings->setFrameDurationRange(Range<uint64_t>(1e9/50));
 	iSourceSettings->setExposureTimeRange(Range<uint64_t>(exposure,exposure));
 	iSourceSettings->setGainRange(Range<float>(analogGain,analogGain));
 

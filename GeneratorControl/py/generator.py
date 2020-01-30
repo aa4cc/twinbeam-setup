@@ -50,6 +50,8 @@ class Generator(object):
             phases = phases + [0 for x in range(64-len(phases))]
             dutys = dutys + [0 for x in range(64-len(dutys))]
 
+        # print(len(phases))
+
         phases.reverse()
         dutys.reverse()
 
@@ -70,6 +72,8 @@ class Generator(object):
         chcksum = sum(bytes(byte_stream))
 
         packet = self.OPEN_CODE + bytes(byte_stream) + self.CLOSE_CODE + struct.pack(">H", chcksum)
+
+        # print(packet)
 
         if self.port:
             self.port.write(packet)

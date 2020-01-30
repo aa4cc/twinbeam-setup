@@ -12,11 +12,15 @@ public:
     static bool verbose;
     static bool debug;
     static bool show;
-    static bool saveimgs;
-    static bool saveimgs_bp;
-    // static bool savevideos;
+    static bool show_markers;
+    static bool show_labels;
+    static ImageType displayImageType;
+    static bool savevideo;
     static bool mousekill;
-
+    static bool rtprio;
+    static bool beadsearch;
+    static uint16_t tcp_port;
+    
     static cxxopts::ParseResult parse(AppData& appData, int argc, char* argv[]);
 };
 

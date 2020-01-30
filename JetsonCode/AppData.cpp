@@ -6,16 +6,21 @@
 #include <cstdio>
 #include "AppData.h"
 #include <unistd.h>
+#include <cstring>
 
 AppData::AppData() {
     camera_is_initialized 	= false;
     imgproc_is_initialized	= false;
     display_is_initialized 	= false;
-    connected = false;
-    sent_coords = false;
-    requested_coords = false;
-    requested_type = RequestType::BACKPROPAGATED;
-    requested_image = false;
+
+	// Allocate the memory for the bead_position array so that the dynamic memory allocation is avoided
+	bead_positions.reserve(MAX_NUMBER_BEADS);
+
+	ImageData<uint8_t> G, R, G_bckp, R_bckp;
+	img[ImageType::RAW_G] = G;
+	img[ImageType::RAW_R] = R;
+	img[ImageType::BACKPROP_G] = G_bckp;
+	img[ImageType::BACKPROP_R] = R_bckp;
 }
 
 void AppData::startTheApp() {
@@ -73,24 +78,48 @@ void AppData::print(){
 	}
 }
 
-void AppData::set_connected(const bool value){
-	connected = value;
+/* Subscribe utility functions */
+void AppData::addSubs(std::vector<sockpp::inet_address>& listOfSubs, sockpp::inet_address inaddr) {
+	// Remove the subscriber, if it has already been in the list but possibly with a different port number
+	removeSubs(listOfSubs, inaddr);
+	// Add the subscriber to the list
+	listOfSubs.push_back(inaddr);
 }
 
-void AppData::set_sent_coords(const bool value){
-	sent_coords = value;
+void AppData::removeSubs(std::vector<sockpp::inet_address>& listOfSubs, sockpp::inet_address inaddr) {
+	// Remove the subscriber also in the case when the port number does not match
+	for(auto addr = listOfSubs.begin(); addr != listOfSubs.end();) {
+		if(addr->address() == inaddr.address()) {
+			listOfSubs.erase(addr);
+			break;
+		}
+	}
 }
 
-void AppData::set_requested_type(const RequestType value){
-	requested_type = value;
+/* Image subscribe utility functions */
+void AppData::removeImageSubs(sockpp::inet_address inaddr) {
+	// Remove the subsriber from subscription of all the image types
+	removeImageSubs(inaddr, ImageType::RAW_G);
+	removeImageSubs(inaddr, ImageType::RAW_R);
+	removeImageSubs(inaddr, ImageType::BACKPROP_G);
+	removeImageSubs(inaddr, ImageType::BACKPROP_R);
 }
 
-void AppData::set_requested_image(const bool value){
-	requested_image = value;
+void AppData::removeImageSubs(sockpp::inet_address inaddr, ImageType imgType) {
+	removeSubs(img_subs[imgType], inaddr);
 }
 
-void AppData::set_requested_coords(const bool value){
-	requested_coords = value;
+void AppData::addImageSubs(sockpp::inet_address inaddr, ImageType imgType) {
+	addSubs(img_subs[imgType], inaddr);
+}
+
+/* Coordinates subscribe utility functions */
+void AppData::removeCoordsSubs(sockpp::inet_address inaddr) {
+	removeSubs(coords_subs, inaddr);
+}
+
+void AppData::addCoordsSubs(sockpp::inet_address inaddr) {
+	addSubs(coords_subs, inaddr);
 }
 
 int AppData::get_area(){

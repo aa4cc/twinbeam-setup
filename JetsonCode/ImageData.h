@@ -1,5 +1,7 @@
 /**
  * @author  Martin Gurtner
+ *
+ * IMPORTANT - It is assumed that only the data stored in the device memory are modified.
  */
 
 #ifndef IMAGEDATA_H
@@ -7,7 +9,8 @@
 
 #include <stdint.h>
 #include <mutex>
-#include "cuda.h"
+#include <shared_mutex>
+#include "cuda.h"   
 
 template<typename T>
 class ImageData
@@ -18,8 +21,17 @@ private:
     int width, height;           // dimensions of the image
 
 public:
-    mutable std::mutex mtx;
+    mutable std::shared_timed_mutex mtx;
     ImageData() { };
+    // ImageData(const ImageData<T>&) = default;
+    ImageData<T>& operator=(const ImageData<T>& id) {
+        width = id.width;
+        height = id.height;
+        h_data = nullptr;
+        d_data = nullptr;
+        return *this;
+    };
+
     ImageData(uint16_t m, uint16_t n) : width{m}, height{n} {create(m, n);};
 
     bool create(uint16_t m, uint16_t n);
@@ -27,7 +39,7 @@ public:
     bool isEmpty() {return h_data==nullptr;};
 
     T* hostPtr(bool sync=false);
-    T* devicePtr(bool sync=false);
+    T* devicePtr();
 
     void copyTo(const ImageData<T>& dst);
 

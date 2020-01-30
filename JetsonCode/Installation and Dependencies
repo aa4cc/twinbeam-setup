@@ -3,3 +3,14 @@ In order for the Jetson TX2 unit to work properly with the LI-TX1-CB and the IMX
 In order to skip later installations of additional packages it is recommended to install Jetpack 4.2.2 in the first step.
 
 Install OpenCV 4 with CUDA support by running the following script https://raw.githubusercontent.com/AastaNV/JEP/master/script/install_opencv4.1.1_Jetson.sh
+
+Copy the script disabling group rt scheduling (make sure the script is executable): sudo cp JetsonCode/disable_group_rt_scheduling.sh /etc/rc.local
+
+Install the sockpp library (https://github.com/fpagliughi/sockpp)
+
+Set the default mode to the max power mode . Change the line
+< PM_CONFIG DEFAULT=2 >
+to 
+< PM_CONFIG DEFAULT=0 >
+in
+sudo nano /etc/nvpmodel.conf

@@ -72,7 +72,8 @@ if __name__ == "__main__":
 
     r = Receiver(4862,
         {
-            "fff": lambda data: print("fff", data),
+            "56H": lambda data: print("56H", data),
+            "5f": lambda data: print("5f", data),
             "f": lambda data: print("f", data),
         },
         lambda data: print('unparsed:', data)

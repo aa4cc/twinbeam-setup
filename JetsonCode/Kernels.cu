@@ -8,7 +8,7 @@
 #include <cmath>
 #include "Definitions.h"
 
-#define SQUARE(x) x*x
+#define SQUARE(x) ((x)*(x))
 #define _USE_MATH_DEFINES // to include M_PI constant
 /*
     Calculation of the Hq matrix according to the equations in original .m file
@@ -131,7 +131,7 @@ __global__ void floatToUInt8(int N, int M, float* input, uint8_t* result)
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     int stride = blockDim.x * gridDim.x;
     for(int i = index; i < N*M; i += stride){
-        result[i] = (uint8_t)input[i];
+        result[i] = (uint8_t) fmin(fmax(input[i], 0.0f), 255.0f);
     }
 }
 
@@ -172,17 +172,3 @@ __global__ void getLocalMinima(int M, int N, float* input, uint16_t* points, uin
         }
     }    
 }
-
-template<typename T>
-__global__ void copyKernel(int M, int N, T* input, T* output) {
-    int index = blockIdx.x * blockDim.x + threadIdx.x;
-    int stride = blockDim.x * gridDim.x;
-    int count = N*M;
-    for(int i = index; i < count; i += stride){
-        output[i] = input[i];
-    }
-}
-
-template __global__ void copyKernel<uint8_t>(int, int, uint8_t*, uint8_t*);
-template __global__ void copyKernel<uint16_t>(int, int, uint16_t*, uint16_t*);
-template __global__ void copyKernel<float>(int, int, float*, float*);

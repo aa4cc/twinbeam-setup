@@ -8,8 +8,12 @@
 
 #include <mutex> 
 #include <condition_variable>
+#include <vector>
+#include <map>
+#include "sockpp/inet_address.h"
 #include "Definitions.h"
 #include "ImageData.h"
+#include "BeadTracker.h"
 
 class AppData {
 public:
@@ -23,29 +27,35 @@ public:
 
     // Member variables
 
-	int values[STG_NUMBER_OF_SETTINGS] = {1200, 1200, 1352, 596, 5000000, 50, 1, 3100, 2400, 30, 80};
+	int values[STG_NUMBER_OF_SETTINGS] = {1024, 1024, 1440, 592, 550, 20, 5000000, 200, 2, 3100, 2400, 30, 90, 140};
 	AppState appState = AppState::IDLING;
 	
 	bool camera_is_initialized;
-	bool imgproc_is_initialized;
-	bool display_is_initialized;
-
-	bool connected;
-	bool sent_coords;
-	RequestType requested_type;
-	bool requested_image;
-	bool requested_coords;
+	bool imgproc_is_initialized;	bool display_is_initialized;
 
 	std::condition_variable cam_cv;
 	std::mutex cam_mtx;
 	ImageData<uint8_t> camIG, camIR;
 
-	ImageData<uint8_t> G, R, G_backprop;
-	uint16_t bead_positions[2*MAX_NUMBER_BEADS];
-	uint32_t bead_count;
+	std::map<ImageType, ImageData<uint8_t>> img;
+
+	std::vector<Position> bead_positions;
 	std::mutex mtx_bp;
+
+	// Subscribers of the images
+	std::map<ImageType, std::vector<sockpp::inet_address>> img_subs {
+			{ImageType::RAW_G, {}},
+			{ImageType::RAW_R, {}},
+			{ImageType::BACKPROP_G, {}},
+			{ImageType::BACKPROP_R, {}}
+		};
+
+	// Subscribers of the coordinates of the tracked objects
+	std::vector<sockpp::inet_address> coords_subs;		
+
+	BeadTracker beadTracker;
 	
-    // Construction
+    // Constructor
     AppData();
 
     // Member methods
@@ -57,15 +67,22 @@ public:
 	void appStateSet(AppState appState);
 	void exitTheApp();
 
+	// Image subscribe utility functions
+	void removeImageSubs(sockpp::inet_address);
+	void removeImageSubs(sockpp::inet_address, ImageType);
+	void addImageSubs(sockpp::inet_address, ImageType);
+
+	// Coordinates subscribe utility functions
+	void removeCoordsSubs(sockpp::inet_address);
+	void addCoordsSubs(sockpp::inet_address);
 
 	void print();
-	void set_connected(const bool value);
-	void set_sent_coords(const bool value);
-	void set_requested_type(const RequestType value);
-	void set_requested_image(const bool value);
-	void set_requested_coords(const bool value);
 
 	int get_area();
+
+private:
+	void addSubs(std::vector<sockpp::inet_address>&, sockpp::inet_address);
+	void removeSubs(std::vector<sockpp::inet_address>&, sockpp::inet_address);
 };
 
 #endif

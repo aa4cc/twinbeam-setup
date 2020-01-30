@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 project(3D_scanning)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 
 set(CMAKE_SOURCE_DIR "/usr/src/tegra_multimedia_api/argus")
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_MODULE_PATH}")
@@ -17,7 +17,7 @@ find_package(EGL REQUIRED)
 set(CUDA_NVCC_FLAGS #TX2
 		${CUDA_NVCC_FLAGS};
 		-gencode arch=compute_62,code=sm_62
-		-rdc=true -std=c++14
+		-rdc=true -std=c++14 -O3
         )
 
 SET(OpenCV_DIR "usr/lib")
@@ -30,6 +30,7 @@ set(SOURCES
 		Misc.cpp
 		BackPropagator.cu
 		BeadsFinder.cu
+		BeadTracker.cpp
 		camera_thread.cu
 		keyboard_thread.cpp
 		display_thread.cu
@@ -37,8 +38,8 @@ set(SOURCES
 		CameraController.cu
 		argpars.cpp
 		AppData.cpp
+		network.cpp
 		ImageData.cu
-		network.cu
 		# Camera.cu
         )
 
@@ -59,6 +60,7 @@ target_link_libraries(${PROJECT_NAME}
 		${CUDA_LIBRARIES}
         ${CUDA_CUFFT_LIBRARIES}
 		${OpenCV_LIBS}
+		sockpp
         )
 
 

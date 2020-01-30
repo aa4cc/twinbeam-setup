@@ -150,6 +150,33 @@ AppData.cpp.s:
 	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/AppData.cpp.s
 .PHONY : AppData.cpp.s
 
+BeadTracker.o: BeadTracker.cpp.o
+
+.PHONY : BeadTracker.o
+
+# target to build an object file
+BeadTracker.cpp.o:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/BeadTracker.cpp.o
+.PHONY : BeadTracker.cpp.o
+
+BeadTracker.i: BeadTracker.cpp.i
+
+.PHONY : BeadTracker.i
+
+# target to preprocess a source file
+BeadTracker.cpp.i:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/BeadTracker.cpp.i
+.PHONY : BeadTracker.cpp.i
+
+BeadTracker.s: BeadTracker.cpp.s
+
+.PHONY : BeadTracker.s
+
+# target to generate assembly for a file
+BeadTracker.cpp.s:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/BeadTracker.cpp.s
+.PHONY : BeadTracker.cpp.s
+
 Misc.o: Misc.cpp.o
 
 .PHONY : Misc.o
@@ -258,6 +285,33 @@ keyboard_thread.cpp.s:
 	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/keyboard_thread.cpp.s
 .PHONY : keyboard_thread.cpp.s
 
+network.o: network.cpp.o
+
+.PHONY : network.o
+
+# target to build an object file
+network.cpp.o:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/network.cpp.o
+.PHONY : network.cpp.o
+
+network.i: network.cpp.i
+
+.PHONY : network.i
+
+# target to preprocess a source file
+network.cpp.i:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/network.cpp.i
+.PHONY : network.cpp.i
+
+network.s: network.cpp.s
+
+.PHONY : network.s
+
+# target to generate assembly for a file
+network.cpp.s:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/network.cpp.s
+.PHONY : network.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -270,6 +324,9 @@ help:
 	@echo "... AppData.o"
 	@echo "... AppData.i"
 	@echo "... AppData.s"
+	@echo "... BeadTracker.o"
+	@echo "... BeadTracker.i"
+	@echo "... BeadTracker.s"
 	@echo "... Misc.o"
 	@echo "... Misc.i"
 	@echo "... Misc.s"
@@ -282,6 +339,9 @@ help:
 	@echo "... keyboard_thread.o"
 	@echo "... keyboard_thread.i"
 	@echo "... keyboard_thread.s"
+	@echo "... network.o"
+	@echo "... network.i"
+	@echo "... network.s"
 .PHONY : help
 
 
