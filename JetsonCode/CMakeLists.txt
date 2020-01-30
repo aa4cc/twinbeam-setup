@@ -3,7 +3,7 @@ project(3D_scanning)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 
-set(CMAKE_SOURCE_DIR "/usr/src/tegra_multimedia_api/argus")
+set(CMAKE_SOURCE_DIR "/home/nvidia/tegra_multimedia_api/argus")
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_MODULE_PATH}")
 
 set(CUDA_PROPAGATE_HOST_FLAGS OFF)
@@ -14,9 +14,9 @@ find_package(Argus REQUIRED)
 find_package(EGL REQUIRED)
 
 
-set(CUDA_NVCC_FLAGS #TX2
+set(CUDA_NVCC_FLAGS #Xavier
 		${CUDA_NVCC_FLAGS};
-		-gencode arch=compute_62,code=sm_62
+		-gencode arch=compute_72,code=sm_72
 		-rdc=true -std=c++14 -O3
         )
 
