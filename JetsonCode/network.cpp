@@ -76,6 +76,7 @@ void client_thread(AppData& appData, sockpp::tcp_socket sock) {
 					cerr << "WARN: Image cannot be sent since the application is not running." << endl;
 				} else {
 					ImageData<uint8_t> temp_img(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
+					ImageData<uint8_t> temp_img2(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
 					switch(buf[1]) {
 						case 0:
 							appData.img[ImageType::BACKPROP_G].copyTo(temp_img);
@@ -89,12 +90,22 @@ void client_thread(AppData& appData, sockpp::tcp_socket sock) {
 						case 3:
 							appData.img[ImageType::RAW_R].copyTo(temp_img);
 							break;
+						case 4:
+							// Send both, the image from G and R channel
+							appData.img[ImageType::RAW_G].copyTo(temp_img);
+							appData.img[ImageType::RAW_R].copyTo(temp_img2);
+							break;
 						default:
 							cerr << "ERROR: Unknown image type recieved with image request" << endl;
 							break;
 					}
 					
 					sock.write_n(temp_img.hostPtr(true), sizeof(uint8_t)*appData.get_area());
+					if(buf[1] == 4) {
+						// Both RAW_G and RAW_R images are to be sent
+						sock.write_n(temp_img2.hostPtr(true), sizeof(uint8_t)*appData.get_area());
+					}
+
 					if(Options::debug) printf("INFO: Image sent.\n");
 				}
 				break;
