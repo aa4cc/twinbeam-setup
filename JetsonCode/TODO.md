@@ -2,7 +2,6 @@
 * Avoid using OpenCV Gaussian blur and blur the image in the frequency domain instead
 * use opengl for the display
 * check the length of the received message when settings are being changed
-* add the option to display different images (Backprop, raw{R,G}, filtered)
 * get rid of the 'mutexed' access to the beadpos array
 * get rid of the blockin behaviour of getchar() in keyboard thread
 * add the object to be initialized to std:vector in AppData class and then wait for std::all_of
@@ -17,5 +16,4 @@
 * Unite Options and AppData
 * Get rid of Misc.h
 * https://github.com/hyperrealm/libconfig or https://github.com/nlohmann/json
-
-sudo sysctl -w kernel.sched_rt_runtime_us=-1
+* Try using zero copy memory acces (As opposed to TX2, this should be faster on the AGX)
