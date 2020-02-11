@@ -1,24 +1,15 @@
-function [ Fx, Fy, Fz] = giveMeForce( x, y, z, u )
+function F = giveMeForce( p, ur, ui )
 
-K =  -0.461847136009005 - 0.1454476730660181i;
-Fvz = -3.339997057833991e-11;
-r = 2.500000000000000e-05;  
-e0 = 8.850000000000001e-12;
-em = 80;
+N_objs = numel(p)/3;
+F = zeros(3*N_objs, 1);
 
-% !!! NOT sure about the multiplication by two !!!!
-k_r = 2*pi*e0*em*r^3*real(K);
-k_i = 2*pi*e0*em*r^3*imag(K);
+for i=1:N_objs
+    [ Psi, Omega ] = modelMatricesPsiOmega( p( (i-1)*3 + (1:3) ) );
 
-[ Gamma, Lambda_x, Lambda_y, Lambda_z] = modelMatrices( x, y, z );
-
-Ax = k_r*(Lambda_x*Gamma' + Gamma*Lambda_x') + 1i*k_i*(Lambda_x*Gamma' - Gamma*Lambda_x');
-Ay = k_r*(Lambda_y*Gamma' + Gamma*Lambda_y') + 1i*k_i*(Lambda_y*Gamma' - Gamma*Lambda_y');
-Az = k_r*(Lambda_z*Gamma' + Gamma*Lambda_z') + 1i*k_i*(Lambda_z*Gamma' - Gamma*Lambda_z');
-
-Fx = u'*Ax*u;
-Fy = u'*Ay*u;
-Fz = u'*Az*u+Fvz;
+    F((i-1)*3 + (1:3)) = [ur'*Psi{1}*ur + ui'*Psi{1}*ui + ur'*Omega{1}*ui;
+                          ur'*Psi{2}*ur + ui'*Psi{2}*ui + ur'*Omega{2}*ui;
+                          ur'*Psi{3}*ur + ui'*Psi{3}*ui + ur'*Omega{3}*ui;];
+end
 
 end
 

@@ -23,7 +23,7 @@ void display_thread(AppData& appData){
     
     if(Options::rtprio) {
 		struct sched_param schparam;
-        schparam.sched_priority = 20;
+        schparam.sched_priority = 40;
         
 		if(Options::debug) printf("INFO: display_thread: setting rt priority to %d\n", schparam.sched_priority);
 

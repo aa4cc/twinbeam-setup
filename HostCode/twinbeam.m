@@ -38,8 +38,8 @@ classdef twinbeam < handle
                 timeout = p.Results.Timeout;
             end
             
-            obj.height = 1200;
-            obj.width = 1200;
+            obj.height = 1024;
+            obj.width = 1024;
             
             obj.connection = tcpclient(ip, port, 'ConnectTimeout', timeout);
             read(obj.connection)
@@ -60,11 +60,13 @@ classdef twinbeam < handle
             
             switch lower(img_type)
                 case 'backpropagated'
-                    write(obj.connection, uint8('r'));
+                    write(obj.connection, [uint8('r'), 0]);
+                case 'backpropagated_r'
+                    write(obj.connection, [uint8('r'), 1]);
                 case 'raw_g'
-                    write(obj.connection, uint8('x'));
+                    write(obj.connection, [uint8('r'), 2]);
                 case 'raw_r'
-                    write(obj.connection, uint8('y'));
+                    write(obj.connection, [uint8('r'), 3]);
                 otherwise
                     error('This image type is not supported.')
             end
@@ -81,22 +83,23 @@ classdef twinbeam < handle
             end
         end
         
-        function obj = settings(obj, width, height, offset_x, offset_y, exposure, analog_gain, digital_gain, red_dist, green_dist, fps, image_threshold)
+        function obj = settings(obj, width, height, offset_x, offset_y, offset_r2g_x, offset_r2g_y, exposure, analog_gain, digital_gain, red_dist, green_dist, fps, image_threshold_g, image_threshold_r)
             if nargin == 1
                 prompt = {'Width:','Height:', ...
                     'Offset X:', 'Offset Y:', ...
+                    'R2G Offset X:', 'R2G Offset Y:', ...
                     'Exposure time [ns]:', 'Analog gain:', 'Digital gain:', ...
                     'Red distance [um]:', 'Green distance [um]:', ...
-                    'Frames per second: ', 'Image threshold:'};
+                    'Frames per second: ', 'Image threshold G:', 'Image threshold R:'};
                 dlgtitle = 'New settings';
                 dims = [1 40];
-                definput = {'1200','1200','1352','596','5000000', '100', '1', '3100', '2750', '30', '80'};
+                definput = {'1024','1024','1440','592','480','0','5000000', '200', '2', '3100', '2400', '30', '90', '140'};
                 data = inputdlg(prompt,dlgtitle,dims,definput);
                 data = str2double(data);
                 width = data(1);
                 height = data(2);
             else
-                data = [width; height; offset_x; offset_y; exposure; analog_gain; digital_gain; red_dist; green_dist; fps; image_threshold];
+                data = [width; height; offset_x; offset_y; offset_r2g_x; offset_r2g_y; exposure; analog_gain; digital_gain; red_dist; green_dist; fps; image_threshold_g; image_threshold_r];
             end
 
             obj.width = width;
@@ -113,8 +116,101 @@ classdef twinbeam < handle
             write(obj.connection, uint8('q'));
         end
         
+        function img_subs(obj, port)
+            write(obj.connection, [uint8('b'), typecast(uint16(port), 'uint8')]);
+        end
+        
+        function img_unsubs(obj)
+            write(obj.connection, uint8('b'));
+        end
+        
+        function coords_subs(obj, port)
+            write(obj.connection, [uint8('c'), typecast(uint16(port), 'uint8')]);
+        end
+        
+        function coords_unsubs(obj)
+            write(obj.connection, uint8('c'));
+        end
+        
         function green = positions(obj)
             write(obj.connection, uint8('g'));
+            num_of_coords = typecast(read(obj.connection, 4), 'uint32');
+            if num_of_coords == 0
+                green = [];
+                disp("No green coordinates found");
+            else
+                coords = typecast(read(obj.connection, num_of_coords*4), 'uint16');
+                green = reshape(coords, 2, num_of_coords)';
+                % The application running on Jetson indexes the images by
+                % (col_id, row_id) whereas Matlab uses (row_id, col_id).
+                % Thus we have to switch the received the indexes so that
+                % they comply with the Matlab notation.
+                green = [green(:,2) green(:,1)];
+            end
+        end
+        
+        function green = positions_closest(obj, positions)
+            % positions are in format [x1 y1; x2 y2; ...]
+            
+            % The application running on Jetson indexes the images by
+            % (col_id, row_id) whereas Matlab uses (row_id, col_id).
+            % Thus we have to switch the received the indexes so that
+            % they complie with the Matlab notation.
+            positions = [positions(:,2)'; positions(:,1)'];
+            message = [uint8('h'), typecast(uint32(numel(positions)/2),'uint8'), typecast(uint16(positions(:)'),'uint8')];
+%             tic
+            write(obj.connection, message);
+            
+            num_of_coords = typecast(read(obj.connection, 4), 'uint32');
+%             toc
+            if num_of_coords == 0
+                green = [];
+                disp("No green coordinates found");
+            else
+                coords = typecast(read(obj.connection, num_of_coords*4), 'uint16');
+                green = reshape(coords, 2, num_of_coords)';
+                % The application running on Jetson indexes the images by
+                % (col_id, row_id) whereas Matlab uses (row_id, col_id).
+                % Thus we have to switch the received the indexes so that
+                % they comply with the Matlab notation.
+                green = [green(:,2) green(:,1)];
+            end
+        end
+        
+        function tracker_init(obj, inArg)
+            % positions are in format [x1 y1; x2 y2; ...]
+            
+            if numel(inArg)==1 
+                % The argument specifies the number of objects to be
+                % tracked and the user is supposed to select them in the
+                % captured image
+                obj.get();
+                
+                [x, y] = ginput(inArg);
+                positions = [y, x];
+            else
+                positions = inArg;
+            end
+            
+            % The application running on Jetson indexes the images by
+            % (col_id, row_id) whereas Matlab uses (row_id, col_id).
+            % Thus we have to switch the received the indexes so that
+            % they comply with the Matlab notation.
+            positions = [positions(:,2)'; positions(:,1)'];
+            message = [uint8('t'), uint8('i'), typecast(uint32(numel(positions)/2),'uint8'), typecast(uint16(positions(:)'),'uint8')];
+            write(obj.connection, message);
+        end
+        
+        function green = tracker_read(obj)
+            % positions are in format [x1 y1; x2 y2; ...]
+            
+            % The application running on Jetson indexes the images by
+            % (col_id, row_id) whereas Matlab uses (row_id, col_id).
+            % Thus we have to switch the received the indexes so that
+            % they comply with the Matlab notation.
+            message = [uint8('t'), uint8('r')];
+            write(obj.connection, message);
+            
             num_of_coords = typecast(read(obj.connection, 4), 'uint32');
             if num_of_coords == 0
                 green = [];
@@ -128,16 +224,23 @@ classdef twinbeam < handle
                 % they complie with the Matlab notation.
                 green = [green(:,2) green(:,1)];
             end
-        end
+        end        
         
         function delete(obj)
             write(obj.connection, uint8('d'));
             pause(0.2);
         end
         
-        function calib(obj)
+        function H = calib(obj, offsets, img_type)
+            if nargin < 2
+                offsets = [5 5 5 5];
+            end
+            
+            if nargin < 3
+                img_type = 'backpropagated';
+            end
             % Capture an image of the electrode arrat
-            img = obj.get('backpropagated');
+            img = obj.get(img_type);
             img = im2single(img);
             [w, h] = size(img);
             
@@ -147,34 +250,64 @@ classdef twinbeam < handle
             
             % Set the distance from the edge of the limits where the
             % centers of the electrodes will be searched for
-            offset = 10;
 
             % Find peaks in intensity along the lines crossing the
             % electrodes with $offset pixels from the edge of the image            
-            l_l = im_filt(:, offset);
-            l_r = im_filt(:, h-offset);
-            l_t = im_filt(offset, :)';
-            l_b = im_filt(w-offset, :)';
+            l_l = im_filt(:, offsets(1));
+            l_r = im_filt(:, h-offsets(2));
+            l_t = im_filt(offsets(3), :)';
+            l_b = im_filt(w-offsets(4), :)';
 
             [pks_l, lcs_l] = findpeaks(l_l);
             [pks_r, lcs_r] = findpeaks(l_r);
             [pks_t, lcs_t] = findpeaks(l_t);
             [pks_b, lcs_b] = findpeaks(l_b);
+            
+            % Get rid of peaks that are too close to the bondary of the image
+            I1 = lcs_l > 60 & lcs_l < (obj.width-60);
+            pks_l = pks_l(I1); lcs_l = lcs_l(I1);
+            
+            I2 = lcs_r > 60 & lcs_r < (obj.width-60);
+            pks_r = pks_r(I2); lcs_r = lcs_r(I2);
+            
+            I3 = lcs_t > 60 & lcs_t < (obj.height-60);
+            pks_t = pks_t(I3); lcs_t = lcs_t(I3);
+            
+            I4 = lcs_b > 60 & lcs_b < (obj.height-60);
+            pks_b = pks_b(I4); lcs_b = lcs_b(I4);
+            
     
             % Find the maximum values in the peaks ...
-            maxval = max([pks_l;pks_r;pks_t;pks_b]);
+%             maxval = max([pks_l;pks_r;pks_t;pks_b]);
 
             % .. and throw away all peaks smaller then $src*$maxval
-            sc = 0.85;
-            I1 = pks_l> sc*maxval;
-            [pks_l, lcs_l] = twinbeam.addMissingPoints(pks_l(I1), lcs_l(I1));
-            I2 = pks_r> sc*maxval;
-            [pks_r, lcs_r] = twinbeam.addMissingPoints(pks_r(I2), lcs_r(I2));
-            I3 = pks_t> sc*maxval;
-            [pks_t, lcs_t] = twinbeam.addMissingPoints(pks_t(I3), lcs_t(I3));
-            I4 = pks_b> sc*maxval;
-            [pks_b, lcs_b] = twinbeam.addMissingPoints(pks_b(I4), lcs_b(I4));            
+            [~, Itmp] = sort(pks_l, 'descend');
+            I1 = pks_l>= pks_l(Itmp(14));
+            pks_l = pks_l(I1); lcs_l = lcs_l(I1);
             
+            [~, Itmp] = sort(pks_r, 'descend');
+            I2 = pks_r>= pks_r(Itmp(14));
+            pks_r = pks_r(I2); lcs_r = lcs_r(I2);
+            
+            [~, Itmp] = sort(pks_t, 'descend');
+            I3 = pks_t>= pks_t(Itmp(14));
+            pks_t = pks_t(I3); lcs_t = lcs_t(I3);
+            
+            [~, Itmp] = sort(pks_b, 'descend');
+            I4 = pks_b>= pks_b(Itmp(14));
+            pks_b = pks_b(I4); lcs_b = lcs_b(I4);
+            
+%             [pks_l, lcs_l] = twinbeam.addMissingPoints(pks_l(I1), lcs_l(I1));
+%             
+%             I2 = pks_r> sc*maxval;
+%             [~, Itmp] = sort(pks_l, 'descend');
+%             I1 = pks_l>= pks_l(Itmp(14));
+%             [pks_r, lcs_r] = twinbeam.addMissingPoints(pks_r(I2), lcs_r(I2));
+%             I3 = pks_t> sc*maxval;
+%             [pks_t, lcs_t] = twinbeam.addMissingPoints(pks_t(I3), lcs_t(I3));
+%             I4 = pks_b> sc*maxval;
+%             [pks_b, lcs_b] = twinbeam.addMissingPoints(pks_b(I4), lcs_b(I4));
+                        
             
             % Show the captured electrode array and found centers of the
             % electrodes
@@ -184,16 +317,16 @@ classdef twinbeam < handle
             axis equal
             axis tight
             
-            pts_l = [lcs_l, offset*ones(size(lcs_l))];
-            pts_r = [lcs_r, (h-offset)*ones(size(lcs_r))];
-            pts_t = [offset*ones(size(lcs_t)),        lcs_t];
-            pts_b = [(w-offset)*ones(size(lcs_b)),    lcs_b];
+            pts_l = [lcs_l, offsets(1)*ones(size(lcs_l))];
+            pts_r = [lcs_r, (h-offsets(2))*ones(size(lcs_r))];
+            pts_t = [offsets(3)*ones(size(lcs_t)),        lcs_t];
+            pts_b = [(w-offsets(4))*ones(size(lcs_b)),    lcs_b];
 
             hold on
-            plot([offset  offset], [offset w-offset], 'b--')
-            plot([h-offset  h-offset], [offset w-offset], 'b--')
-            plot([h-offset  offset], [offset offset], 'b--')
-            plot([h-offset offset], [w-offset w-offset], 'b--')
+            plot([offsets(1)  offsets(1)], [offsets(1) w-offsets(1)], 'b--')
+            plot([h-offsets(2)  h-offsets(2)], [offsets(2) w-offsets(2)], 'b--')
+            plot([h-offsets(3)  offsets(3)], [offsets(3) offsets(3)], 'b--')
+            plot([h-offsets(4) offsets(4)], [w-offsets(4) w-offsets(4)], 'b--')
 
             plot(pts_l(:,2), pts_l(:,1), '*')
             plot(pts_r(:,2), pts_r(:,1), '*')
@@ -315,7 +448,7 @@ classdef twinbeam < handle
 
             figure(1)
             hold on
-            plot(zs_x', zs_y', 'gx')
+            plot(zs_y', zs_x', 'gx')
             hold off
             
             %
@@ -338,6 +471,8 @@ classdef twinbeam < handle
             end
             hold off
             axis equal tight
+            
+            H = obj.H_calib;
         end
         
         function el_pos = imgCoords2elCoords(obj, imgCoords)
@@ -396,8 +531,7 @@ classdef twinbeam < handle
         function el_pos = genElecetrodePositions()
             NQ_el = 14;
             el_pos = zeros(4*NQ_el, 4, 2);
-            
-            
+                        
             q1_x = (0:100:(NQ_el-1)*100) - (NQ_el-1)/2*100;
             q1_y = -[0:100:(NQ_el/2-1)*100 (NQ_el/2 - 2)*100:-100:-100] + (NQ_el-1)/2*100 - 25;
 

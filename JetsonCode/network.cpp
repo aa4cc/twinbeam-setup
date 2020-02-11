@@ -28,7 +28,7 @@ void client_thread(AppData& appData, sockpp::tcp_socket sock) {
 
 	if(Options::rtprio) {
 		struct sched_param schparam;
-		schparam.sched_priority = 30;
+		schparam.sched_priority = 45;
 		
 		if(Options::debug) printf("INFO: network_client_thread: setting rt priority to %d\n", schparam.sched_priority);
 
