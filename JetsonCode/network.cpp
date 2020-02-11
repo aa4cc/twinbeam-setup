@@ -98,49 +98,29 @@ void client_thread(AppData& appData, sockpp::tcp_socket sock) {
 					if(Options::debug) printf("INFO: Image sent.\n");
 				}
 				break;
-			case MessageType::COORDS:
+			case MessageType::COORDS_G:
 				beadCountP = (uint32_t*)coords_buffer;
 
 				{ // Limit the scope of the mutex
-					std::lock_guard<std::mutex> mtx_bp(appData.mtx_bp);
-					*beadCountP = (uint32_t)appData.bead_positions.size();
-					memcpy(coords_buffer+sizeof(uint32_t), appData.bead_positions.data(), 2*(*beadCountP)*sizeof(uint16_t));
+					std::lock_guard<std::mutex> mtx_bp(appData.mtx_bp_G);
+					*beadCountP = (uint32_t)appData.bead_positions_G.size();
+					memcpy(coords_buffer+sizeof(uint32_t), appData.bead_positions_G.data(), 2*(*beadCountP)*sizeof(uint16_t));
 				}
 
 				sock.write_n(coords_buffer, sizeof(uint32_t) + 2*(*beadCountP)*sizeof(uint16_t));
 
 				break;
-			case MessageType::COORDS_CLOSEST:
-				if(!appData.appStateIs(AppData::AppState::RUNNING)) {
-					cerr << "WARN: The positions cannot be sent since the application is not running." << endl;
-				} else {
-					uint32_t bead_count_received = ((uint32_t*)(buf+sizeof(uint8_t)))[0];
-					uint16_t *bead_positions_received = (uint16_t*)(buf+sizeof(uint8_t)+sizeof(uint32_t));
-				
-					std::lock_guard<std::mutex> mtx_bp(appData.mtx_bp);
-					// Store the number of beads to be sent to the buffer		
-					((uint32_t*)coords_buffer)[0] = bead_count_received;
-					uint16_t* coords_buffer_pos = (uint16_t*)(coords_buffer+sizeof(uint32_t)); 
+			case MessageType::COORDS_R:
+				beadCountP = (uint32_t*)coords_buffer;
 
-					// Iterate over all the received positions and find the closest measured position in appData.bead_positions
-					for(int i=0; i<bead_count_received; i++) {
-						// printf("\t %d -> ", i);
-						int min_j = -1;
-						int min_dist = INT_MAX;
-						for(auto &b : appData.bead_positions) {
-							int dist = SQUARE((int)b.x-(int)bead_positions_received[2*i]) + SQUARE((int)b.y-(int)bead_positions_received[2*i+1]);
-							if (dist < min_dist) {
-								min_dist = dist;
-								// Store the closest bead position to the buffer
-								coords_buffer_pos[2*i] = b.x;
-								coords_buffer_pos[2*i+1] = b.y;		
-							}
-						}
-					}
-					sock.write_n(coords_buffer, sizeof(uint32_t) + 2*bead_count_received*sizeof(uint16_t));
-
-					if(Options::debug) printf("INFO: Closest bead positions sent\n");
+				{ // Limit the scope of the mutex
+					std::lock_guard<std::mutex> mtx_bp(appData.mtx_bp_R);
+					*beadCountP = (uint32_t)appData.bead_positions_R.size();
+					memcpy(coords_buffer+sizeof(uint32_t), appData.bead_positions_R.data(), 2*(*beadCountP)*sizeof(uint16_t));
 				}
+
+				sock.write_n(coords_buffer, sizeof(uint32_t) + 2*(*beadCountP)*sizeof(uint16_t));
+
 				break;
 			case MessageType::TRACKER:
 				switch(buf[1]){
@@ -154,13 +134,17 @@ void client_thread(AppData& appData, sockpp::tcp_socket sock) {
 							// the first object, then x position of the second object follows and so on and
 							// so on (i.e. x0, y0, x1, y1, x2, ....)
 
+							// @TODO currently, both trackers are initialized by the same bead positions
+
 							// Clear the beadTracker - remove all the currently tracked objects from the tracker
-							appData.beadTracker.clear();
+							appData.beadTracker_G.clear();
+							appData.beadTracker_R.clear();
 
 							uint32_t N_objects = *(uint32_t*)(buf+2);
 							uint16_t* positions = (uint16_t*)(buf+2+sizeof(uint32_t));
 							for(size_t i=0; i<N_objects; ++i) {
-								appData.beadTracker.addBead({positions[2*i], positions[2*i+1]});
+								appData.beadTracker_G.addBead({positions[2*i], positions[2*i+1]});
+								appData.beadTracker_R.addBead({positions[2*i], positions[2*i+1]});
 								if(Options::debug) printf("INFO: BeadTracker: adding object at (%d, %d)\n", positions[2*i], positions[2*i+1]);
 							}
 							break;
@@ -176,7 +160,7 @@ void client_thread(AppData& appData, sockpp::tcp_socket sock) {
 							// so on (i.e. x0, y0, x1, y1, x2, ....)
 
 							beadCountP = (uint32_t*)coords_buffer;
-							const vector<Position>& bp = appData.beadTracker.getBeadPositions();
+							const vector<Position>& bp = appData.beadTracker_G.getBeadPositions();
 
 							// Store the number of tracked objects
 							*beadCountP = (uint32_t)bp.size();

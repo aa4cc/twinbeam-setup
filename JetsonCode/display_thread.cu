@@ -109,16 +109,16 @@ void display_thread(AppData& appData){
                 if (Options::savevideo) video_writer.write(img_disp);
 
                 // Draw bead positions (if beadsearch enabled and show_markers flag active)
-                if(Options::beadsearch && (Options::show_markers || Options::show_labels)) {
-                    lock_guard<mutex> mtx_bp(appData.mtx_bp);
-                    for(auto &b : appData.bead_positions) {
+                if(Options::beadsearch_G && (Options::show_markers || Options::show_labels)) {
+                    lock_guard<mutex> mtx_bp(appData.mtx_bp_G);
+                    for(auto &b : appData.bead_positions_G) {
                         auto x = (b.x*800)/appData.values[STG_WIDTH];
                         auto y = (b.y*800)/appData.values[STG_HEIGHT];
                         cv::circle(img_disp, cv::Point(x, y), 20, 255);
                     }
                     
                     int i=0;
-                    for(auto &b : appData.beadTracker.getBeadPositions()) {
+                    for(auto &b : appData.beadTracker_G.getBeadPositions()) {
                         auto x = (b.x*800)/appData.values[STG_WIDTH];
                         auto y = (b.y*800)/appData.values[STG_HEIGHT];
 

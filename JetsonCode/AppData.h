@@ -39,8 +39,6 @@ public:
 
 	std::map<ImageType, ImageData<uint8_t>> img;
 
-	std::vector<Position> bead_positions;
-	std::mutex mtx_bp;
 
 	// Subscribers of the images
 	std::map<ImageType, std::vector<sockpp::inet_address>> img_subs {
@@ -53,8 +51,14 @@ public:
 	// Subscribers of the coordinates of the tracked objects
 	std::vector<sockpp::inet_address> coords_subs;		
 
-	BeadTracker beadTracker;
+	BeadTracker beadTracker_G;
+	std::vector<Position> bead_positions_G;
+	std::mutex mtx_bp_G;
 	
+	BeadTracker beadTracker_R;
+	std::vector<Position> bead_positions_R;
+	std::mutex mtx_bp_R;
+
     // Constructor
     AppData();
 
