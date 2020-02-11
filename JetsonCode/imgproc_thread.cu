@@ -170,7 +170,7 @@ void imgproc_thread(AppData& appData){
 				printf("| BF.findBeads: %6.3f ms", 		duration_cast<microseconds>(t_beadsfinder_end - t_beadsfinder_start).count()/1000.0);
 				printf("| cp: %6.3f ms", 				duration_cast<microseconds>(t_cp_end - t_cp_start).count()/1000.0);
 				printf("| whole cycle: %6.3f ms", 		duration_cast<microseconds>(cycle_elapsed_seconds).count()/1000.0);
-				printf("| #points: %d", 				(int)appData.bead_positions_G.size());
+				printf("| #points: (%d, %d)", 			(int)appData.bead_positions_G.size(), (int)appData.bead_positions_R.size());
 				printf("\n");
 			}			
 		}
