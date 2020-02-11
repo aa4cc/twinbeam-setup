@@ -130,7 +130,7 @@ bool CameraController::Start(uint32_t imgWidth, uint32_t imgHeight, uint32_t exp
 	iAutoSettings->setAeAntibandingMode(AE_ANTIBANDING_MODE_OFF);
 
 	iDenoiseSettings = interface_cast<IDenoiseSettings>(request);	
-	iDenoiseSettings->setDenoiseMode(DENOISE_MODE_FAST);
+	iDenoiseSettings->setDenoiseMode(DENOISE_MODE_OFF);
 	iDenoiseSettings->setDenoiseStrength(1.0);
 	
 	return true;
