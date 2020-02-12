@@ -2,6 +2,7 @@
  * @author  Martin Gurtner
  */
 #include "argpars.h"
+#include <string>
 
 bool Options::verbose 		= false;
 bool Options::debug 		= false;
@@ -11,7 +12,8 @@ bool Options::show_labels	= false;
 bool Options::savevideo 	= false;
 bool Options::mousekill 	= false;
 bool Options::rtprio		= false;
-bool Options::beadsearch	= false;
+bool Options::beadsearch_R	= false;
+bool Options::beadsearch_G	= false;
 uint16_t Options::tcp_port  = 30000;
 ImageType Options::displayImageType = ImageType::BACKPROP_G;
 
@@ -48,11 +50,11 @@ cxxopts::ParseResult Options::parse(AppData& appData, int argc, char* argv[])
 	  ;
 	  
 	options.add_options("Image Processing")
-      ("imthrs_g", 		"Upper threshold for the green channel",							cxxopts::value<uint32_t>())
-      ("imthrs_r", 		"Prints debug information",							cxxopts::value<uint32_t>())
-      ("g_dist", 		"Green channel backpropagation distance",			cxxopts::value<uint32_t>())
-      ("r_dist", 		"Red channel backpropagation distance",				cxxopts::value<uint32_t>())
-      ("b,beadsearch", 	"Enable searching the beads in the image",			cxxopts::value<bool>(Options::beadsearch))
+      ("imthrs_g", 		"Upper threshold for the green channel",					cxxopts::value<uint32_t>())
+      ("imthrs_r", 		"Prints debug information",									cxxopts::value<uint32_t>())
+      ("g_dist", 		"Green channel backpropagation distance",					cxxopts::value<uint32_t>())
+      ("r_dist", 		"Red channel backpropagation distance",						cxxopts::value<uint32_t>())
+      ("b,beadsearch", 	"Enable searching the beads in the image {none, R, G, RG}",	cxxopts::value<std::string>()->default_value("none")->implicit_value("RG"))
 	  ;
 	
     auto result = options.parse(argc, argv);
@@ -96,6 +98,25 @@ cxxopts::ParseResult Options::parse(AppData& appData, int argc, char* argv[])
 	}
 	if (result.count("g_dist") > 0) {
 		appData.values[STG_Z_GREEN]= result["g_dist"].as<uint32_t>();
+	}
+	if (result.count("beadsearch") > 0) {
+		if (result["beadsearch"].as<std::string>().compare("R") == 0) {
+			Options::beadsearch_R	= true;
+			Options::beadsearch_G	= false;
+			if (Options::debug) std::cout << "Tracker: R channel" << std::endl;
+		} else if (result["beadsearch"].as<std::string>().compare("G") == 0) {
+			Options::beadsearch_R	= false;
+			Options::beadsearch_G	= true;
+			if (Options::debug) std::cout << "Tracker: G channel" << std::endl;
+		} else if (result["beadsearch"].as<std::string>().compare("RG") == 0) {
+			Options::beadsearch_R	= true;
+			Options::beadsearch_G	= true;
+			if (Options::debug) std::cout << "Tracker: RG channel" << std::endl;
+		} else {
+			Options::beadsearch_R	= false;
+			Options::beadsearch_G	= false;
+			if (Options::debug) std::cout << "Tracker: none channel" << std::endl;
+		}
 	}
 
     return result;

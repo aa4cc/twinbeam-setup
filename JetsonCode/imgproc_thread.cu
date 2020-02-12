@@ -107,13 +107,22 @@ void imgproc_thread(AppData& appData){
 
 			// find the beads (if enabled)
 			auto t_beadsfinder_start = steady_clock::now();
-			if(Options::beadsearch) {
+			if(Options::beadsearch_G) {
 				beadsFinder_G.findBeads(appData.img[ImageType::BACKPROP_G]);
 				{ // Limit the scope of the mutex
-					std::lock_guard<std::mutex> mtx_bp(appData.mtx_bp);
-					beadsFinder_G.copyPositionsTo(appData.bead_positions);
+					std::lock_guard<std::mutex> mtx_bp(appData.mtx_bp_G);
+					beadsFinder_G.copyPositionsTo(appData.bead_positions_G);
 
-					appData.beadTracker.update(appData.bead_positions);
+					appData.beadTracker_G.update(appData.bead_positions_G);
+				}
+			}
+			if(Options::beadsearch_R) {
+				beadsFinder_R.findBeads(appData.img[ImageType::BACKPROP_R]);
+				{ // Limit the scope of the mutex
+					std::lock_guard<std::mutex> mtx_bp(appData.mtx_bp_R);
+					beadsFinder_R.copyPositionsTo(appData.bead_positions_R);
+
+					appData.beadTracker_R.update(appData.bead_positions_R);
 				}
 			}
 			auto t_beadsfinder_end = steady_clock::now();
@@ -136,7 +145,7 @@ void imgproc_thread(AppData& appData){
 			// Send the coordinates to the subscribers
 			if (!appData.coords_subs.empty()) {
 				uint32_t *beadCountP = (uint32_t*)coords_buffer;
-				const vector<Position>& bp = appData.beadTracker.getBeadPositions();
+				const vector<Position>& bp = appData.beadTracker_G.getBeadPositions();
 				// Store the number of tracked objects
 				*beadCountP = (uint32_t)bp.size();
 				// Copy the tracked positions to the coords_buffer
@@ -161,7 +170,7 @@ void imgproc_thread(AppData& appData){
 				printf("| BF.findBeads: %6.3f ms", 		duration_cast<microseconds>(t_beadsfinder_end - t_beadsfinder_start).count()/1000.0);
 				printf("| cp: %6.3f ms", 				duration_cast<microseconds>(t_cp_end - t_cp_start).count()/1000.0);
 				printf("| whole cycle: %6.3f ms", 		duration_cast<microseconds>(cycle_elapsed_seconds).count()/1000.0);
-				printf("| #points: %d", 				(int)appData.bead_positions.size());
+				printf("| #points: (%d, %d)", 			(int)appData.bead_positions_G.size(), (int)appData.bead_positions_R.size());
 				printf("\n");
 			}			
 		}

@@ -1,8 +1,8 @@
-tb = twinbeam('147.32.86.177', 30000);
+tb = twinbeam('147.32.86.138', 30000);
 tb.start();
 pause(2);
 %% Calibrate
-tb.calib([1 1 1 1]);
+tb.calib([10 10 10 10]);
 %%
 pos_img = tb.positions();
 pos_el  = tb.imgCoords2elCoords(double(pos_img));
@@ -64,9 +64,11 @@ end
 
 %% Tracker
 figure(1)
-subplot(121)
+tb.get()
+
 [x, y] = ginput(1);
 tb.tracker_init([y, x]);
+pos_img_closest = [y, x];
 
 hold on
 h_pos = plot(0, 0, 'go');

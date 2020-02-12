@@ -58,8 +58,8 @@ int main( int argc, char** argv ) {
 		fprintf(stderr, "ERROR: Couldn't create socket!\n");
 	sockName.sin_family = AF_INET;
 	sockName.sin_port =	htons(PORT);
-	// sockName.sin_addr.s_addr = INADDR_ANY;
-	sockName.sin_addr.s_addr = inet_addr("147.32.86.177");    
+	sockName.sin_addr.s_addr = INADDR_ANY;
+	//sockName.sin_addr.s_addr = inet_addr("147.32.86.177");    
 
 	// Allow reusing the port
 	int yes = 1;
@@ -107,6 +107,9 @@ int main( int argc, char** argv ) {
 					} else if ( (msg_len%113) == 0 ) {
 						int numberOfMessages = msg_len/113;
 						uint16_t* lastMessage = (uint16_t*)(buf + 113*(numberOfMessages-1) + 1);
+						for(size_t i=0; i<56; ++i)
+							cout << lastMessage[i] << " ";
+						cout << endl;
 						generator_setPhases(fp, lastMessage, enables);
 					}
                     break;

@@ -38,8 +38,8 @@ enum class MessageType{
 	DISCONNECT,
 	IMG_REQUEST, // request on sending the backpropagated image
 	TRACKER,
-	COORDS,
-	COORDS_CLOSEST,
+	COORDS_G,
+	COORDS_R,
 	IMG_SUBSCRIBE,
 	COORDS_SUBSCRIBE,
 	UNKNOWN_TYPE

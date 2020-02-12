@@ -23,9 +23,9 @@ MessageType parseMessage(char* buf){
 			case 't':
 				return MessageType::TRACKER;
 			case 'g':
-				return MessageType::COORDS;
+				return MessageType::COORDS_G;
 			case 'h':
-				return MessageType::COORDS_CLOSEST;
+				return MessageType::COORDS_R;
 			case 'b':
 				return MessageType::IMG_SUBSCRIBE;
 			case 'c':

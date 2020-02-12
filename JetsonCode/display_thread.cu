@@ -109,24 +109,48 @@ void display_thread(AppData& appData){
                 if (Options::savevideo) video_writer.write(img_disp);
 
                 // Draw bead positions (if beadsearch enabled and show_markers flag active)
-                if(Options::beadsearch && (Options::show_markers || Options::show_labels)) {
-                    lock_guard<mutex> mtx_bp(appData.mtx_bp);
-                    for(auto &b : appData.bead_positions) {
-                        auto x = (b.x*800)/appData.values[STG_WIDTH];
-                        auto y = (b.y*800)/appData.values[STG_HEIGHT];
-                        cv::circle(img_disp, cv::Point(x, y), 20, 255);
-                    }
-                    
-                    int i=0;
-                    for(auto &b : appData.beadTracker.getBeadPositions()) {
-                        auto x = (b.x*800)/appData.values[STG_WIDTH];
-                        auto y = (b.y*800)/appData.values[STG_HEIGHT];
+                if((Options::beadsearch_G || Options::beadsearch_R) && (Options::show_markers || Options::show_labels)) {
 
-                        if(Options::show_labels) {
-                            cv::putText(img_disp, std::to_string(i++), cv::Point(x-11, y+11), cv::FONT_HERSHEY_SIMPLEX, 1.0, 255);
-                        } else {
-                            cv::drawMarker(img_disp, cv::Point(x, y), 255);
-                        }                         
+                    if(Options::beadsearch_G && (Options::displayImageType==ImageType::RAW_G || Options::displayImageType==ImageType::BACKPROP_G)) {
+                        lock_guard<mutex> mtx_bp(appData.mtx_bp_G);
+                        for(auto &b : appData.bead_positions_G) {
+                            auto x = (b.x*800)/appData.values[STG_WIDTH];
+                            auto y = (b.y*800)/appData.values[STG_HEIGHT];
+                            cv::circle(img_disp, cv::Point(x, y), 20, 255);
+                        }
+                        
+                        int i=0;
+                        for(auto &b : appData.beadTracker_G.getBeadPositions()) {
+                            auto x = (b.x*800)/appData.values[STG_WIDTH];
+                            auto y = (b.y*800)/appData.values[STG_HEIGHT];
+
+                            if(Options::show_labels) {
+                                cv::putText(img_disp, std::to_string(i++), cv::Point(x-11, y+11), cv::FONT_HERSHEY_SIMPLEX, 1.0, 255);
+                            } else {
+                                cv::drawMarker(img_disp, cv::Point(x, y), 255);
+                            }                         
+                        }
+                    }
+
+                    if(Options::beadsearch_R && (Options::displayImageType==ImageType::RAW_R || Options::displayImageType==ImageType::BACKPROP_R)) {
+                        lock_guard<mutex> mtx_bp(appData.mtx_bp_R);
+                        for(auto &b : appData.bead_positions_R) {
+                            auto x = (b.x*800)/appData.values[STG_WIDTH];
+                            auto y = (b.y*800)/appData.values[STG_HEIGHT];
+                            cv::circle(img_disp, cv::Point(x, y), 20, 255);
+                        }
+                        
+                        int i=0;
+                        for(auto &b : appData.beadTracker_R.getBeadPositions()) {
+                            auto x = (b.x*800)/appData.values[STG_WIDTH];
+                            auto y = (b.y*800)/appData.values[STG_HEIGHT];
+
+                            if(Options::show_labels) {
+                                cv::putText(img_disp, std::to_string(i++), cv::Point(x-11, y+11), cv::FONT_HERSHEY_SIMPLEX, 1.0, 255);
+                            } else {
+                                cv::drawMarker(img_disp, cv::Point(x, y), 255);
+                            }                         
+                        }
                     }
                 }
                 

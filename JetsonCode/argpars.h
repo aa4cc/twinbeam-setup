@@ -18,7 +18,8 @@ public:
     static bool savevideo;
     static bool mousekill;
     static bool rtprio;
-    static bool beadsearch;
+    static bool beadsearch_R;
+    static bool beadsearch_G;
     static uint16_t tcp_port;
     
     static cxxopts::ParseResult parse(AppData& appData, int argc, char* argv[]);
