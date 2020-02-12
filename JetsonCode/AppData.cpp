@@ -14,7 +14,8 @@ AppData::AppData() {
     display_is_initialized 	= false;
 
 	// Allocate the memory for the bead_position array so that the dynamic memory allocation is avoided
-	bead_positions.reserve(MAX_NUMBER_BEADS);
+	bead_positions_G.reserve(MAX_NUMBER_BEADS);
+	bead_positions_R.reserve(MAX_NUMBER_BEADS);
 
 	ImageData<uint8_t> G, R, G_bckp, R_bckp;
 	img[ImageType::RAW_G] = G;

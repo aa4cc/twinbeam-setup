@@ -9,10 +9,13 @@ BeadTracker::BeadTracker() {
 }
 
 void BeadTracker::update(const vector<Position> &bp_all) {
-    for(auto &b: bead_positions) {
-        auto b_clst = BeadTracker::closestBead(bp_all, b);
-        b.x = b_clst->x;
-        b.y = b_clst->y;
+    // If bp_all is empty, skip the update
+    if(bp_all.size() > 0) {
+        for(auto &b: bead_positions) {
+            auto b_clst = BeadTracker::closestBead(bp_all, b);
+            b.x = b_clst->x;
+            b.y = b_clst->y;
+        }
     }
 }
 
