@@ -156,9 +156,12 @@ classdef twinbeam < handle
                 % The argument specifies the number of objects to be
                 % tracked and the user is supposed to select them in the
                 % captured image
-                obj.get();
+                img = obj.get();
+                fig = figure(25);
+                imshow(img);
                 
                 [x, y] = ginput(inArg);
+                close(fig);
                 positions = [y, x];
             else
                 positions = inArg;
@@ -409,7 +412,6 @@ classdef twinbeam < handle
 %             end
 %             hold off
             % Compute the calibration matrix
-            addpath('vgg/')
 
             zs1 = el_points(:,1:2)';
             zs2 = el_points_real(:,1:2)';
