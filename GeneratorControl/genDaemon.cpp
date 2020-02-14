@@ -98,20 +98,23 @@ int main( int argc, char** argv ) {
 			// If the connection was closed, break the loop
 			if (msg_len == 0)	break;
 
-			printf("DEBUG: Received %d bytes. MessageType: %c \n", msg_len, buf[0]);
+			//printf("DEBUG: Received %d bytes. MessageType: %c \n", msg_len, buf[0]);
 
+			uint16_t* lastPhaseShifts;
             switch(buf[0]) {
                 case 'p':
 					if (msg_len==113) {
-                    	generator_setPhases(fp, (uint16_t *)(buf+1), enables);
+						lastPhaseShifts = (uint16_t *)(buf+1);
 					} else if ( (msg_len%113) == 0 ) {
 						int numberOfMessages = msg_len/113;
-						uint16_t* lastMessage = (uint16_t*)(buf + 113*(numberOfMessages-1) + 1);
-						for(size_t i=0; i<56; ++i)
-							cout << lastMessage[i] << " ";
-						cout << endl;
-						generator_setPhases(fp, lastMessage, enables);
+						lastPhaseShifts = (uint16_t*)(buf + 113*(numberOfMessages-1) + 1);												
 					}
+
+					//for(size_t i=0; i<56; ++i)
+					//	cout << lastPhaseShifts[i] << " ";
+					//cout << endl;
+
+					generator_setPhases(fp, lastPhaseShifts, enables);
                     break;
                 case 'd':
                     generator_setPhases(fp, phases, disables);
