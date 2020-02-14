@@ -93,6 +93,11 @@ void client_thread(AppData& appData, sockpp::tcp_socket sock) {
 							break;
 						case 4:
 							// Send both, the image from G and R channel
+							appData.img[ImageType::BACKPROP_G].copyTo(temp_img);
+							appData.img[ImageType::BACKPROP_R].copyTo(temp_img2);
+							break;
+						case 5:
+							// Send both, the image from G and R channel
 							appData.img[ImageType::RAW_G].copyTo(temp_img);
 							appData.img[ImageType::RAW_R].copyTo(temp_img2);
 							break;
