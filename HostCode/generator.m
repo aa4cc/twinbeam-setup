@@ -22,7 +22,7 @@ classdef generator < handle
                 dlgtitle = 'Connection settings';
                 dims = [1 35];
                 % here you will most probably have to change the IP address
-                definput = {'147.32.86.177','30001','10'};
+                definput = {'147.32.86.138','30001','5'};
                 answer = inputdlg(prompt,dlgtitle,dims,definput);
                 ip = char(answer(1));
                 port = str2double(answer(2));

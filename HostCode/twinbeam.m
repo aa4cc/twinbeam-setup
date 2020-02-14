@@ -149,34 +149,6 @@ classdef twinbeam < handle
             end
         end
         
-        function green = positions_closest(obj, positions)
-            % positions are in format [x1 y1; x2 y2; ...]
-            
-            % The application running on Jetson indexes the images by
-            % (col_id, row_id) whereas Matlab uses (row_id, col_id).
-            % Thus we have to switch the received the indexes so that
-            % they complie with the Matlab notation.
-            positions = [positions(:,2)'; positions(:,1)'];
-            message = [uint8('h'), typecast(uint32(numel(positions)/2),'uint8'), typecast(uint16(positions(:)'),'uint8')];
-%             tic
-            write(obj.connection, message);
-            
-            num_of_coords = typecast(read(obj.connection, 4), 'uint32');
-%             toc
-            if num_of_coords == 0
-                green = [];
-                disp("No green coordinates found");
-            else
-                coords = typecast(read(obj.connection, num_of_coords*4), 'uint16');
-                green = reshape(coords, 2, num_of_coords)';
-                % The application running on Jetson indexes the images by
-                % (col_id, row_id) whereas Matlab uses (row_id, col_id).
-                % Thus we have to switch the received the indexes so that
-                % they comply with the Matlab notation.
-                green = [green(:,2) green(:,1)];
-            end
-        end
-        
         function tracker_init(obj, inArg)
             % positions are in format [x1 y1; x2 y2; ...]
             
@@ -197,7 +169,8 @@ classdef twinbeam < handle
             % Thus we have to switch the received the indexes so that
             % they comply with the Matlab notation.
             positions = [positions(:,2)'; positions(:,1)'];
-            message = [uint8('t'), uint8('i'), typecast(uint32(numel(positions)/2),'uint8'), typecast(uint16(positions(:)'),'uint8')];
+%             message = [uint8('t'), uint8('i'), typecast(uint32(numel(positions)/2),'uint8'), typecast(uint16(positions(:)'),'uint8')];
+            message = [uint8('t'), uint8('i'), typecast(uint16(numel(positions)/2),'uint8'), typecast(uint16(numel(positions)/2),'uint8'), typecast(uint16(positions(:)'),'uint8'), typecast(uint16(positions(:)'),'uint8')];
             write(obj.connection, message);
         end
         
