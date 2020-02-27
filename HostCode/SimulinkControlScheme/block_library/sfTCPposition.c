@@ -1,13 +1,14 @@
 /*
- * S-function to support IRC inputs on RaspberryPi through IRC device
+ * S-function communicating with TwinBeam-Setup position estimation service via TCP
  *
- * Copyright (C) 2014 Pavel Pisa <pisa@cmp.felk.cvut.cz>
+ * Copyright (C) 2020 Martin Gurtner <martin.gurtner@fel.cvut.cz>
+ * (Based on a Pavel Pisa's (pisa@cmp.felk.cvut.cz) S function example)
  *
  * Department of Control Engineering
  * Faculty of Electrical Engineering
  * Czech Technical University in Prague (CTU)
  *
- * The S-Function for ERT Linux can be distributed in compliance
+ * The S-Function for can be distributed in compliance
  * with GNU General Public License (GPL) version 2 or later.
  * Other licence can negotiated with CTU.
  *
@@ -20,11 +21,6 @@
  * why the executable file might be covered by the GNU Public License.
  * Publication of enhanced or derived S-function files is required
  * although.
- *
- * Linux ERT code is available from
- *    http://rtime.felk.cvut.cz/gitweb/ert_linux.git
- * More CTU Linux target for Simulink components are available at
- *    http://lintarget.sourceforge.net/
  *
  * sfuntmpl_basic.c by The MathWorks, Inc. has been used to accomplish
  * required S-function structure.
@@ -225,24 +221,6 @@ static void mdlInitializeSampleTimes(SimStruct *S)
    */
 static void mdlInitializeConditions(SimStruct *S)
 {
-  #ifndef WITHOUT_HW
-//     uint32_t irc_val_raw = 0;
-//     int_T irc_dev_fd = IWORK_IRC_DEV_FD(S);
-// 
-//     if (irc_dev_fd == -1)
-//         return;
-// 
-//     if (read(irc_dev_fd, &irc_val_raw, sizeof(uint32_t)) != sizeof(uint32_t)) {
-//         ssSetErrorStatus(S, "/dev/ircX read failed");
-//     }
-// 
-//     IWORK_IRC_ACT_VAL(S) = (int32_t)irc_val_raw;
-//     if (PRM_RESET_AT_STARTUP(S)) {
-//         IWORK_IRC_OFFSET(S) = -(int32_t)irc_val_raw;
-//     } else {
-//         IWORK_IRC_OFFSET(S) = 0;
-//     }
-  #endif /*WITHOUT_HW*/
 }
 #endif /* MDL_INITIALIZE_CONDITIONS */
 
@@ -257,9 +235,6 @@ static void mdlInitializeConditions(SimStruct *S)
    */
 static void mdlStart(SimStruct *S)
 {
-//     int_T irc_dev_fd;
-//     const char *irc_dev_name;
-
   #ifndef WITHOUT_HW
   // Initialize the TCP connection
   int sock;
@@ -293,8 +268,6 @@ static void mdlStart(SimStruct *S)
   IWORK_TCP_FD(S) = sock;
 
   #endif /*WITHOUT_HW*/
-
-    //mdlInitializeConditions(S);
 }
 #endif /*  MDL_START */
 
