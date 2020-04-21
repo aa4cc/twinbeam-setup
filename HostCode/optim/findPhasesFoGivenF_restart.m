@@ -55,7 +55,7 @@ while iternum < maxiter
                 break;
             end
         end
-        if (penalty < 1e-3 || failedToConverge) % penalty tolerance
+        if (penalty < 1e-5 || failedToConverge) % penalty tolerance
             break;
         end
     end
@@ -67,7 +67,7 @@ while iternum < maxiter
         phases_best = phases;
     end
     
-    if penalty < 1e-3
+    if penalty < 1e-5
         break;
     else
 %         fprintf('Restarted\n');

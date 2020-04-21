@@ -22,8 +22,8 @@ end
 hold on
 for i = 1:56
     el_pos_i = squeeze(el_pos(i,:,:));
-    
-    plot(el_pos_i(:,1), el_pos_i(:,2), 'k-')
+    z = ones(numel(el_pos_i(:,1)), 1);
+    plot3(el_pos_i(:,1), el_pos_i(:,2), z, 'k-')
 %     pause(.1)
 end
 hold off

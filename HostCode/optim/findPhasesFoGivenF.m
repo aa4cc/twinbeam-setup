@@ -53,7 +53,7 @@ mu = 10e-2; % initial damping
 
 % fprintf('|Iteration|Penalty |Damping |LSCount|\n');
 % fprintf('|---------|--------|--------|-------|\n');
-for i = uint32(1:50) % number of iterations
+for i = uint32(1:200) % number of iterations
     rhs = J' * (F_des - F_dev);
     JTJ = J' * J;
     
