@@ -53,13 +53,22 @@ mu = 10e-2; % initial damping
 
 % fprintf('|Iteration|Penalty |Damping |LSCount|\n');
 % fprintf('|---------|--------|--------|-------|\n');
-for i = uint32(1:50) % number of iterations
-    rhs = J' * (F_des - F_dev);
-    JTJ = J' * J;
+maxiter = uint32(35);
+i = uint32(1);
+stop = false;
+while i < maxiter
+    rhs = F_dev - F_des;
     
     num_search = uint32(1);
     while true
-        step = (JTJ + mu*eye(el_num)) \ rhs;
+        Abar = [J'; sqrt(mu)*eye(3*N_objs)];
+        R = qr(Abar, 0);
+        R = R(1:3*N_objs, 1:3*N_objs);
+%         step = -J'*((R'*R)\rhs);
+        tmp = linsolve(R', rhs, struct('LT', true));
+        tmp = linsolve(R,tmp, struct('UT', true));
+        step = -J'*tmp;
+
         new_phases = phases + step;
         new_c = cos(new_phases);
         new_s = sin(new_phases);
@@ -80,12 +89,12 @@ for i = uint32(1:50) % number of iterations
         num_search = num_search + 1;
         if (num_search > 10)
 %             fprintf('LMsolve failed to converge on iteration %u\n',i);
-            penalty = nan;
-            phases = nan(el_num,1);
+            stop = true;
             break;
         end
     end
-    if (penalty < 1e-5 || isnan(penalty)) % penalty tolerance
+    i = i + num_search;
+    if (penalty < 1e-5 || stop) % penalty tolerance
         break;
     end
 end
