@@ -52,17 +52,10 @@ parfor thread_index=1:8
                     error('Error - wrong thread index')
                 end
                 success = 0;
-                for i = 1:100
-                    if i == 1
-                        [phases_opt, penalty] = findPhasesFoGivenF(p, F_des);
-                    else
-                        [phases_opt, penalty] = findPhasesFoGivenF_restart(p, F_des);
-                    end
-                    if penalty < err_max
-                        max_force = force;
-                        success = 1;
-                        break;
-                    end
+                [phases_opt, penalty, ~, numiter] = findPhasesFoGivenF(p, F_des, 100*100, 100); % 100 tries of max 100 iters
+                if penalty < err_max
+                    max_force = force;
+                    success = 1;
                 end
                 if success == 0 % failed
                     failed_count = failed_count + 1
