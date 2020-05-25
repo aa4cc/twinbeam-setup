@@ -45,16 +45,19 @@ void display_thread(AppData& appData){
         // Set the flag indicatinf whether the window is opened or not to false
         bool windowOpened = false;
 		
-		const cv::cuda::GpuMat c_img_resized(cv::Size(800, 800), CV_8U);
-        const cv::Mat img_disp(cv::Size(800, 800), CV_8U);        
+		const cv::cuda::GpuMat c_img_resized(cv::Size(DISP_WIDTH, DISP_HEIGHT), CV_8U);
+        const cv::Mat img_disp(cv::Size(DISP_WIDTH, DISP_HEIGHT), CV_8U);        
         cv::VideoWriter video_writer;
         if (Options::savevideo) {
-            // Define the codec and create VideoWriter object.The output is stored in 'outcpp.avi' file. 
+            // Null the frame_id
+            appData.frame_id = 0;
+
+            // Define the codec and create VideoWriter object.The output is stored in '%H%M%S_%d%m%Y.avi.avi' file. 
             time_t t = time(nullptr);
             tm tm = *localtime(&t);
             stringstream filename;
-            filename << put_time(&tm, "%H%M%S_%d%m%Y.avi");
-            video_writer.open(filename.str(), cv::VideoWriter::fourcc('M','J','P','G'), 10, cv::Size(800,800), false);
+            filename << put_time(&tm, "./experiments_data/%H%M%S_%d%m%Y.avi");
+            video_writer.open(filename.str(), cv::VideoWriter::fourcc('M','J','P','G'), 10, cv::Size(DISP_WIDTH, DISP_HEIGHT), false);
 
             if (!video_writer.isOpened()) {
                 fprintf(stderr, "ERROR: failed to open the video file.\n");
@@ -102,11 +105,14 @@ void display_thread(AppData& appData){
                 const cv::cuda::GpuMat c_img(cv::Size(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]), CV_8U, img_copy.devicePtr());
 
                 // Resize the image so that it fits the display
-                cv::cuda::resize(c_img, c_img_resized, cv::Size(800, 800));	
+                cv::cuda::resize(c_img, c_img_resized, cv::Size(DISP_WIDTH, DISP_HEIGHT));	
                 
                 c_img_resized.download(img_disp);
 
-                if (Options::savevideo) video_writer.write(img_disp);
+                if (Options::savevideo) {
+                    video_writer.write(img_disp);
+                    appData.frame_id++;
+                }
 
                 // Draw bead positions (if beadsearch enabled and show_markers flag active)
                 if((Options::beadsearch_G || Options::beadsearch_R) && (Options::show_markers || Options::show_labels)) {
@@ -114,15 +120,15 @@ void display_thread(AppData& appData){
                     if(Options::beadsearch_G && (Options::displayImageType==ImageType::RAW_G || Options::displayImageType==ImageType::BACKPROP_G)) {
                         lock_guard<mutex> mtx_bp(appData.mtx_bp_G);
                         for(auto &b : appData.bead_positions_G) {
-                            auto x = (b.x*800)/appData.values[STG_WIDTH];
-                            auto y = (b.y*800)/appData.values[STG_HEIGHT];
+                            auto x = (b.x*DISP_WIDTH)/appData.values[STG_WIDTH];
+                            auto y = (b.y*DISP_HEIGHT)/appData.values[STG_HEIGHT];
                             cv::circle(img_disp, cv::Point(x, y), 20, 255);
                         }
                         
                         int i=0;
                         for(auto &b : appData.beadTracker_G.getBeadPositions()) {
-                            auto x = (b.x*800)/appData.values[STG_WIDTH];
-                            auto y = (b.y*800)/appData.values[STG_HEIGHT];
+                            auto x = (b.x*DISP_WIDTH)/appData.values[STG_WIDTH];
+                            auto y = (b.y*DISP_HEIGHT)/appData.values[STG_HEIGHT];
 
                             if(Options::show_labels) {
                                 cv::putText(img_disp, std::to_string(i++), cv::Point(x-11, y+11), cv::FONT_HERSHEY_SIMPLEX, 1.0, 255);
@@ -135,15 +141,15 @@ void display_thread(AppData& appData){
                     if(Options::beadsearch_R && (Options::displayImageType==ImageType::RAW_R || Options::displayImageType==ImageType::BACKPROP_R)) {
                         lock_guard<mutex> mtx_bp(appData.mtx_bp_R);
                         for(auto &b : appData.bead_positions_R) {
-                            auto x = (b.x*800)/appData.values[STG_WIDTH];
-                            auto y = (b.y*800)/appData.values[STG_HEIGHT];
+                            auto x = (b.x*DISP_WIDTH)/appData.values[STG_WIDTH];
+                            auto y = (b.y*DISP_HEIGHT)/appData.values[STG_HEIGHT];
                             cv::circle(img_disp, cv::Point(x, y), 20, 255);
                         }
                         
                         int i=0;
                         for(auto &b : appData.beadTracker_R.getBeadPositions()) {
-                            auto x = (b.x*800)/appData.values[STG_WIDTH];
-                            auto y = (b.y*800)/appData.values[STG_HEIGHT];
+                            auto x = (b.x*DISP_WIDTH)/appData.values[STG_WIDTH];
+                            auto y = (b.y*DISP_HEIGHT)/appData.values[STG_HEIGHT];
 
                             if(Options::show_labels) {
                                 cv::putText(img_disp, std::to_string(i++), cv::Point(x-11, y+11), cv::FONT_HERSHEY_SIMPLEX, 1.0, 255);

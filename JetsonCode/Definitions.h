@@ -17,6 +17,8 @@
 #define CONVO_DIM_RED 60
 #define CONVO_DIM_GREEN 160
 #define MAX_NUMBER_BEADS 100
+#define DISP_WIDTH 1024
+#define DISP_HEIGHT 1024
 
 struct Position {
 	uint16_t x;

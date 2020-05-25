@@ -59,6 +59,9 @@ public:
 	std::vector<Position> bead_positions_R;
 	std::mutex mtx_bp_R;
 
+	// Frame id - when the video is recorded, frame_id stores the number of the current frame
+	uint32_t frame_id;
+
     // Constructor
     AppData();
 

@@ -192,15 +192,20 @@ void client_thread(AppData& appData, sockpp::tcp_socket sock) {
 					case 'r':
 						{
 							// Send the positions of the tracked objects
-							// the first four bytes specify the number of tracked objects
+							// The first four bytes are reserved for frame_id.
+							// The following four bytes specify the number of tracked objects
 							// and rest of the message specify the current position of the tracked objects
 							// The positions are stored in two bytes per coordinate (uint16)
 							// and the x position of the first object is followed by the y position of
 							// the first object, then x position of the second object follows and so on and
 							// so on (i.e. x0, y0, x1, y1, x2, ....)
 
-							beadCountP_G = (uint16_t*)coords_buffer;
-							beadCountP_R = (uint16_t*)(coords_buffer+sizeof(uint16_t));
+							uint32_t* frame_id = (uint32_t*)coords_buffer;
+							beadCountP_G = (uint16_t*)(coords_buffer + sizeof(uint32_t));
+							beadCountP_R = (uint16_t*)(coords_buffer + sizeof(uint32_t) + sizeof(uint16_t));
+
+							// Store the frame id to the message
+							*frame_id = appData.frame_id;
 
 							// RAW_G tracker
 							const vector<Position>& bp_G = appData.beadTracker_G.getBeadPositions();
@@ -208,7 +213,7 @@ void client_thread(AppData& appData, sockpp::tcp_socket sock) {
 								// Store the number of tracked objects
 								*beadCountP_G = (uint16_t)bp_G.size();
 								// Copy the tracked positions in RAW_G to the coords_buffer
-								memcpy(coords_buffer+2*sizeof(uint16_t), bp_G.data(), 2*(*beadCountP_G)*sizeof(uint16_t));
+								memcpy(coords_buffer+sizeof(uint32_t)+2*sizeof(uint16_t), bp_G.data(), 2*(*beadCountP_G)*sizeof(uint16_t));
 							} else {
 								*beadCountP_G = 0;
 							}
@@ -219,13 +224,13 @@ void client_thread(AppData& appData, sockpp::tcp_socket sock) {
 								// Store the number of tracked objects
 								*beadCountP_R = (uint16_t)bp_R.size();
 								// Copy the tracked positions in RAW_R to the coords_buffer
-								memcpy(coords_buffer + 2*sizeof(uint16_t) + 2*(*beadCountP_G)*sizeof(uint16_t), bp_R.data(), 2*(*beadCountP_R)*sizeof(uint16_t));
+								memcpy(coords_buffer + sizeof(uint32_t) + 2*sizeof(uint16_t) + 2*(*beadCountP_G)*sizeof(uint16_t), bp_R.data(), 2*(*beadCountP_R)*sizeof(uint16_t));
 							} else {
 								*beadCountP_R = 0;
 							}
 
 							// Send coords_buffer to the client
-							sock.write_n(coords_buffer, 2*sizeof(uint16_t) + 2*(*beadCountP_G + *beadCountP_R)*sizeof(uint16_t));
+							sock.write_n(coords_buffer,  sizeof(uint32_t) + 2*sizeof(uint16_t) + 2*(*beadCountP_G + *beadCountP_R)*sizeof(uint16_t));
 							break;
 						}
 				}
