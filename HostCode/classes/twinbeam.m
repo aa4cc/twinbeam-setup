@@ -177,7 +177,7 @@ classdef twinbeam < handle
             write(obj.connection, message);
         end
         
-        function green = tracker_read(obj)
+        function [green, red, frame_id] = tracker_read(obj)
             % positions are in format [x1 y1; x2 y2; ...]
             
             % The application running on Jetson indexes the images by
@@ -187,18 +187,34 @@ classdef twinbeam < handle
             message = [uint8('t'), uint8('r')];
             write(obj.connection, message);
             
-            num_of_coords = typecast(read(obj.connection, 4), 'uint32');
-            if num_of_coords == 0
+            frame_id = typecast(read(obj.connection, 4), 'uint32');
+            num_of_coords_G = typecast(read(obj.connection, 2), 'uint16');
+            num_of_coords_R = typecast(read(obj.connection, 2), 'uint16');
+            
+            if num_of_coords_G == 0
                 green = [];
                 disp("No green coordinates found");
             else
-                coords = typecast(read(obj.connection, num_of_coords*4), 'uint16');
-                green = reshape(coords, 2, num_of_coords)';
+                coords = typecast(read(obj.connection, num_of_coords_G*4), 'uint16');
+                green = reshape(coords, 2, num_of_coords_G)';
                 % The application running on Jetson indexes the images by
                 % (col_id, row_id) whereas Matlab uses (row_id, col_id).
                 % Thus we have to switch the received the indexes so that
                 % they complie with the Matlab notation.
                 green = [green(:,2) green(:,1)];
+            end
+            
+            if num_of_coords_R == 0
+                red = [];
+                disp("No red coordinates found");
+            else
+                coords = typecast(read(obj.connection, num_of_coords_R*4), 'uint16');
+                red = reshape(coords, 2, num_of_coords_R)';
+                % The application running on Jetson indexes the images by
+                % (col_id, row_id) whereas Matlab uses (row_id, col_id).
+                % Thus we have to switch the received the indexes so that
+                % they complie with the Matlab notation.
+                red = [red(:,2) red(:,1)];
             end
         end        
         
@@ -221,7 +237,7 @@ classdef twinbeam < handle
             [w, h] = size(img);
             
             % Blur the image
-            sigma = 4;
+            sigma = 8;
             im_filt = imgaussfilt(img, sigma);
             
             % Set the distance from the edge of the limits where the

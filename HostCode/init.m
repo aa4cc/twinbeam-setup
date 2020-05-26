@@ -1,6 +1,9 @@
 load('H.mat')
+load('maxF.mat')
 addpath('optim/');
 addpath('forceModel/');
+addpath('max_forces_8way/');
 addpath('SimulinkControlScheme/block_library');
 addpath('classes/');
 addpath('classes/vgg/');
+addpath('utils/');

@@ -158,23 +158,27 @@ static void mdlInitializeSizes(SimStruct *S)
      * See matlabroot/simulink/src/sfuntmpl_directfeed.txt.
      */
 
-    // Set the number of output ports to one if the objects are tracked
-    // only in the green channel and to two if the objects are tracked
+    // Set the number of output ports to two (frame_id + green positions) if the objects are tracked
+    // only in the green channel and to three (frame id + green and red positions) if the objects are tracked
     // also in the red channel
     if (PRM_TB_POS(S)) {
-      if (!ssSetNumOutputPorts(S, 2)) return;      
+      if (!ssSetNumOutputPorts(S, 3)) return;      
     } else {
-      if (!ssSetNumOutputPorts(S, 1)) return;
+      if (!ssSetNumOutputPorts(S, 2)) return;
     }
     
+    // Set the parameters of the first output (frame id)
+    ssSetOutputPortWidth(S, 0, 1);
+    ssSetOutputPortDataType(S, 0, SS_UINT32);
+    
     // Set the parameters of the first output (positions in the green channel)
-    ssSetOutputPortWidth(S, 0, 2*PRM_NOBJS(S));
-    ssSetOutputPortDataType(S, 0, SS_UINT16);
+    ssSetOutputPortWidth(S, 1, 2*PRM_NOBJS(S));
+    ssSetOutputPortDataType(S, 1, SS_UINT16);
 
     // Set the parameters of the seconds output (positions in the red channel)
     if (PRM_TB_POS(S)) {
-      ssSetOutputPortWidth(S, 1, 2*PRM_NOBJS(S));
-      ssSetOutputPortDataType(S, 1, SS_UINT16);
+      ssSetOutputPortWidth(S, 2, 2*PRM_NOBJS(S));
+      ssSetOutputPortDataType(S, 2, SS_UINT16);
     }    
 
     ssSetNumSampleTimes(S, 1);
@@ -280,14 +284,18 @@ static void mdlStart(SimStruct *S)
  */
 static void mdlOutputs(SimStruct *S, int_T tid)
 {
+    uint32_T *frame_id;
     uint16_T *y_G, *y_R; // output position in the green and red channels
     
     // Get the pointer to the first output
-    y_G = ssGetOutputPortSignal(S,0);
+    frame_id = ssGetOutputPortSignal(S,0);
+    
+    // Get the pointer to the second output
+    y_G = ssGetOutputPortSignal(S,1);
 
     if(PRM_TB_POS(S))
-      // Get the pointer to the second output (if needed)
-      y_R = ssGetOutputPortSignal(S,1);
+      // Get the pointer to the thirds output (if needed)
+      y_R = ssGetOutputPortSignal(S,2);
     
     #ifndef WITHOUT_HW
     #define BUFFERSIZE 100
@@ -304,8 +312,11 @@ static void mdlOutputs(SimStruct *S, int_T tid)
         ssSetErrorStatus(S, "Failed to receive the positions.");
     }
     
-    uint16_t N_tracked_objs_G = ((uint16_t*)buf)[0]; // Number of tracked objects in the green channel
-    uint16_t N_tracked_objs_R = ((uint16_t*)buf)[1]; // Number of tracked objects in the red channel
+    // Set the output corresponding to the frame_id
+    frame_id[0] = ((uint32_t*)buf)[0];
+    
+    uint16_t N_tracked_objs_G = ((uint16_t*)(buf+4))[0]; // Number of tracked objects in the green channel
+    uint16_t N_tracked_objs_R = ((uint16_t*)(buf+4))[1]; // Number of tracked objects in the red channel
 
     if(PRM_TB_POS(S) && N_tracked_objs_G != N_tracked_objs_R) {
       ssSetErrorStatus(S, "The numbers of tracked objects in green and red channel are not equal.");
@@ -315,7 +326,7 @@ static void mdlOutputs(SimStruct *S, int_T tid)
         ssSetErrorStatus(S, "The number of tracked objects is smaller than the number of positions to be read.");
     }
     
-    uint16_t *positions_G = (uint16_t*)(buf + 2*sizeof(uint16_t));
+    uint16_t *positions_G = (uint16_t*)(buf + 4 + 2*sizeof(uint16_t));
     
     // Copy the received positions to the output (green channel)
     for(int i=0;i<2*PRM_NOBJS(S);++i)
@@ -323,7 +334,7 @@ static void mdlOutputs(SimStruct *S, int_T tid)
 
     // Copy the received positions to the output (red channel)
     if(PRM_TB_POS(S)) {
-      uint16_t *positions_R = (uint16_t*)(buf + 2*sizeof(uint16_t) + N_tracked_objs_G*2*sizeof(uint16_t));
+      uint16_t *positions_R = (uint16_t*)(buf + 4 + 2*sizeof(uint16_t) + N_tracked_objs_G*2*sizeof(uint16_t));
       for(int i=0;i<2*PRM_NOBJS(S);++i)
           y_R[i] = positions_R[i];
     }
