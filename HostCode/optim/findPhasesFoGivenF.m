@@ -46,6 +46,11 @@ end
 phases = phasesInit;
 c = cos(phases);
 s = sin(phases);
+% Filter out the nan forces
+I = ~isnan(F_des);
+F_des = F_des(I);
+p = p(I);
+
 F_norm = norm(F_des);
 F_des = F_des/F_norm;
 
