@@ -12,6 +12,7 @@ public:
     static bool verbose;
     static bool debug;
     static bool show;
+    static bool show_fullscreen;
     static bool show_markers;
     static bool show_labels;
     static ImageType displayImageType;

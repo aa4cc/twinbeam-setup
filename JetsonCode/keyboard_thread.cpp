@@ -82,9 +82,29 @@ void keyboard_thread(AppData& appData){
 				if(Options::debug) printf("INFO: Switching OFF the SAVEVIDEO mode.\n");
 			}
 		}
+		else if(input == 'f'){
+			Options::show_fullscreen = !Options::show_fullscreen;
+			if(Options::show_fullscreen) {
+				if(Options::debug) printf("INFO: Switching ON the FULLSCREEN mode.\n");
+			} else {
+				if(Options::debug) printf("INFO: Switching OFF the FULLSCREEN mode.\n");
+			}
+		}
 		else if(input == 'e' || input == -1){
 			if(Options::debug) printf("INFO: Exiting the program from keyboard.\n");
 			appData.exitTheApp();
+		}
+		else if(input == 'h' || input == -1){
+			printf("Keyboard commands:\n"
+					"\t s - sleep \n"
+					"\t w - wakeup \n"
+					"\t v - verbose ON/OFF \n"
+					"\t d - debug ON/OFF \n"
+					"\t o - cycle display modes \n"
+					"\t l - record video ON/OFF  (you must sleep and wakeup the process to swith on/off the video recording mode) \n"
+					"\t f - fullscreen mode (you must sleep and wakeup the process to swith on/off the fullscreen mode) \n"
+					"\t h - keyboard commands \n"
+					"\t e - exit \n");
 		}
 	}
 

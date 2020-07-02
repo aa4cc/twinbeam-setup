@@ -95,7 +95,12 @@ void display_thread(AppData& appData){
                 // if the window has not been opened yet, open it
                 if (!windowOpened) {
                     cv::namedWindow("Basic Visualization", cv::WINDOW_NORMAL);
-                    cv::setWindowProperty("Basic Visualization", cv::WND_PROP_FULLSCREEN, cv::WINDOW_FULLSCREEN);
+                    if (Options::show_fullscreen) {
+                        cv::setWindowProperty("Basic Visualization", cv::WND_PROP_FULLSCREEN, cv::WINDOW_FULLSCREEN);
+                    } else {
+                        cv::resizeWindow("Basic Visualization", 1024,1024);
+                    }                    
+                    
                     windowOpened = true;
                 }
 
