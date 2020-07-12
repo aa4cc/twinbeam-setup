@@ -34,13 +34,15 @@ int main(int argc, char* argv[]){
 	thread imgproc_thr (imgproc_thread, std::ref(appData));
 	thread display_thr (display_thread, std::ref(appData));
 	thread network_thr (network_thread, std::ref(appData));
-	thread keyboard_thr (keyboard_thread, std::ref(appData));
+	if (Options::keyboard) {
+		thread keyboard_thr (keyboard_thread, std::ref(appData));
+		keyboard_thr.join();
+	}
 	
 	camera_thr.join();
 	imgproc_thr.join();
 	display_thr.join();
 	network_thr.join();
-	keyboard_thr.join();
 
 	return 0;
 }

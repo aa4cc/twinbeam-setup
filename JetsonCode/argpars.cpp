@@ -10,6 +10,7 @@ bool Options::show 			= false;
 bool Options::show_fullscreen = false;
 bool Options::show_markers	= false;
 bool Options::show_labels	= false;
+bool Options::keyboard	    = false;
 bool Options::savevideo 	= false;
 bool Options::mousekill 	= false;
 bool Options::rtprio		= false;
@@ -35,7 +36,8 @@ cxxopts::ParseResult Options::parse(AppData& appData, int argc, char* argv[])
       ("showlabels", 	"Display labels at the positions of tracked objects. '-s' flag must be used.",		cxxopts::value<bool>(Options::show_labels))
       ("savevideo", 	"Save video - works only if 'show' argument is used as well",cxxopts::value<bool>(Options::savevideo))
       ("d,debug", 		"Prints debug information",									cxxopts::value<bool>(Options::debug))
-      ("k,mousekill", 	"Moving the mouse or toching the screen kills the app",		cxxopts::value<bool>(Options::mousekill))
+      ("k,keyboard", 	"Enable keyboard input",									cxxopts::value<bool>(Options::keyboard))
+      ("m,mousekill", 	"Moving the mouse or toching the screen kills the app",		cxxopts::value<bool>(Options::mousekill))
       ("v,verbose", 	"Prints some additional information",						cxxopts::value<bool>(Options::verbose))
       ("p,rtprio", 		"Set real-time priorities",									cxxopts::value<bool>(Options::rtprio))
       ("tcpport", 		"TCP port of the server",									cxxopts::value<uint32_t>())

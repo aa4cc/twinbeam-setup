@@ -15,6 +15,7 @@ public:
     static bool show_fullscreen;
     static bool show_markers;
     static bool show_labels;
+    static bool keyboard;
     static ImageType displayImageType;
     static bool savevideo;
     static bool mousekill;
