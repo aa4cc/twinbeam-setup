@@ -204,6 +204,33 @@ Misc.cpp.s:
 	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/Misc.cpp.s
 .PHONY : Misc.cpp.s
 
+Params.o: Params.cpp.o
+
+.PHONY : Params.o
+
+# target to build an object file
+Params.cpp.o:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/Params.cpp.o
+.PHONY : Params.cpp.o
+
+Params.i: Params.cpp.i
+
+.PHONY : Params.i
+
+# target to preprocess a source file
+Params.cpp.i:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/Params.cpp.i
+.PHONY : Params.cpp.i
+
+Params.s: Params.cpp.s
+
+.PHONY : Params.s
+
+# target to generate assembly for a file
+Params.cpp.s:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/Params.cpp.s
+.PHONY : Params.cpp.s
+
 Trial.o: Trial.cpp.o
 
 .PHONY : Trial.o
@@ -230,33 +257,6 @@ Trial.s: Trial.cpp.s
 Trial.cpp.s:
 	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/Trial.cpp.s
 .PHONY : Trial.cpp.s
-
-argpars.o: argpars.cpp.o
-
-.PHONY : argpars.o
-
-# target to build an object file
-argpars.cpp.o:
-	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/argpars.cpp.o
-.PHONY : argpars.cpp.o
-
-argpars.i: argpars.cpp.i
-
-.PHONY : argpars.i
-
-# target to preprocess a source file
-argpars.cpp.i:
-	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/argpars.cpp.i
-.PHONY : argpars.cpp.i
-
-argpars.s: argpars.cpp.s
-
-.PHONY : argpars.s
-
-# target to generate assembly for a file
-argpars.cpp.s:
-	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/argpars.cpp.s
-.PHONY : argpars.cpp.s
 
 keyboard_thread.o: keyboard_thread.cpp.o
 
@@ -330,12 +330,12 @@ help:
 	@echo "... Misc.o"
 	@echo "... Misc.i"
 	@echo "... Misc.s"
+	@echo "... Params.o"
+	@echo "... Params.i"
+	@echo "... Params.s"
 	@echo "... Trial.o"
 	@echo "... Trial.i"
 	@echo "... Trial.s"
-	@echo "... argpars.o"
-	@echo "... argpars.i"
-	@echo "... argpars.s"
 	@echo "... keyboard_thread.o"
 	@echo "... keyboard_thread.i"
 	@echo "... keyboard_thread.s"

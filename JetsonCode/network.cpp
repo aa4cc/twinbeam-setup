@@ -13,7 +13,6 @@
 #include "sockpp/version.h"
 #include "network.h"
 #include "Misc.h"
-#include "argpars.h"
 
 #define SQUARE(x) ((x)*(x))
 
@@ -27,11 +26,11 @@ void client_thread(AppData& appData, sockpp::tcp_socket sock) {
 	uint16_t *beadCountP_G, *beadCountP_R;
 	MessageType response;	
 
-	if(Options::rtprio) {
+	if(appData.params.rtprio) {
 		struct sched_param schparam;
 		schparam.sched_priority = 45;
 		
-		if(Options::debug) printf("INFO: network_client_thread: setting rt priority to %d\n", schparam.sched_priority);
+		if(appData.params.debug) printf("INFO: network_client_thread: setting rt priority to %d\n", schparam.sched_priority);
 
 		int s = pthread_setschedparam(pthread_self(), SCHED_FIFO, &schparam);
 		if (s != 0) {
@@ -39,7 +38,7 @@ void client_thread(AppData& appData, sockpp::tcp_socket sock) {
 		}
 	}		
 
-	if(Options::debug) cout << "INFO: Got a connection from " << sock.peer_address() << endl;
+	if(appData.params.debug) cout << "INFO: Got a connection from " << sock.peer_address() << endl;
 
 	// Set a timeout for the socket so that the app can be killed from the outside
 	if(!sock.read_timeout(chrono::seconds(1))) cerr << "ERROR: setting timeout on TCP stream failed: " << sock.last_error_str() << endl;
@@ -53,7 +52,7 @@ void client_thread(AppData& appData, sockpp::tcp_socket sock) {
 		// If the connection was closed, break the loop
 		if (msg_len == 0)	break;
 
-		if(Options::debug) printf("DEBUG: Received %d bytes. MessageType: %c \n", (int)msg_len, buf[0]);
+		if(appData.params.debug) printf("DEBUG: Received %d bytes. MessageType: %c \n", (int)msg_len, buf[0]);
 
 		response = parseMessage(buf);
 		switch(response){
@@ -64,20 +63,20 @@ void client_thread(AppData& appData, sockpp::tcp_socket sock) {
 				appData.stopTheApp();
 				break;
 			case MessageType::SETTINGS:
-				if(appData.appStateIs(AppData::AppState::RUNNING) || appData.appStateIs(AppData::AppState::INITIALIZING))
-					cerr << "WARN: Can't change settings while the loop is running" << endl;
-				else{
-					memcpy(appData.values, buf+1, sizeof(uint32_t)*STG_NUMBER_OF_SETTINGS);
-					appData.print();
-					if(Options::debug) printf("INFO: Changed settings\n");
-				}
+				// if(appData.appStateIs(AppData::AppState::RUNNING) || appData.appStateIs(AppData::AppState::INITIALIZING))
+				// 	cerr << "WARN: Can't change settings while the loop is running" << endl;
+				// else{
+				// 	memcpy(appData.values, buf+1, sizeof(uint32_t)*STG_NUMBER_OF_SETTINGS);
+				// 	appData.print();
+				// 	if(appData.params.debug) printf("INFO: Changed settings\n");
+				// }
 				break;
 			case MessageType::IMG_REQUEST:
 				if(!appData.appStateIs(AppData::AppState::RUNNING)) {
 					cerr << "WARN: Image cannot be sent since the application is not running." << endl;
 				} else {
-					ImageData<uint8_t> temp_img(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
-					ImageData<uint8_t> temp_img2(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
+					ImageData<uint8_t> temp_img(appData.params.img_width, appData.params.img_height);
+					ImageData<uint8_t> temp_img2(appData.params.img_width, appData.params.img_height);
 					switch(buf[1]) {
 						case 0:
 							appData.img[ImageType::BACKPROP_G].copyTo(temp_img);
@@ -112,7 +111,7 @@ void client_thread(AppData& appData, sockpp::tcp_socket sock) {
 						sock.write_n(temp_img2.hostPtr(true), sizeof(uint8_t)*appData.get_area());
 					}
 
-					if(Options::debug) printf("INFO: Image sent.\n");
+					if(appData.params.debug) printf("INFO: Image sent.\n");
 				}
 				break;
 			case MessageType::COORDS_G:
@@ -157,7 +156,7 @@ void client_thread(AppData& appData, sockpp::tcp_socket sock) {
 							}
 
 							// If none of the trackers is used, break this case
-							if(!Options::beadsearch_G && !Options::beadsearch_R) {
+							if(!appData.params.beadsearch_G && !appData.params.beadsearch_R) {
 								cerr << "ERROR: None of the bead trackers was turned on when the App was started." << endl;
 								break;
 							}
@@ -175,18 +174,18 @@ void client_thread(AppData& appData, sockpp::tcp_socket sock) {
 							// Initialize the RAW_G tracker
 							for(size_t i=0; i<N_objects_G; ++i) {
 								appData.beadTracker_G.addBead({positions_G[2*i], positions_G[2*i+1]});
-								if(Options::debug) printf("INFO: BeadTracker RAW_G: adding object at (%d, %d)\n", positions_G[2*i], positions_G[2*i+1]);
+								if(appData.params.debug) printf("INFO: BeadTracker RAW_G: adding object at (%d, %d)\n", positions_G[2*i], positions_G[2*i+1]);
 							}
 
 							// Initialize the RAW_R tracker
 							for(size_t i=0; i<N_objects_R; ++i) {
 								appData.beadTracker_R.addBead({positions_R[2*i], positions_R[2*i+1]});
-								if(Options::debug) printf("INFO: BeadTracker RAW_R: adding object at (%d, %d)\n", positions_R[2*i], positions_R[2*i+1]);
+								if(appData.params.debug) printf("INFO: BeadTracker RAW_R: adding object at (%d, %d)\n", positions_R[2*i], positions_R[2*i+1]);
 							}	
 
 							// Just in case the the trackers were not initialized before, switch on the corresponding flag
-							if(N_objects_G > 0) Options::beadsearch_G = true;
-							if(N_objects_R > 0) Options::beadsearch_R = true;
+							if(N_objects_G > 0) appData.params.beadsearch_G = true;
+							if(N_objects_R > 0) appData.params.beadsearch_R = true;
 							break;
 						}
 					case 'r':
@@ -209,7 +208,7 @@ void client_thread(AppData& appData, sockpp::tcp_socket sock) {
 
 							// RAW_G tracker
 							const vector<Position>& bp_G = appData.beadTracker_G.getBeadPositions();
-							if(Options::beadsearch_G) {
+							if(appData.params.beadsearch_G) {
 								// Store the number of tracked objects
 								*beadCountP_G = (uint16_t)bp_G.size();
 								// Copy the tracked positions in RAW_G to the coords_buffer
@@ -220,7 +219,7 @@ void client_thread(AppData& appData, sockpp::tcp_socket sock) {
 
 							// RAW_R tracker
 							const vector<Position>& bp_R = appData.beadTracker_R.getBeadPositions();
-							if(Options::beadsearch_R) {
+							if(appData.params.beadsearch_R) {
 								// Store the number of tracked objects
 								*beadCountP_R = (uint16_t)bp_R.size();
 								// Copy the tracked positions in RAW_R to the coords_buffer
@@ -240,7 +239,7 @@ void client_thread(AppData& appData, sockpp::tcp_socket sock) {
 					// Empty packet means: unsubscribe me from the the list
 					appData.removeImageSubs(sock.peer_address());
 
-					if(Options::debug) cout << "INFO: unsubscribing from the image (ignore the port number) " << sock.peer_address() << endl;
+					if(appData.params.debug) cout << "INFO: unsubscribing from the image (ignore the port number) " << sock.peer_address() << endl;
 				} else if(msg_len == 3) {
 					// the packet two more bytes which specify the port to which the images are supposed to be sent
 					uint16_t port = ((uint16_t*)(buf+1))[0];
@@ -249,7 +248,7 @@ void client_thread(AppData& appData, sockpp::tcp_socket sock) {
 					// If the list already contains the IP address of this subscriber, delete it from the list
 					appData.addImageSubs(inaddr, ImageType::BACKPROP_G);
 
-					if(Options::debug) cout << "INFO: subscribing to the BACKPROP_G image publisher from " << inaddr << endl;
+					if(appData.params.debug) cout << "INFO: subscribing to the BACKPROP_G image publisher from " << inaddr << endl;
 				} else {
 					cerr << "ERROR: The subscription was not succseful as the received packet was not of the correct length." << endl;
 				}
@@ -259,7 +258,7 @@ void client_thread(AppData& appData, sockpp::tcp_socket sock) {
 					// Empty packet means: unsubscribe me from the the list
 					appData.removeCoordsSubs(sock.peer_address());
 
-					if(Options::debug) cout << "INFO: unsubscribing from the coordinate publisher (ignore the port number) " << sock.peer_address() << endl;
+					if(appData.params.debug) cout << "INFO: unsubscribing from the coordinate publisher (ignore the port number) " << sock.peer_address() << endl;
 				} else if(msg_len == 3) {
 					// the packet two more bytes which specify the port to which the images are supposed to be sent
 					uint16_t port = ((uint16_t*)(buf+1))[0];
@@ -268,7 +267,7 @@ void client_thread(AppData& appData, sockpp::tcp_socket sock) {
 					// If the list already contains the IP address of this subscriber, delete it from the list
 					appData.addCoordsSubs(inaddr);
 
-					if(Options::debug) cout << "INFO: subscribing to the coordinate UDP publisher from " << inaddr << endl;
+					if(appData.params.debug) cout << "INFO: subscribing to the coordinate UDP publisher from " << inaddr << endl;
 				} else {
 					cerr << "ERROR: The subscription was not succseful as the received packet was not of the correct length." << endl;
 				}
@@ -283,13 +282,13 @@ void client_thread(AppData& appData, sockpp::tcp_socket sock) {
 	appData.removeImageSubs(sock.peer_address());
 	appData.removeCoordsSubs(sock.peer_address());
 
-	if(Options::debug) cout << "INFO: Closing the connection from " << sock.peer_address() << endl;
+	if(appData.params.debug) cout << "INFO: Closing the connection from " << sock.peer_address() << endl;
 }
 
 void network_thread(AppData& appData){
-	if(Options::debug) cout << "INFO: network_thread: started" << endl;
+	if(appData.params.debug) cout << "INFO: network_thread: started" << endl;
 
-	sockpp::tcp_acceptor acc(Options::tcp_port);
+	sockpp::tcp_acceptor acc(appData.params.tcp_port);
 	if (!acc) {
 		cerr << "ERROR: Couldn't open the socket." << endl;
 		return;
@@ -316,5 +315,5 @@ void network_thread(AppData& appData){
 		this_thread::sleep_for(chrono::milliseconds(100));
 	}
 
-	if(Options::debug) cout << "INFO: network_thread: ended" << endl;
+	if(appData.params.debug) cout << "INFO: network_thread: ended" << endl;
 }

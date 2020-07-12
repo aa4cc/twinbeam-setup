@@ -74,9 +74,7 @@ void AppData::exitTheApp() {
 }
 
 void AppData::print(){
-	for(int i = 0 ; i < STG_NUMBER_OF_SETTINGS; i++){
-		printf("%d\n", values[i]);
-	}
+	params.print();
 }
 
 /* Subscribe utility functions */
@@ -124,5 +122,5 @@ void AppData::addCoordsSubs(sockpp::inet_address inaddr) {
 }
 
 int AppData::get_area(){
-	return values[STG_WIDTH]*values[STG_HEIGHT];
+	return params.img_width*params.img_height;
 }

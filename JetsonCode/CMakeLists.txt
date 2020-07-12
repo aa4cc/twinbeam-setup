@@ -21,7 +21,7 @@ set(CUDA_NVCC_FLAGS #Xavier
         )
 
 SET(OpenCV_DIR "usr/lib")
-SET(HEADERS_FOLDER "{CMAKE_CURRENT_SOURCE_DIR}")
+SET(HEADERS_FOLDER "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/nlohmann")
 FIND_PACKAGE(OpenCV REQUIRED COMPONENTS core highgui cudaarithm cudawarping cudaimgproc cudafilters)
 
 set(SOURCES
@@ -36,11 +36,10 @@ set(SOURCES
 		display_thread.cu
 		imgproc_thread.cu
 		CameraController.cu
-		argpars.cpp
+		Params.cpp
 		AppData.cpp
 		network.cpp
 		ImageData.cu
-		# Camera.cu
         )
 
 include_directories(

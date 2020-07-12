@@ -18,7 +18,6 @@
 #include "EGLStream/EGLStream.h"
 #include "EGL/egl.h"
 #include "cuda_egl_interop.h"
-#include "argpars.h"
 #include "CameraController.h"
 
 using namespace std;
@@ -105,19 +104,19 @@ __global__ void yuv2bgr(int width, int height, int offset_x, int offset_y, int o
 // }
 
 void camera_thread(AppData& appData){
-	if(Options::debug) printf("INFO: camera_thread: started\n");
+	if(appData.params.debug) printf("INFO: camera_thread: started\n");
 
-	if(Options::rtprio) {
+	if(appData.params.rtprio) {
 		struct sched_param schparam;
 		schparam.sched_priority = 50;
 		
-		if(Options::debug) printf("INFO: camera_thread: setting rt priority to %d\n", schparam.sched_priority);
+		if(appData.params.debug) printf("INFO: camera_thread: setting rt priority to %d\n", schparam.sched_priority);
 
 		int s = pthread_setschedparam(pthread_self(), SCHED_FIFO, &schparam);
 		if (s != 0) fprintf(stderr, "WARNING: setting the priority of camera thread failed.\n");
 	}
 	
-	CameraController camController(0, 1, Options::verbose, Options::debug);
+	CameraController camController(0, 1, appData.params.verbose, appData.params.debug);
 	if(!camController.Initialize()) {
 		fprintf(stderr, "ERROR: Unable to initialize the camer!\n");
 		appData.exitTheApp();
@@ -134,14 +133,14 @@ void camera_thread(AppData& appData){
 	cudaChannelFormatDesc uvChannelDesc;
 	
 	while(!appData.appStateIs(AppData::AppState::EXITING)){
-		if(Options::debug) printf("INFO: camera_thread: waiting for entering the INITIALIZING state\n");
+		if(appData.params.debug) printf("INFO: camera_thread: waiting for entering the INITIALIZING state\n");
 
 		// Wait till the app enters the INITIALIZING state. If this fails (which could happen only in case of entering the EXITING state), break the loop.
 		if(!appData.waitTillState(AppData::AppState::INITIALIZING)) break;
 
 		// The app is in the INITIALIZING state
 		// Initialize the camera
-		if(!camController.Start(appData.values[STG_WIDTH], appData.values[STG_HEIGHT], appData.values[STG_EXPOSURE], appData.values[STG_ANALOGGAIN], appData.values[STG_DIGGAIN])) {
+		if(!camController.Start(appData.params.img_width, appData.params.img_height, appData.params.cam_exposure, appData.params.cam_analoggain, appData.params.cam_digitalgain)) {
 			fprintf(stderr, "ERROR: Unable to start capturing the images from the camera\n");
 			appData.exitTheApp();
 			break;				
@@ -154,8 +153,8 @@ void camera_thread(AppData& appData){
 			break;
 		}
 
-		appData.camIG.create(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
-		appData.camIR.create(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
+		appData.camIG.create(appData.params.img_width, appData.params.img_height);
+		appData.camIR.create(appData.params.img_width, appData.params.img_height);
 		
 		numBlocks = 1024;
 		
@@ -174,15 +173,15 @@ void camera_thread(AppData& appData){
 		// Set the flag indicating that the camera was initialized
 		appData.camera_is_initialized = true;
 
-		if(Options::debug) printf("INFO: camera_thread: waiting till other App components are initialized\n");
+		if(appData.params.debug) printf("INFO: camera_thread: waiting till other App components are initialized\n");
 
 		// Wait till all the components of the App are initialized. If this fails, break the loop.
 		if(!appData.waitTillAppIsInitialized()) break;
 
 		// At this point, the app is in the AppData::AppState::RUNNING state.
-		if(Options::debug) printf("INFO: camera_thread: entering the running stage\n");
+		if(appData.params.debug) printf("INFO: camera_thread: entering the running stage\n");
 
-		chrono::nanoseconds period_us((int64_t)1e9/appData.values[STG_FPS]);
+		chrono::nanoseconds period_us((int64_t)1e9/appData.params.cam_FPS);
 		// Capture the images for as long as the App remains in the RUNNING state
 		while(appData.appStateIs(AppData::AppState::RUNNING)){
 			chrono::steady_clock::time_point next_time = chrono::steady_clock::now() + period_us;
@@ -212,9 +211,9 @@ void camera_thread(AppData& appData){
 				unique_lock<shared_timed_mutex> G_lk(appData.camIG.mtx, adopt_lock);
 				unique_lock<shared_timed_mutex> R_lk(appData.camIR.mtx, adopt_lock);
 
-				yuv2bgr<<<numBlocks, NBLOCKS>>>(appData.values[STG_WIDTH], appData.values[STG_HEIGHT],
-												appData.values[STG_OFFSET_X], appData.values[STG_OFFSET_Y],
-												appData.values[STG_OFFSET_R2G_X], appData.values[STG_OFFSET_R2G_Y],
+				yuv2bgr<<<numBlocks, NBLOCKS>>>(appData.params.img_width, appData.params.img_height,
+												appData.params.img_offset_X, appData.params.img_offset_Y,
+												appData.params.img_offset_R2G_X, appData.params.img_offset_R2G_Y,
 												appData.camIG.devicePtr(), appData.camIR.devicePtr());
 			}
 			appData.cam_cv.notify_all();
@@ -242,5 +241,5 @@ void camera_thread(AppData& appData){
 		appData.camera_is_initialized = false;		
 	}
 
-	if(Options::debug) printf("INFO: camera_thread: ended\n");
+	if(appData.params.debug) printf("INFO: camera_thread: ended\n");
 }

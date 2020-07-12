@@ -12,6 +12,7 @@
 #include <map>
 #include "sockpp/inet_address.h"
 #include "Definitions.h"
+#include "Params.h"
 #include "ImageData.h"
 #include "BeadTracker.h"
 
@@ -27,7 +28,9 @@ public:
 
     // Member variables
 
-	int values[STG_NUMBER_OF_SETTINGS] = {1024, 1024, 1440, 592, 550, 20, 5000000, 2, 1, 3100, 2400, 30, 90, 140};
+	Params params;
+
+	// int values[STG_NUMBER_OF_SETTINGS] = {1024, 1024, 1440, 592, 550, 20, 5000000, 2, 1, 3100, 2400, 30, 90, 140};
 	AppState appState = AppState::IDLING;
 	
 	bool camera_is_initialized;

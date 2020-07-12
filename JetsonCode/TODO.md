@@ -13,7 +13,6 @@
 * Add the option to start/stop video recording via network
 * Check whether BeadTracker is thread-safe or not
 * add debug levels
-* Unite Options and AppData
 * Get rid of Misc.h
 * https://github.com/hyperrealm/libconfig or https://github.com/nlohmann/json
 * ~~Try using zero copy memory acces (As opposed to TX2, this should be faster on the AGX)~~ This suprisingly seems to be slower than the copying the data between host and device memory.

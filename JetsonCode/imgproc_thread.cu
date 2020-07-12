@@ -9,7 +9,6 @@
 #include <pthread.h>
 #include "imgproc_thread.h"
 #include "sockpp/udp_socket.h"
-#include "argpars.h"
 #include "BeadsFinder.h"
 #include "BackPropagator.h"
 
@@ -17,13 +16,13 @@ using namespace std;
 using namespace std::chrono;
 
 void imgproc_thread(AppData& appData){
-	if(Options::debug) printf("INFO: imgproc_thread: started\n");
+	if(appData.params.debug) printf("INFO: imgproc_thread: started\n");
 
-	if(Options::rtprio) {
+	if(appData.params.rtprio) {
 		struct sched_param schparam;
 		schparam.sched_priority = 50;
 		
-		if(Options::debug) printf("INFO: imgproc_thread: setting rt priority to %d\n", schparam.sched_priority);
+		if(appData.params.debug) printf("INFO: imgproc_thread: setting rt priority to %d\n", schparam.sched_priority);
 
 		int s = pthread_setschedparam(pthread_self(), SCHED_FIFO, &schparam);
 		if (s != 0) fprintf(stderr, "WARNING: setting the priority of image processing thread failed.\n");
@@ -41,43 +40,43 @@ void imgproc_thread(AppData& appData){
 	char coords_buffer[2*sizeof(uint16_t)*MAX_NUMBER_BEADS + sizeof(uint32_t)];
 	
 	while(!appData.appStateIs(AppData::AppState::EXITING)) {
-		if(Options::debug) printf("INFO: imgproc_thread: waiting for entering the INITIALIZING state\n");
+		if(appData.params.debug) printf("INFO: imgproc_thread: waiting for entering the INITIALIZING state\n");
 		// Wait till the app enters the INITIALIZING state. If this fails (which could happen only in case of entering the EXITING state), break the loop.
 		if(!appData.waitTillState(AppData::AppState::INITIALIZING)) break;
 
 		// At this point, the app is in the AppData::AppState::INITIALIZING state, thus we initialize all needed stuff
 
 		// Initialize the BackPropagator for the green image
-		BackPropagator backprop_G(appData.values[STG_WIDTH], appData.values[STG_HEIGHT], LAMBDA_GREEN, (float)appData.values[STG_Z_GREEN]/1000000.0f);
+		BackPropagator backprop_G(appData.params.img_width, appData.params.img_height, LAMBDA_GREEN, (float)appData.params.backprop_z_G/1000000.0f);
 		// Initialize the BackPropagator for the red image
-		BackPropagator backprop_R(appData.values[STG_WIDTH], appData.values[STG_HEIGHT], LAMBDA_RED, (float)appData.values[STG_Z_RED]/1000000.0f);
+		BackPropagator backprop_R(appData.params.img_width, appData.params.img_height, LAMBDA_RED, (float)appData.params.backprop_z_R/1000000.0f);
 
 		// Initialize the BeadFinders
-		BeadsFinder beadsFinder_G(appData.values[STG_WIDTH], appData.values[STG_HEIGHT], (uint8_t)appData.values[STG_IMGTHRS_G]);
-		BeadsFinder beadsFinder_R(appData.values[STG_WIDTH], appData.values[STG_HEIGHT], (uint8_t)appData.values[STG_IMGTHRS_R]);
+		BeadsFinder beadsFinder_G(appData.params.img_width, appData.params.img_height, (uint8_t)appData.params.improc_thrs_G);
+		BeadsFinder beadsFinder_R(appData.params.img_width, appData.params.img_height, (uint8_t)appData.params.improc_thrs_R);
 
 		// Allocate the memory for the images
-		appData.img[ImageType::RAW_G].create(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
-		appData.img[ImageType::RAW_R].create(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
-		appData.img[ImageType::BACKPROP_G].create(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
-		appData.img[ImageType::BACKPROP_R].create(appData.values[STG_WIDTH], appData.values[STG_HEIGHT]);
+		appData.img[ImageType::RAW_G].create(appData.params.img_width, appData.params.img_height);
+		appData.img[ImageType::RAW_R].create(appData.params.img_width, appData.params.img_height);
+		appData.img[ImageType::BACKPROP_G].create(appData.params.img_width, appData.params.img_height);
+		appData.img[ImageType::BACKPROP_R].create(appData.params.img_width, appData.params.img_height);
 
 		// Initialize the counters for measuring the cycle duration and jitter
 		double iteration_count 			= 0;
 		double avg_cycle_duration_us	= 0;
 		double avg_jitter_us 			= 0;
-		double cycle_period_us 	    	= 1e6/((double)appData.values[STG_FPS]);
+		double cycle_period_us 	    	= 1e6/((double)appData.params.cam_FPS);
 
 		// Set the flag indicating that the camera was initialized
 		appData.imgproc_is_initialized = true;
 		
-		if(Options::debug) printf("INFO: imgproc_thread: waiting till other App components are initialized\n");
+		if(appData.params.debug) printf("INFO: imgproc_thread: waiting till other App components are initialized\n");
 
 		// Wait till all the components of the App are initialized. If this fails, break the loop.
 		if(!appData.waitTillAppIsInitialized()) break;
 
 		// At this point, the app is in the AppData::AppState::RUNNING state as the App enters RUNNING state automatically when all components are initialized.
-		if(Options::debug) printf("INFO: imgproc_thread: entering the running stage\n");
+		if(appData.params.debug) printf("INFO: imgproc_thread: entering the running stage\n");
 
 		while(appData.appStateIs(AppData::AppState::RUNNING)) {
 			auto t_cycle_start = steady_clock::now();
@@ -107,7 +106,7 @@ void imgproc_thread(AppData& appData){
 
 			// find the beads (if enabled)
 			auto t_beadsfinder_start = steady_clock::now();
-			if(Options::beadsearch_G) {
+			if(appData.params.beadsearch_G) {
 				beadsFinder_G.findBeads(appData.img[ImageType::BACKPROP_G]);
 				{ // Limit the scope of the mutex
 					std::lock_guard<std::mutex> mtx_bp(appData.mtx_bp_G);
@@ -116,7 +115,7 @@ void imgproc_thread(AppData& appData){
 					appData.beadTracker_G.update(appData.bead_positions_G);
 				}
 			}
-			if(Options::beadsearch_R) {
+			if(appData.params.beadsearch_R) {
 				beadsFinder_R.findBeads(appData.img[ImageType::BACKPROP_R]);
 				{ // Limit the scope of the mutex
 					std::lock_guard<std::mutex> mtx_bp(appData.mtx_bp_R);
@@ -138,7 +137,7 @@ void imgproc_thread(AppData& appData){
 						img_sync = true;
 					}
 
-					if(Options::debug) cout << "INFO: sending image via UDP to " << sub_addr << endl;
+					if(appData.params.debug) cout << "INFO: sending image via UDP to " << sub_addr << endl;
 				}
 			}
 
@@ -154,7 +153,7 @@ void imgproc_thread(AppData& appData){
 				for(auto const& sub_addr: appData.coords_subs) {
 					ssize_t sent_bytes = udp_sock.send_to(coords_buffer, sizeof(uint32_t) + 2*(*beadCountP)*sizeof(uint16_t), sub_addr);
 
-					if(Options::debug) cout << "INFO: sending coordinates via UDP to " << sub_addr << " - " << sent_bytes << " bytes sent" << endl;
+					if(appData.params.debug) cout << "INFO: sending coordinates via UDP to " << sub_addr << " - " << sent_bytes << " bytes sent" << endl;
 				}
 			}
 			
@@ -165,7 +164,7 @@ void imgproc_thread(AppData& appData){
 			avg_jitter_us 			+= 1/(iteration_count+1)*( abs(cycle_period_us - duration_cast<microseconds>(cycle_elapsed_seconds).count()) - avg_jitter_us);
 			iteration_count++;
 
-			if(Options::verbose) {
+			if(appData.params.verbose) {
 				printf("TRACE: Backprop: %6.3f ms", 	duration_cast<microseconds>(t_backprop_end - t_backprop_start).count()/1000.0);
 				printf("| BF.findBeads: %6.3f ms", 		duration_cast<microseconds>(t_beadsfinder_end - t_beadsfinder_start).count()/1000.0);
 				printf("| cp: %6.3f ms", 				duration_cast<microseconds>(t_cp_end - t_cp_start).count()/1000.0);
@@ -180,5 +179,5 @@ void imgproc_thread(AppData& appData){
 		appData.imgproc_is_initialized = false;
 	}
 	
-	if(Options::debug) printf("INFO: imgproc_thread: ended\n");
+	if(appData.params.debug) printf("INFO: imgproc_thread: ended\n");
 }
