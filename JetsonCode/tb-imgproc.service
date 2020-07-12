@@ -1,0 +1,11 @@
+[Unit]
+Description=TwinBeam - image processing service
+After=network.target nvargus-daemon.service
+
+[Service]
+Type=simple
+User=nvidia
+ExecStart= /home/nvidia/twinbeam-setup/JetsonCode/3D_scanning -d
+
+[Install]
+WantedBy=multi-user.target
