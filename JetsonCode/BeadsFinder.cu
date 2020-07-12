@@ -11,7 +11,7 @@
 BeadsFinder::BeadsFinder(uint16_t m, uint16_t n, uint8_t img_thrs, bool dbg): im_width{m}, im_height{n}, img_threshold{img_thrs}, debug{dbg}
 {
     // Initialize the Gaussian filter
-    gaussianFilter = cv::cuda::createGaussianFilter(CV_8U, CV_32F, cv::Size(29, 29), 10);
+    gaussianFilter = cv::cuda::createGaussianFilter(CV_8U, CV_32F, cv::Size(29, 29), 7);
 
     numBlocks = (im_width*im_height/2 + NBLOCKS -1)/NBLOCKS;
 
