@@ -2,7 +2,6 @@
  * @author  Martin Gurtner
  */
 #include <fstream>
-#include <iostream>
 #include <stdexcept>
 #include "Params.h"
 #include "nlohmann/json.hpp"
@@ -43,15 +42,25 @@ void Params::print() {
     printf("\t improc_thrs_R:    %10d\n", improc_thrs_R);
 }
 
-void Params::parseConfigFile(string fileName) {
+void Params::parseJSONConfigFile(string fileName) {
     // read a JSON config file
     ifstream i(fileName);
 
     // If the config file does not exist, throw an exception
     if( !i.is_open() ) throw invalid_argument( "Config file does not exist." );
-    
+
+    parseJSONIStream(i);
+}
+
+void Params::parseJSONIStream(istream& i) {
+
     json j;
-    i >> j;
+
+    try {
+        i >> j;
+    } catch (json::exception& ex) {
+        cerr << ex.what();
+    }
 
     if (j.contains("verbose")) {
         verbose = j["verbose"].get<bool>();

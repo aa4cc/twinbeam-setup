@@ -5,6 +5,7 @@
 #define PARAMS_H
 
 #include <string>
+#include <iostream>
 #include "Definitions.h"
 
 class Params{
@@ -43,7 +44,8 @@ public:
     Params() {};
 
     void print();
-    void parseConfigFile(std::string configFileName);
+    void parseJSONConfigFile(std::string configFileName);
+    void parseJSONIStream(std::istream& i);
     void parseCmdlineArgs(int argc, char* argv[]);
 };
 

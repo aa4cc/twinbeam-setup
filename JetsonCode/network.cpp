@@ -5,6 +5,10 @@
  
 
 #include <iostream>
+
+#include <string>
+#include <sstream>
+
 #include <climits>
 #include <thread>
 #include <chrono>
@@ -21,6 +25,7 @@ using namespace std;
 void client_thread(AppData& appData, sockpp::tcp_socket sock) {
 	ssize_t msg_len;
 	char buf[BUFSIZE];
+	istringstream json_config_i;
 	uint8_t coords_buffer[sizeof(uint32_t) + 4*MAX_NUMBER_BEADS*sizeof(uint16_t)]; // Coords buffer can store coordinates of up to MAX_NUMBER_BEADS beads for both color channels
 	uint32_t* beadCountP;
 	uint16_t *beadCountP_G, *beadCountP_R;
@@ -63,13 +68,18 @@ void client_thread(AppData& appData, sockpp::tcp_socket sock) {
 				appData.stopTheApp();
 				break;
 			case MessageType::SETTINGS:
-				// if(appData.appStateIs(AppData::AppState::RUNNING) || appData.appStateIs(AppData::AppState::INITIALIZING))
-				// 	cerr << "WARN: Can't change settings while the loop is running" << endl;
-				// else{
-				// 	memcpy(appData.values, buf+1, sizeof(uint32_t)*STG_NUMBER_OF_SETTINGS);
-				// 	appData.print();
-				// 	if(appData.params.debug) printf("INFO: Changed settings\n");
-				// }
+				// End the string
+				buf[msg_len] = '\0';
+				// Update the istream
+				json_config_i.str(buf+1);
+
+				if (appData.params.debug) {
+					cout << "New config parameters:" << endl;
+					cout << json_config_i.str() << endl;
+				}
+				
+				// parse the istream
+				appData.params.parseJSONIStream(json_config_i);
 				break;
 			case MessageType::IMG_REQUEST:
 				if(!appData.appStateIs(AppData::AppState::RUNNING)) {
