@@ -26,6 +26,7 @@ void client_thread(AppData& appData, sockpp::tcp_socket sock) {
 	ssize_t msg_len;
 	char buf[BUFSIZE];
 	istringstream json_config_i;
+	string json_config;
 	uint8_t coords_buffer[sizeof(uint32_t) + 4*MAX_NUMBER_BEADS*sizeof(uint16_t)]; // Coords buffer can store coordinates of up to MAX_NUMBER_BEADS beads for both color channels
 	uint32_t* beadCountP;
 	uint16_t *beadCountP_G, *beadCountP_R;
@@ -68,18 +69,28 @@ void client_thread(AppData& appData, sockpp::tcp_socket sock) {
 				appData.stopTheApp();
 				break;
 			case MessageType::SETTINGS:
-				// End the string
-				buf[msg_len] = '\0';
-				// Update the istream
-				json_config_i.str(buf+1);
+				if (msg_len == 1) {
+					// Send back the current JSON config
+					json_config = appData.params.getJSONConfigString();
+					memcpy(buf, json_config.c_str(), json_config.length());
+					sock.write_n(buf, json_config.length());
+					cout << appData.params.getJSONConfigString() << endl;
+				} else {
+					// Receive new config params 
 
-				if (appData.params.debug) {
-					cout << "New config parameters:" << endl;
-					cout << json_config_i.str() << endl;
+					// End the string
+					buf[msg_len] = '\0';
+					// Update the istream
+					json_config_i.str(buf+1);
+
+					if (appData.params.debug) {
+						cout << "New config parameters:" << endl;
+						cout << json_config_i.str() << endl;
+					}
+
+					// parse the istream
+					appData.params.parseJSONIStream(json_config_i);
 				}
-				
-				// parse the istream
-				appData.params.parseJSONIStream(json_config_i);
 				break;
 			case MessageType::IMG_REQUEST:
 				if(!appData.appStateIs(AppData::AppState::RUNNING)) {

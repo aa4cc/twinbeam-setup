@@ -144,6 +144,40 @@ void Params::parseJSONIStream(istream& i) {
     }
 }
 
+string Params::getJSONConfigString() {
+  json j;
+
+  j["verbose"] = verbose;
+  j["debug"] = debug;
+  j["show"] = show;
+  j["show_fullscreen"] = show_fullscreen;
+  j["show_markers"] = show_markers;
+  j["show_labels"] = show_labels;
+  j["keyboard"] = keyboard;
+  j["savevideo"] = savevideo;
+  j["rtprio"] = rtprio;
+  j["beadsearch_R"] = beadsearch_R;
+  j["beadsearch_G"] = beadsearch_G;
+
+  j["tcp_port"] = tcp_port;
+  j["img_width"] = img_width;
+  j["img_height"] = img_height;
+  j["img_offset_X"] = img_offset_X;
+  j["img_offset_Y"] = img_offset_Y;
+  j["img_offset_R2G_X"] = img_offset_R2G_X;
+  j["img_offset_R2G_Y"] = img_offset_R2G_Y;
+  j["cam_exposure"] = cam_exposure;
+  j["cam_analoggain"] = cam_analoggain;
+  j["cam_digitalgain"] = cam_digitalgain;
+  j["cam_FPS"] = cam_FPS;
+  j["backprop_z_R"] = backprop_z_R;
+  j["backprop_z_G"] = backprop_z_G;
+  j["improc_thrs_G"] = improc_thrs_G;
+  j["improc_thrs_R"] = improc_thrs_R;
+
+  return j.dump();
+}
+
 void Params::parseCmdlineArgs(int argc, char* argv[])
 {
   try

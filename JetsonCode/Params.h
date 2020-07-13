@@ -46,6 +46,7 @@ public:
     void print();
     void parseJSONConfigFile(std::string configFileName);
     void parseJSONIStream(std::istream& i);
+    std::string getJSONConfigString();
     void parseCmdlineArgs(int argc, char* argv[]);
 };
 
