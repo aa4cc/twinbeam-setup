@@ -1,0 +1,82 @@
+body {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.jumbotron p {
+  margin-bottom: 0;
+}
+
+.jumbotron {
+  padding: 20px;
+}
+
+.theme-dropdown .dropdown-menu {
+  position: static;
+  display: block;
+  margin-bottom: 20px;
+}
+
+.theme-showcase > p > .btn {
+  margin: 5px 0;
+}
+
+.theme-showcase .navbar .container {
+  width: auto;
+}
+
+#colorButtonGroup {
+  position: relative;
+  margin: 10px auto;
+  text-align: center;
+}
+
+.colorBut {
+  height: 40px;
+  width: 18%;
+  border: none;
+  border-color: #888888;
+}
+
+.colorButFocused {
+  height: 40px;
+  width: 18%;
+  border: solid;  
+}
+
+.colorBlue {  
+  background: #FFF50D;
+  /*background: #428bca;*/
+}
+
+.colorGreen { 
+  /*background: #5cb85c;*/
+  background: #E80D00;
+}
+
+.colorLightBlue { 
+  /*background: #5bc0de;*/
+  background: #0058FF;
+}
+
+.colorOrange {  
+  background: #73E80C;
+}
+
+.colorRed { 
+  background: #FF5500;
+}
+
+#rozsvitButton {
+  margin: 20px 0;
+}
+
+#statusPanel {
+  text-align: center;
+  width: auto;
+  margin: 20px 0;
+}
+
+.acc {
+  display: none;
+}

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="">
+  <meta name="author" content="">
+
+  <title>TwinBeam Setup - Control panel</title>
+
+  <!-- Bootstrap core CSS -->
+  <link href="{{  url_for('static', filename='bootstrap.min.css') }}" rel="stylesheet" media="screen">
+  <!-- Bootstrap theme -->
+  <link href="{{  url_for('static', filename='bootstrap-theme.min.css') }}" rel="stylesheet">
+
+  <!-- Custom styles for this template -->
+  <link href="{{  url_for('static', filename='theme.css') }}" rel="stylesheet">
+
+  <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+      <![endif]-->
+    </head>
+
+    <body role="document">
+
+      <div class="container theme-showcase" role="main">
+
+        <!-- Main jumbotron for a primary marketing message or call to action -->
+        <div class="jumbotron">
+          <!-- <h1>Admin</h1> -->
+          
+          <!-- <div class="panel panel-primary">
+            <div class="panel-heading">
+              <h3 class="panel-title">LED server status</h3>
+            </div>
+            <div class="panel-body">
+
+              <div class="form-group">
+                <label class="col-sm-6 control-label">LED server on Web</label>
+                <div class="col-sm-6">
+                  {% if ledserverstatus_web %}
+                  <button type="button" class="btn btn-success" disabled="disabled">On</button>
+                  {% else %}
+                  <button type="button" class="btn btn-danger" disabled="disabled">Off</button>
+                  {% endif %}                
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="col-sm-6 control-label">LED server on Raspi</label>
+                <div class="col-sm-6">
+                  {% if ledserverstatus_raspi %}
+                  <button type="button" class="btn btn-success" disabled="disabled">On</button>
+                  {% else %}
+                  <button type="button" class="btn btn-danger" disabled="disabled">Off</button>
+                  {% endif %}                
+                </div>
+              </div>
+            </div>
+          </div> -->
+
+          <div class="panel panel-primary">
+            <div class="panel-heading">
+              <h3 class="panel-title">Control button</h3>
+            </div>
+            <div class="panel-body">
+              <button type="button" id="but_enable" class="btn btn-success">Enable</button>
+              <button type="button" id="but_disable" class="btn btn-danger">Disable</button>
+            </div>
+          </div>
+
+          <div class="panel panel-primary">
+            <div class="panel-heading">
+              <h3 class="panel-title">Configuration</h3>
+            </div>
+            <div class="panel-body">
+              <form  class="form-horizontal">
+                <fieldset>
+                
+                <!-- Form Name -->
+                <legend>TwinBeam - setup</legend>
+                
+                <!-- Text input-->
+                <div class="form-group">
+                  <label class="col-md-4 control-label" for="img_g_thrs">Green channel threshold</label>  
+                  <div class="col-md-2">
+                  <input id="img_g_thrs" name="img_g_thrs" type="text" value="100" class="form-control input-md">
+                    
+                  </div>
+                </div>
+                
+                <!-- Text input-->
+                <div class="form-group">
+                  <label class="col-md-4 control-label" for="img_r_thrs">Red channel threshold</label>  
+                  <div class="col-md-4">
+                  <input id="img_r_thrs" name="img_r_thrs" type="text" value="140" class="form-control input-md">
+                    
+                  </div>
+                </div>
+                
+                <!-- Multiple Radios (inline) -->
+                <div class="form-group">
+                  <label class="col-md-4 control-label" for="display_onoff">Display</label>
+                  <div class="col-md-4"> 
+                    <label class="radio-inline" for="display_onoff-0">
+                      <input type="radio" name="display_onoff" id="display_onoff-0" value="on" checked="checked">
+                      on
+                    </label> 
+                    <label class="radio-inline" for="display_onoff-1">
+                      <input type="radio" name="display_onoff" id="display_onoff-1" value="off">
+                      off
+                    </label>
+                  </div>
+                </div>
+                
+                <!-- Multiple Checkboxes -->
+                <div class="form-group">
+                  <label class="col-md-4 control-label" for="display_checkboxes">Display options</label>
+                  <div class="col-md-4">
+                  <div class="checkbox">
+                    <label for="display_checkboxes-0">
+                      <input type="checkbox" name="display_checkboxes" id="display_checkboxes-0" value="markers">
+                      markers
+                    </label>
+                  </div>
+                  <div class="checkbox">
+                    <label for="display_checkboxes-1">
+                      <input type="checkbox" name="display_checkboxes" id="display_checkboxes-1" value="labels">
+                      labels
+                    </label>
+                  </div>
+                  </div>
+                </div>
+                
+                <!-- Multiple Radios (inline) -->
+                <div class="form-group">
+                  <label class="col-md-4 control-label" for="savevideo_onoff">Save video</label>
+                  <div class="col-md-4"> 
+                    <label class="radio-inline" for="savevideo_onoff-0">
+                      <input type="radio" name="savevideo_onoff" id="savevideo_onoff-0" value="on" checked="checked">
+                      on
+                    </label> 
+                    <label class="radio-inline" for="savevideo_onoff-1">
+                      <input type="radio" name="savevideo_onoff" id="savevideo_onoff-1" value="off">
+                      off
+                    </label>
+                  </div>
+                </div>
+                
+                <!-- Select Basic -->
+                <div class="form-group">
+                  <label class="col-md-4 control-label" for="restart">Restart</label>
+                  <div class="col-md-4">
+                    <select id="restart" name="restart" class="form-control">
+                      <option value="without_restart">without restart</option>
+                      <option value="with_restart">with restart</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <!-- Button -->
+                <div class="form-group">
+                  <label class="col-md-4 control-label" for="send_config"></label>
+                  <div class="col-md-4">
+                    <button id="send_config" name="send_config" class="btn btn-primary">Send Configuration</button>
+                  </div>
+                </div>
+                
+                </fieldset>
+                </form>     
+            </div>
+          </div>
+        </div>
+      </div> 
+
+      <script type=text/javascript>
+        $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
+      </script>
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script src="{{  url_for('static', filename='bootstrap.min.js') }}"></script>    
+    <script src="{{  url_for('static', filename='main.js') }}"></script>
+
+  </body>
+  </html>
+
