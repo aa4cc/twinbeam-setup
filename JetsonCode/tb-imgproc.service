@@ -5,7 +5,12 @@ After=network.target nvargus-daemon.service
 [Service]
 Type=simple
 User=nvidia
+Environment="DISPLAY=:0.0"
+WorkingDirectory=/home/nvidia/twinbeam-setup/JetsonCode
 ExecStart= /home/nvidia/twinbeam-setup/JetsonCode/3D_scanning -d
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=tbsetup
 
 [Install]
 WantedBy=multi-user.target

@@ -12,7 +12,7 @@ using namespace std;
 int main(int argc, char* argv[]){
 	static AppData appData;
 
-	appData.params.parseJSONConfigFile("config.json");
+	appData.params.parseJSONConfigFile("./config.json");
 	appData.params.parseCmdlineArgs(argc, argv);
 
 	if ( appData.params.debug ) {
