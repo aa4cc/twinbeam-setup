@@ -118,6 +118,11 @@ void display_thread(AppData& appData){
                     appData.frame_id++;
                 }
 
+                // If the video is being recorder, draw a text rendering this fact
+                if (appData.params.savevideo) {
+                    cv::putText(img_disp, "RECORDING", cv::Point(15, 30), cv::FONT_HERSHEY_SIMPLEX, 1.0, 255);
+                }
+
                 // Draw bead positions (if beadsearch enabled and show_markers flag active)
                 if((appData.params.beadsearch_G || appData.params.beadsearch_R) && (appData.params.show_markers || appData.params.show_labels)) {
 
