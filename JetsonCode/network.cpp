@@ -74,10 +74,11 @@ void client_thread(AppData& appData, sockpp::tcp_socket sock) {
 					json_config = appData.params.getJSONConfigString();
 					memcpy(buf, json_config.c_str(), json_config.length());
 					sock.write_n(buf, json_config.length());
-					cout << appData.params.getJSONConfigString() << endl;
-				} else {
-					// Receive new config params 
 
+					if(appData.params.debug) printf("INFO: Sending the config params.\n");
+				} else {
+					if(appData.params.debug) printf("INFO: Received new config params.\n");
+					// Receive new config params 	
 					// End the string
 					buf[msg_len] = '\0';
 					// Update the istream
