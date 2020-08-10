@@ -26,5 +26,6 @@ __global__ void floatToUInt8(int N, int M, float* input, uint8_t* result);
 __global__ void floatToUInt16(int N, int M, float* input, uint16_t* result);
 
 __global__ void getLocalMinima(int M, int N, float* input, uint16_t* points, uint32_t pointsMaxSize, uint32_t* pointsCounter, float thrs);
+__global__ void imDivide(int M, int N, uint8_t* in1, uint8_t* in2, float* output);
 
 #endif

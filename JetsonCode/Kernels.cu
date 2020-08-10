@@ -172,3 +172,12 @@ __global__ void getLocalMinima(int M, int N, float* input, uint16_t* points, uin
         }
     }    
 }
+
+__global__ void imDivide(int M, int N, uint8_t* in1, uint8_t* in2, float* output)
+{
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+    for(int i = index; i < N*M; i += stride){
+        output[i] = ((float)in1[i]) / ((float)in2[i]) * 255;
+    }   
+}

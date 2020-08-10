@@ -22,7 +22,11 @@ private:
     mutable std::mutex _mtx;
     uint16_t im_width, im_height;
     cv::Ptr<cv::cuda::Filter> gaussianFilter;
+    cv::Ptr<cv::cuda::Filter> morphFilter;
     float* img_filt_data;
+    float* img_afterdiv_data;
+    float* img_aftermorph_data;
+    uint8_t* img_bg_data;
     uint32_t pointsCounter;
     uint16_t positions[2*MAX_NUMBER_BEADS];
     uint32_t *d_pointsCounterPtr;
