@@ -1,11 +1,19 @@
 #!/usr/bin/env python3
 
-from flask import Flask, render_template, request, make_response
+from flask import Flask, render_template, request, make_response, jsonify, send_from_directory, send_file
 import socket
 import json
 import time
+import numpy as np
+import io
+from PIL import Image
+
+from os import system, remove, listdir
+from os.path import getmtime, getsize, join, isfile
+
 
 TCP_PORT = 30000
+VIDEOS_DIRECTORY = '../JetsonCode/experiments_data'
 
 app = Flask(__name__)
 
@@ -13,7 +21,7 @@ def sendTCP(data):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.settimeout(2.0) # set timeout to two seconds
     s.connect( ('127.0.0.1', TCP_PORT) )
-    s.send(data) # Am I alive command
+    s.send(data)
     # rec_data = s.recv(1)
     s.close()
     # return rec_data
@@ -39,6 +47,36 @@ def start():
 def stop():
     sendTCP(bytes('q', 'ascii'))
     return "Stop command"    
+
+@app.route("/service/<action>/<name>")
+def gen_restart(action, name):
+
+    assert action == "restart" or action == "stop", "action can be only 'restart' or 'stop'"
+    assert name == "imgproc" or name == "gen", "service name can be only 'imgproc' or 'gen'"
+
+    print(system('systemctl '+action+' tb-'+name+'.service'))
+
+    return 'OK'   
+
+@app.route("/download_file/<path:file>")
+def download_file(file):
+    """Download a file."""
+    return send_from_directory(VIDEOS_DIRECTORY, file, as_attachment=True)
+
+@app.route("/delete_file/<path:file>")
+def delete_file(file):
+    """Delete a file."""
+    remove(join(VIDEOS_DIRECTORY, file))
+
+    return 'OK'
+
+@app.route('/video_files')
+def video_files():
+    file_info = lambda f: [f, int(getsize(join(VIDEOS_DIRECTORY, f))/2**20), time.ctime(getmtime(join(VIDEOS_DIRECTORY, f)))]
+
+    files = [file_info(f) for f in listdir(VIDEOS_DIRECTORY) if isfile(join(VIDEOS_DIRECTORY, f))]
+
+    return jsonify({'files': files})
 
 @app.route('/handle_data')
 def handle_data():
@@ -68,13 +106,38 @@ def handle_data():
     
     return 'OK'
 
+@app.route('/image')
+def image():
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.settimeout(2.0) # set timeout to two seconds
+    s.connect( ('127.0.0.1', TCP_PORT) )
+    s.send(bytes('r', 'utf-8') + b'\x00')
+
+    img_bytes = bytes()
+    amount_expected = 2048*2048
+    while len(img_bytes) < amount_expected:
+        img_bytes += s.recv(amount_expected - len(img_bytes))
+
+    s.close()
+
+    np_img = np.frombuffer(img_bytes, dtype=np.uint8)
+    np_img = np.reshape(np_img, (2048, 2048))
+    np_img_dwn = np_img[::4,::4]
+    im = Image.fromarray(np_img_dwn)
+
+    output = io.BytesIO()
+    im.save(output, format='PNG')
+    output.seek(0, 0)
+
+    return send_file(output, mimetype='image/png', as_attachment=False)
+    
+
 @app.route("/")
 def hello():
-    # global mainLogger
-    # mainLogger.info('Main page loaded by ' + request.remote_addr)
-
-    # return render_template('main.html', led_min = 1, led_max = 148)
-    return render_template('main.html')
+    tb_imgproc_status = system('systemctl is-active tb-imgproc') == 0
+    tb_gen_status = system('systemctl is-active tb-gen') == 0
+    
+    return render_template('main.html', tb_imgproc=tb_imgproc_status, tb_gen=tb_gen_status)
 
 if __name__ == "__main__":
     # Start the web server

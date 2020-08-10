@@ -10,12 +10,12 @@
   <title>TwinBeam Setup - Control panel</title>
 
   <!-- Bootstrap core CSS -->
-  <link href="{{  url_for('static', filename='bootstrap.min.css') }}" rel="stylesheet" media="screen">
+  <link href="{{  url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet" media="screen">
   <!-- Bootstrap theme -->
-  <link href="{{  url_for('static', filename='bootstrap-theme.min.css') }}" rel="stylesheet">
+  <link href="{{  url_for('static', filename='css/bootstrap-theme.min.css') }}" rel="stylesheet">
 
   <!-- Custom styles for this template -->
-  <link href="{{  url_for('static', filename='theme.css') }}" rel="stylesheet">
+  <link href="{{  url_for('static', filename='css/theme.css') }}" rel="stylesheet">
 
   <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
     <!--[if lt IE 9]>
@@ -30,37 +30,58 @@
 
         <!-- Main jumbotron for a primary marketing message or call to action -->
         <div class="jumbotron">
-          <!-- <h1>Admin</h1> -->
-          
-          <!-- <div class="panel panel-primary">
+
+          <div class="panel panel-primary">
             <div class="panel-heading">
-              <h3 class="panel-title">LED server status</h3>
+              <h3 class="panel-title">Service status</h3>
             </div>
-            <div class="panel-body">
+            <div class="row">
+              <div class="col-xs-6">Image processing</div>              
+              <div class="col-xs-6">
+                {% if tb_imgproc %}
+                <button type="button" class="btn btn-success btn-sm" aria-label="Left Align">
+                  <span class=" glyphicon glyphicon-ok " aria-hidden="true"></span>
+                </button>          
+                {% else %}      
+                <button type="button" class="btn btn-danger btn-sm" aria-label="Left Align">
+                  <span class=" glyphicon glyphicon-remove " aria-hidden="true"></span>
+                </button>                          
+                {% endif %}
 
-              <div class="form-group">
-                <label class="col-sm-6 control-label">LED server on Web</label>
-                <div class="col-sm-6">
-                  {% if ledserverstatus_web %}
-                  <button type="button" class="btn btn-success" disabled="disabled">On</button>
-                  {% else %}
-                  <button type="button" class="btn btn-danger" disabled="disabled">Off</button>
-                  {% endif %}                
-                </div>
-              </div>
-              <div class="form-group">
-                <label class="col-sm-6 control-label">LED server on Raspi</label>
-                <div class="col-sm-6">
-                  {% if ledserverstatus_raspi %}
-                  <button type="button" class="btn btn-success" disabled="disabled">On</button>
-                  {% else %}
-                  <button type="button" class="btn btn-danger" disabled="disabled">Off</button>
-                  {% endif %}                
-                </div>
+                <button id="but_imgproc_stop" type="button" class="btn btn-danger btn-sm" aria-label="Right Align"> 
+                  <span class=" glyphicon glyphicon-off" aria-hidden="true"></span>
+                </button>
+                
+                <button id="but_imgproc_restart" type="button" class="btn btn-primary btn-sm" aria-label="Right Align"> 
+                  <span class=" glyphicon glyphicon-refresh" aria-hidden="true"></span>
+                </button>
+ 
               </div>
             </div>
-          </div> -->
+            <div class="row">
+              <div class="col-xs-6">Generator</div>
+              <div class="col-xs-6">
+                {% if tb_gen %}
+                <button type="button" class="btn btn-success btn-sm" aria-label="Left Align">
+                  <span class=" glyphicon glyphicon-ok " aria-hidden="true"></span>
+                </button>          
+                {% else %}      
+                <button type="button" class="btn btn-danger btn-sm" aria-label="Left Align">
+                  <span class=" glyphicon glyphicon-remove " aria-hidden="true"></span>
+                </button>                          
+                {% endif %}           
 
+                <button id="but_gen_stop" type="button" class="btn btn-danger btn-sm" aria-label="Right Align"> 
+                  <span class=" glyphicon glyphicon-off" aria-hidden="true"></span>
+                </button>
+
+                <button id="but_gen_restart" type="button" class="btn btn-primary btn-sm" aria-label="Right Align"> 
+                  <span class=" glyphicon glyphicon-refresh" aria-hidden="true"></span>
+                </button>                
+              </div>
+            </div>
+          </div>          
+          
           <div class="panel panel-primary">
             <div class="panel-heading">
               <h3 class="panel-title">Control button</h3>
@@ -84,8 +105,8 @@
                 
                 <!-- Text input-->
                 <div class="form-group">
-                  <label class="col-md-4 control-label" for="img_g_thrs">Green channel threshold</label>  
-                  <div class="col-md-2">
+                  <label class="col-xs-6 control-label" for="img_g_thrs">Green channel threshold</label>  
+                  <div class="col-xs-1">
                   <input id="img_g_thrs" name="img_g_thrs" type="text" value="100" class="form-control input-md">
                     
                   </div>
@@ -93,8 +114,8 @@
                 
                 <!-- Text input-->
                 <div class="form-group">
-                  <label class="col-md-4 control-label" for="img_r_thrs">Red channel threshold</label>  
-                  <div class="col-md-4">
+                  <label class="col-xs-6 control-label" for="img_r_thrs">Red channel threshold</label>  
+                  <div class="col-xs-1">
                   <input id="img_r_thrs" name="img_r_thrs" type="text" value="140" class="form-control input-md">
                     
                   </div>
@@ -102,13 +123,13 @@
                 
                 <!-- Multiple Radios (inline) -->
                 <div class="form-group">
-                  <label class="col-md-4 control-label" for="display_onoff">Display</label>
-                  <div class="col-md-4"> 
-                    <label class="radio-inline" for="display_onoff-0">
+                  <label class="col-xs-6 control-label" for="display_onoff">Display</label>
+                  <div class="btn-group col-xs-6" data-toggle="buttons"> 
+                    <label class="btn btn-success active" for="display_onoff-0">
                       <input type="radio" name="display_onoff" id="display_onoff-0" value="on" checked="checked">
                       on
                     </label> 
-                    <label class="radio-inline" for="display_onoff-1">
+                    <label class="btn btn-danger" for="display_onoff-1">
                       <input type="radio" name="display_onoff" id="display_onoff-1" value="off">
                       off
                     </label>
@@ -117,17 +138,17 @@
                 
                 <!-- Multiple Checkboxes -->
                 <div class="form-group">
-                  <label class="col-md-4 control-label" for="display_checkboxes">Display options</label>
-                  <div class="col-md-4">
+                  <label class="col-xs-6 control-label" for="display_checkboxes">Display options</label>
+                  <div class="col-xs-6">
                   <div class="checkbox">
                     <label for="display_checkboxes-0">
-                      <input type="checkbox" name="display_checkboxes" id="display_checkboxes-0" value="markers">
+                      <input type="checkbox" name="display_checkboxes" id="display_checkboxes-0" value="markers" checked>
                       markers
                     </label>
                   </div>
                   <div class="checkbox">
                     <label for="display_checkboxes-1">
-                      <input type="checkbox" name="display_checkboxes" id="display_checkboxes-1" value="labels">
+                      <input type="checkbox" name="display_checkboxes" id="display_checkboxes-1" value="labels" checked>
                       labels
                     </label>
                   </div>
@@ -136,14 +157,14 @@
                 
                 <!-- Multiple Radios (inline) -->
                 <div class="form-group">
-                  <label class="col-md-4 control-label" for="savevideo_onoff">Save video</label>
-                  <div class="col-md-4"> 
-                    <label class="radio-inline" for="savevideo_onoff-0">
-                      <input type="radio" name="savevideo_onoff" id="savevideo_onoff-0" value="on" checked="checked">
+                  <label class="col-xs-6 control-label" for="savevideo_onoff">Save video</label>
+                  <div class="btn-group col-xs-6" data-toggle="buttons"> 
+                    <label class="btn btn-success active" for="savevideo_onoff-0">
+                      <input type="radio" name="savevideo_onoff" id="savevideo_onoff-0" value="on">
                       on
                     </label> 
-                    <label class="radio-inline" for="savevideo_onoff-1">
-                      <input type="radio" name="savevideo_onoff" id="savevideo_onoff-1" value="off">
+                    <label class="btn btn-danger" for="savevideo_onoff-1">
+                      <input type="radio" name="savevideo_onoff" id="savevideo_onoff-1" value="off" checked="checked">
                       off
                     </label>
                   </div>
@@ -151,19 +172,19 @@
                 
                 <!-- Select Basic -->
                 <div class="form-group">
-                  <label class="col-md-4 control-label" for="restart">Restart</label>
-                  <div class="col-md-4">
+                  <label class="col-xs-6 control-label" for="restart">Restart</label>
+                  <div class="col-xs-6">
                     <select id="restart" name="restart" class="form-control">
-                      <option value="without_restart">without restart</option>
                       <option value="with_restart">with restart</option>
+                      <option value="without_restart">without restart</option>                      
                     </select>
                   </div>
                 </div>
                 
                 <!-- Button -->
                 <div class="form-group">
-                  <label class="col-md-4 control-label" for="send_config"></label>
-                  <div class="col-md-4">
+                  <label class="col-xs-6 control-label" for="send_config"></label>
+                  <div class="col-xs-6">
                     <button id="send_config" name="send_config" class="btn btn-primary">Send Configuration</button>
                   </div>
                 </div>
@@ -172,6 +193,34 @@
                 </form>     
             </div>
           </div>
+
+          <div class="panel panel-primary">
+            <div class="panel-heading">
+              <h3 class="panel-title col-xs-6">Video files</h3>
+              <button id="but_files_refresh" type="button" class="btn btn-primary btn-sm" aria-label="Right Align"> 
+                <span class=" glyphicon glyphicon-refresh" aria-hidden="true"></span>
+              </button>                          
+            </div>
+            <table id="files" class="table">
+              
+            </table>
+          </div>
+
+          <div class="panel panel-default">
+            <div class="panel-heading" role="tab" id="headingThree">
+              <h4 class="panel-title">
+                <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                  Captured Image
+                </a>
+              </h4>
+            </div>
+            <div id="collapseThree" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingThree">
+              <div class="panel-body">
+                <img id="captured_image" src="/image" style="width:20% margin: 10px"/>
+              </div>
+            </div>
+          </div>          
+
         </div>
       </div> 
 

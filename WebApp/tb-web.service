@@ -1,0 +1,15 @@
+[Unit]
+Description=TwinBeam - web control panel service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/nvidia/twinbeam-setup/WebApp
+ExecStart= /home/nvidia/twinbeam-setup/WebApp/webapp.py
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=tbsetup-web
+
+[Install]
+WantedBy=multi-user.target
