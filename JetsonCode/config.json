@@ -23,6 +23,8 @@
     "img_offset_R2G_Y": 20,
     "backprop_z_R": 3100,
     "backprop_z_G": 2400,
-    "improc_thrs_G": 100,
-    "improc_thrs_R": 140
+    "improc_thrs_G": 80,
+    "improc_thrs_R": 140,
+    "improc_gaussFiltSigma_G": 5,
+    "improc_gaussFiltSigma_R": 7
 }

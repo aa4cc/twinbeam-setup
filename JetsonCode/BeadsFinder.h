@@ -30,7 +30,7 @@ private:
     int numBlocks;
 
 public:
-    BeadsFinder(uint16_t m, uint16_t n, uint8_t img_thrs, bool dbg=false); 
+    BeadsFinder(uint16_t m, uint16_t n, uint8_t img_thrs, float gaussFiltSigma, bool dbg=false); 
     void findBeads(ImageData<uint8_t>& inputImg);
     void copyPositionsTo(std::vector<Position>& bead_pos);
     ~BeadsFinder();

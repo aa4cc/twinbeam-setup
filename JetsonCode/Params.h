@@ -39,6 +39,8 @@ public:
     int	backprop_z_G	= 2400;
     int	improc_thrs_G	= 90;
     int	improc_thrs_R	= 140;
+    int	improc_gaussFiltSigma_G	= 5;
+    int	improc_gaussFiltSigma_R	= 7;
 
     // Constructor
     Params() {};

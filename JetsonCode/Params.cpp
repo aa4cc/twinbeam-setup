@@ -40,6 +40,8 @@ void Params::print() {
     printf("\t backprop_z_G:     %10d\n", backprop_z_G);
     printf("\t improc_thrs_G:    %10d\n", improc_thrs_G);
     printf("\t improc_thrs_R:    %10d\n", improc_thrs_R);
+    printf("\t improc_gaussFiltSigma_G:    %10d\n", improc_gaussFiltSigma_G);
+    printf("\t improc_gaussFiltSigma_R:    %10d\n", improc_gaussFiltSigma_R);
 }
 
 void Params::parseJSONConfigFile(string fileName) {
@@ -141,6 +143,12 @@ void Params::parseJSONIStream(istream& i) {
     }
     if (j.contains("improc_thrs_R")) {
         improc_thrs_R = j["improc_thrs_R"].get<int>();
+    }    
+    if (j.contains("improc_gaussFiltSigma_G")) {
+        improc_gaussFiltSigma_G = j["improc_gaussFiltSigma_G"].get<int>();
+    }    
+    if (j.contains("improc_gaussFiltSigma_R")) {
+        improc_gaussFiltSigma_R = j["improc_gaussFiltSigma_R"].get<int>();
     }
 }
 
@@ -174,6 +182,8 @@ string Params::getJSONConfigString() {
   j["backprop_z_G"] = backprop_z_G;
   j["improc_thrs_G"] = improc_thrs_G;
   j["improc_thrs_R"] = improc_thrs_R;
+  j["improc_gaussFiltSigma_G"] = improc_gaussFiltSigma_G;
+  j["improc_gaussFiltSigma_R"] = improc_gaussFiltSigma_R;
 
   return j.dump();
 }

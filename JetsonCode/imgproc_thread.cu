@@ -52,8 +52,8 @@ void imgproc_thread(AppData& appData){
 		BackPropagator backprop_R(appData.params.img_width, appData.params.img_height, LAMBDA_RED, (float)appData.params.backprop_z_R/1000000.0f);
 
 		// Initialize the BeadFinders
-		BeadsFinder beadsFinder_G(appData.params.img_width, appData.params.img_height, (uint8_t)appData.params.improc_thrs_G);
-		BeadsFinder beadsFinder_R(appData.params.img_width, appData.params.img_height, (uint8_t)appData.params.improc_thrs_R);
+		BeadsFinder beadsFinder_G(appData.params.img_width, appData.params.img_height, (uint8_t)appData.params.improc_thrs_G, (float)appData.params.improc_gaussFiltSigma_G);
+		BeadsFinder beadsFinder_R(appData.params.img_width, appData.params.img_height, (uint8_t)appData.params.improc_thrs_R, (float)appData.params.improc_gaussFiltSigma_R);
 
 		// Allocate the memory for the images
 		appData.img[ImageType::RAW_G].create(appData.params.img_width, appData.params.img_height);
