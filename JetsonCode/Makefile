@@ -48,10 +48,10 @@ RM = /usr/bin/cmake -E remove -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/nvidia/twinbeam-setup/JetsonCode
+CMAKE_SOURCE_DIR = /home/nvidia/Documents/twin_beam_phase/twinbeam-setup/JetsonCode
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/nvidia/twinbeam-setup/JetsonCode
+CMAKE_BINARY_DIR = /home/nvidia/Documents/twin_beam_phase/twinbeam-setup/JetsonCode
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -80,9 +80,9 @@ edit_cache/fast: edit_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/nvidia/twinbeam-setup/JetsonCode/CMakeFiles /home/nvidia/twinbeam-setup/JetsonCode/CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/nvidia/Documents/twin_beam_phase/twinbeam-setup/JetsonCode/CMakeFiles /home/nvidia/Documents/twin_beam_phase/twinbeam-setup/JetsonCode/CMakeFiles/progress.marks
 	$(MAKE) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/nvidia/twinbeam-setup/JetsonCode/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/nvidia/Documents/twin_beam_phase/twinbeam-setup/JetsonCode/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -123,114 +123,6 @@ depend:
 	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/build
 .PHONY : 3D_scanning/fast
 
-AppData.o: AppData.cpp.o
-
-.PHONY : AppData.o
-
-# target to build an object file
-AppData.cpp.o:
-	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/AppData.cpp.o
-.PHONY : AppData.cpp.o
-
-AppData.i: AppData.cpp.i
-
-.PHONY : AppData.i
-
-# target to preprocess a source file
-AppData.cpp.i:
-	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/AppData.cpp.i
-.PHONY : AppData.cpp.i
-
-AppData.s: AppData.cpp.s
-
-.PHONY : AppData.s
-
-# target to generate assembly for a file
-AppData.cpp.s:
-	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/AppData.cpp.s
-.PHONY : AppData.cpp.s
-
-BeadTracker.o: BeadTracker.cpp.o
-
-.PHONY : BeadTracker.o
-
-# target to build an object file
-BeadTracker.cpp.o:
-	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/BeadTracker.cpp.o
-.PHONY : BeadTracker.cpp.o
-
-BeadTracker.i: BeadTracker.cpp.i
-
-.PHONY : BeadTracker.i
-
-# target to preprocess a source file
-BeadTracker.cpp.i:
-	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/BeadTracker.cpp.i
-.PHONY : BeadTracker.cpp.i
-
-BeadTracker.s: BeadTracker.cpp.s
-
-.PHONY : BeadTracker.s
-
-# target to generate assembly for a file
-BeadTracker.cpp.s:
-	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/BeadTracker.cpp.s
-.PHONY : BeadTracker.cpp.s
-
-Misc.o: Misc.cpp.o
-
-.PHONY : Misc.o
-
-# target to build an object file
-Misc.cpp.o:
-	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/Misc.cpp.o
-.PHONY : Misc.cpp.o
-
-Misc.i: Misc.cpp.i
-
-.PHONY : Misc.i
-
-# target to preprocess a source file
-Misc.cpp.i:
-	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/Misc.cpp.i
-.PHONY : Misc.cpp.i
-
-Misc.s: Misc.cpp.s
-
-.PHONY : Misc.s
-
-# target to generate assembly for a file
-Misc.cpp.s:
-	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/Misc.cpp.s
-.PHONY : Misc.cpp.s
-
-Params.o: Params.cpp.o
-
-.PHONY : Params.o
-
-# target to build an object file
-Params.cpp.o:
-	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/Params.cpp.o
-.PHONY : Params.cpp.o
-
-Params.i: Params.cpp.i
-
-.PHONY : Params.i
-
-# target to preprocess a source file
-Params.cpp.i:
-	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/Params.cpp.i
-.PHONY : Params.cpp.i
-
-Params.s: Params.cpp.s
-
-.PHONY : Params.s
-
-# target to generate assembly for a file
-Params.cpp.s:
-	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/Params.cpp.s
-.PHONY : Params.cpp.s
-
 Trial.o: Trial.cpp.o
 
 .PHONY : Trial.o
@@ -258,59 +150,167 @@ Trial.cpp.s:
 	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/Trial.cpp.s
 .PHONY : Trial.cpp.s
 
-keyboard_thread.o: keyboard_thread.cpp.o
+src/AppData.o: src/AppData.cpp.o
 
-.PHONY : keyboard_thread.o
-
-# target to build an object file
-keyboard_thread.cpp.o:
-	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/keyboard_thread.cpp.o
-.PHONY : keyboard_thread.cpp.o
-
-keyboard_thread.i: keyboard_thread.cpp.i
-
-.PHONY : keyboard_thread.i
-
-# target to preprocess a source file
-keyboard_thread.cpp.i:
-	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/keyboard_thread.cpp.i
-.PHONY : keyboard_thread.cpp.i
-
-keyboard_thread.s: keyboard_thread.cpp.s
-
-.PHONY : keyboard_thread.s
-
-# target to generate assembly for a file
-keyboard_thread.cpp.s:
-	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/keyboard_thread.cpp.s
-.PHONY : keyboard_thread.cpp.s
-
-network.o: network.cpp.o
-
-.PHONY : network.o
+.PHONY : src/AppData.o
 
 # target to build an object file
-network.cpp.o:
-	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/network.cpp.o
-.PHONY : network.cpp.o
+src/AppData.cpp.o:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/src/AppData.cpp.o
+.PHONY : src/AppData.cpp.o
 
-network.i: network.cpp.i
+src/AppData.i: src/AppData.cpp.i
 
-.PHONY : network.i
+.PHONY : src/AppData.i
 
 # target to preprocess a source file
-network.cpp.i:
-	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/network.cpp.i
-.PHONY : network.cpp.i
+src/AppData.cpp.i:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/src/AppData.cpp.i
+.PHONY : src/AppData.cpp.i
 
-network.s: network.cpp.s
+src/AppData.s: src/AppData.cpp.s
 
-.PHONY : network.s
+.PHONY : src/AppData.s
 
 # target to generate assembly for a file
-network.cpp.s:
-	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/network.cpp.s
-.PHONY : network.cpp.s
+src/AppData.cpp.s:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/src/AppData.cpp.s
+.PHONY : src/AppData.cpp.s
+
+src/BeadTracker.o: src/BeadTracker.cpp.o
+
+.PHONY : src/BeadTracker.o
+
+# target to build an object file
+src/BeadTracker.cpp.o:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/src/BeadTracker.cpp.o
+.PHONY : src/BeadTracker.cpp.o
+
+src/BeadTracker.i: src/BeadTracker.cpp.i
+
+.PHONY : src/BeadTracker.i
+
+# target to preprocess a source file
+src/BeadTracker.cpp.i:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/src/BeadTracker.cpp.i
+.PHONY : src/BeadTracker.cpp.i
+
+src/BeadTracker.s: src/BeadTracker.cpp.s
+
+.PHONY : src/BeadTracker.s
+
+# target to generate assembly for a file
+src/BeadTracker.cpp.s:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/src/BeadTracker.cpp.s
+.PHONY : src/BeadTracker.cpp.s
+
+src/Misc.o: src/Misc.cpp.o
+
+.PHONY : src/Misc.o
+
+# target to build an object file
+src/Misc.cpp.o:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/src/Misc.cpp.o
+.PHONY : src/Misc.cpp.o
+
+src/Misc.i: src/Misc.cpp.i
+
+.PHONY : src/Misc.i
+
+# target to preprocess a source file
+src/Misc.cpp.i:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/src/Misc.cpp.i
+.PHONY : src/Misc.cpp.i
+
+src/Misc.s: src/Misc.cpp.s
+
+.PHONY : src/Misc.s
+
+# target to generate assembly for a file
+src/Misc.cpp.s:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/src/Misc.cpp.s
+.PHONY : src/Misc.cpp.s
+
+src/Params.o: src/Params.cpp.o
+
+.PHONY : src/Params.o
+
+# target to build an object file
+src/Params.cpp.o:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/src/Params.cpp.o
+.PHONY : src/Params.cpp.o
+
+src/Params.i: src/Params.cpp.i
+
+.PHONY : src/Params.i
+
+# target to preprocess a source file
+src/Params.cpp.i:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/src/Params.cpp.i
+.PHONY : src/Params.cpp.i
+
+src/Params.s: src/Params.cpp.s
+
+.PHONY : src/Params.s
+
+# target to generate assembly for a file
+src/Params.cpp.s:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/src/Params.cpp.s
+.PHONY : src/Params.cpp.s
+
+src/keyboard_thread.o: src/keyboard_thread.cpp.o
+
+.PHONY : src/keyboard_thread.o
+
+# target to build an object file
+src/keyboard_thread.cpp.o:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/src/keyboard_thread.cpp.o
+.PHONY : src/keyboard_thread.cpp.o
+
+src/keyboard_thread.i: src/keyboard_thread.cpp.i
+
+.PHONY : src/keyboard_thread.i
+
+# target to preprocess a source file
+src/keyboard_thread.cpp.i:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/src/keyboard_thread.cpp.i
+.PHONY : src/keyboard_thread.cpp.i
+
+src/keyboard_thread.s: src/keyboard_thread.cpp.s
+
+.PHONY : src/keyboard_thread.s
+
+# target to generate assembly for a file
+src/keyboard_thread.cpp.s:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/src/keyboard_thread.cpp.s
+.PHONY : src/keyboard_thread.cpp.s
+
+src/network.o: src/network.cpp.o
+
+.PHONY : src/network.o
+
+# target to build an object file
+src/network.cpp.o:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/src/network.cpp.o
+.PHONY : src/network.cpp.o
+
+src/network.i: src/network.cpp.i
+
+.PHONY : src/network.i
+
+# target to preprocess a source file
+src/network.cpp.i:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/src/network.cpp.i
+.PHONY : src/network.cpp.i
+
+src/network.s: src/network.cpp.s
+
+.PHONY : src/network.s
+
+# target to generate assembly for a file
+src/network.cpp.s:
+	$(MAKE) -f CMakeFiles/3D_scanning.dir/build.make CMakeFiles/3D_scanning.dir/src/network.cpp.s
+.PHONY : src/network.cpp.s
 
 # Help Target
 help:
@@ -321,27 +321,27 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... 3D_scanning"
 	@echo "... edit_cache"
-	@echo "... AppData.o"
-	@echo "... AppData.i"
-	@echo "... AppData.s"
-	@echo "... BeadTracker.o"
-	@echo "... BeadTracker.i"
-	@echo "... BeadTracker.s"
-	@echo "... Misc.o"
-	@echo "... Misc.i"
-	@echo "... Misc.s"
-	@echo "... Params.o"
-	@echo "... Params.i"
-	@echo "... Params.s"
 	@echo "... Trial.o"
 	@echo "... Trial.i"
 	@echo "... Trial.s"
-	@echo "... keyboard_thread.o"
-	@echo "... keyboard_thread.i"
-	@echo "... keyboard_thread.s"
-	@echo "... network.o"
-	@echo "... network.i"
-	@echo "... network.s"
+	@echo "... src/AppData.o"
+	@echo "... src/AppData.i"
+	@echo "... src/AppData.s"
+	@echo "... src/BeadTracker.o"
+	@echo "... src/BeadTracker.i"
+	@echo "... src/BeadTracker.s"
+	@echo "... src/Misc.o"
+	@echo "... src/Misc.i"
+	@echo "... src/Misc.s"
+	@echo "... src/Params.o"
+	@echo "... src/Params.i"
+	@echo "... src/Params.s"
+	@echo "... src/keyboard_thread.o"
+	@echo "... src/keyboard_thread.i"
+	@echo "... src/keyboard_thread.s"
+	@echo "... src/network.o"
+	@echo "... src/network.i"
+	@echo "... src/network.s"
 .PHONY : help
 
 

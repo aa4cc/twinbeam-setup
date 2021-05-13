@@ -5,6 +5,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 
 set(CMAKE_SOURCE_DIR "/home/nvidia/tegra_multimedia_api/argus")
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_MODULE_PATH}")
+set(SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 set(CUDA_SEPARABLE_COMPILATION ON)
@@ -21,25 +22,28 @@ set(CUDA_NVCC_FLAGS #Xavier
         )
 
 SET(OpenCV_DIR "usr/lib")
-SET(HEADERS_FOLDER "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/nlohmann")
+SET(HEADERS_FOLDER "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/nlohmann")
 FIND_PACKAGE(OpenCV REQUIRED COMPONENTS core highgui cudaarithm cudawarping cudaimgproc cudafilters)
 
 set(SOURCES
         Trial.cpp
-		Kernels.cu
-		Misc.cpp
-		BackPropagator.cu
-		BeadsFinder.cu
-		BeadTracker.cpp
-		camera_thread.cu
-		keyboard_thread.cpp
-		display_thread.cu
-		imgproc_thread.cu
-		CameraController.cu
-		Params.cpp
-		AppData.cpp
-		network.cpp
-		ImageData.cu
+		${SRC_DIR}/Kernels.cu
+		${SRC_DIR}/Phase_Kernels.cu
+		${SRC_DIR}/cudaDebug.cu
+		${SRC_DIR}/fista.cu
+		${SRC_DIR}/Misc.cpp
+		${SRC_DIR}/BackPropagator.cu
+		${SRC_DIR}/BeadsFinder.cu
+		${SRC_DIR}/BeadTracker.cpp
+		${SRC_DIR}/camera_thread.cu
+		${SRC_DIR}/keyboard_thread.cpp
+		${SRC_DIR}/display_thread.cu
+		${SRC_DIR}/imgproc_thread.cu
+		${SRC_DIR}/CameraController.cu
+		${SRC_DIR}/Params.cpp
+		${SRC_DIR}/AppData.cpp
+		${SRC_DIR}/network.cpp
+		${SRC_DIR}/ImageData.cu
         )
 
 include_directories(
