@@ -49,10 +49,10 @@ void imgproc_thread(AppData& appData){
 		// At this point, the app is in the AppData::AppState::INITIALIZING state, thus we initialize all needed stuff
 
 		// Initialize the BackPropagator for the green image
-		BackPropagator backprop_G(appData.params.img_width, appData.params.img_height, LAMBDA_GREEN, (float)appData.params.backprop_z_G/1000000.0f, appData.streamBack);
+		BackPropagator backprop_G(appData.params.img_width, appData.params.img_height, LAMBDA_GREEN, (float)appData.params.backprop_z_G/1000000.0f, 0);
 		// Initialize the BackPropagator for the red image
-		BackPropagator backprop_R(appData.params.img_width, appData.params.img_height, LAMBDA_RED, (float)appData.params.backprop_z_R/1000000.0f, appData.streamBack);
-		Fista fista((double)appData.params.backprop_z_G/1000000.0f,
+		BackPropagator backprop_R(appData.params.img_width, appData.params.img_height, LAMBDA_RED, (float)appData.params.backprop_z_R/1000000.0f, 0);
+		Fista fista(appData.params.z,
 			appData.params.rconstr,
 			appData.params.iconstr,
 			appData.params.mu,
@@ -62,11 +62,11 @@ void imgproc_thread(AppData& appData){
 			PIXEL_DX,
 			LAMBDA_GREEN,
 			REFRACTION_INDEX,
-			appData.streamPhase );
+			0);
 
 		// Initialize the BeadFinders
-		BeadsFinder beadsFinder_G(appData.params.img_width, appData.params.img_height, (uint8_t)appData.params.improc_thrs_G, (float)appData.params.improc_gaussFiltSigma_G, appData.streamBack);
-		BeadsFinder beadsFinder_R(appData.params.img_width, appData.params.img_height, (uint8_t)appData.params.improc_thrs_R, (float)appData.params.improc_gaussFiltSigma_R, appData.streamBack);
+		BeadsFinder beadsFinder_G(appData.params.img_width, appData.params.img_height, (uint8_t)appData.params.improc_thrs_G, (float)appData.params.improc_gaussFiltSigma_G, 0);
+		BeadsFinder beadsFinder_R(appData.params.img_width, appData.params.img_height, (uint8_t)appData.params.improc_thrs_R, (float)appData.params.improc_gaussFiltSigma_R, 0);
 
 		// Allocate the memory for the images
 		appData.img[ImageType::RAW_G].create(appData.params.img_width, appData.params.img_height);

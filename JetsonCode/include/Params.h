@@ -48,6 +48,7 @@ public:
     std::vector<double> rconstr{-2, 0};
     std::vector<double> iconstr{-1, 1};
     double mu = 0.02;
+    double z = 2.303e-3;
 
     // Constructor
     Params() {};

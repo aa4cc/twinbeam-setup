@@ -101,36 +101,36 @@ void client_thread(AppData& appData, sockpp::tcp_socket sock) {
 					ImageData<uint8_t> temp_img2(appData.params.img_width, appData.params.img_height);
 					switch(buf[1]) {
 						case 0:
-							appData.img[ImageType::BACKPROP_G].copyToAsync(temp_img, appData.streamNetwork);
+							appData.img[ImageType::BACKPROP_G].copyToAsync(temp_img, 0);
 							break;
 						case 1:
-							appData.img[ImageType::BACKPROP_R].copyToAsync(temp_img, appData.streamNetwork);
+							appData.img[ImageType::BACKPROP_R].copyToAsync(temp_img, 0);
 							break;
 						case 2:
-							appData.img[ImageType::RAW_G].copyToAsync(temp_img, appData.streamNetwork);
+							appData.img[ImageType::RAW_G].copyToAsync(temp_img, 0);
 							break;
 						case 3:
-							appData.img[ImageType::RAW_R].copyToAsync(temp_img, appData.streamNetwork);
+							appData.img[ImageType::RAW_R].copyToAsync(temp_img, 0);
 							break;
 						case 4:
 							// Send both, the image from G and R channel
-							appData.img[ImageType::BACKPROP_G].copyToAsync(temp_img, appData.streamNetwork);
-							appData.img[ImageType::BACKPROP_R].copyToAsync(temp_img2, appData.streamNetwork);
+							appData.img[ImageType::BACKPROP_G].copyToAsync(temp_img, 0);
+							appData.img[ImageType::BACKPROP_R].copyToAsync(temp_img2, 0);
 							break;
 						case 5:
 							// Send both, the image from G and R channel
-							appData.img[ImageType::RAW_G].copyToAsync(temp_img, appData.streamNetwork);
-							appData.img[ImageType::RAW_R].copyToAsync(temp_img2, appData.streamNetwork);
+							appData.img[ImageType::RAW_G].copyToAsync(temp_img, 0);
+							appData.img[ImageType::RAW_R].copyToAsync(temp_img2, 0);
 							break;
 						default:
 							cerr << "ERROR: Unknown image type recieved with image request" << endl;
 							break;
 					}
 					
-					sock.write_n(temp_img.hostPtrAsync(appData.streamNetwork,true), sizeof(uint8_t)*appData.get_area());
+					sock.write_n(temp_img.hostPtrAsync(0,true), sizeof(uint8_t)*appData.get_area());
 					if(buf[1] == 4) {
 						// Both RAW_G and RAW_R images are to be sent
-						sock.write_n(temp_img2.hostPtrAsync(appData.streamNetwork,true), sizeof(uint8_t)*appData.get_area());
+						sock.write_n(temp_img2.hostPtrAsync(0,true), sizeof(uint8_t)*appData.get_area());
 					}
 
 					if(appData.params.debug) printf("INFO: Image sent.\n");
