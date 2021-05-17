@@ -231,6 +231,15 @@ __global__ void extend(int count, int multiple, cufftDoubleComplex* in, cufftDou
     }
 }
 
+//TODO: Not very robust - expects 4 MP to 1 MP exactly
+__global__ void shrinkTo1MP(int N, int M, double* in, double* out){
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+    for(int i = index; i < N*M; i += stride){
+        out[i] = (in[i*2 + 2048*(i/M)] + in[i*2 + 2048*(i/M + 1)] + in[i*2 + 2048*(i/M+1) + 1] + in[i*2 + 2048*(i/M+1)])/4.0f;
+    }
+}
+
 //
 // CONVERSION KERNELS
 //

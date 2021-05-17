@@ -39,7 +39,7 @@ void display_thread(AppData& appData){
 		if(!appData.waitTillState(AppData::AppState::INITIALIZING)) break;
 
 		// Allocate the memory
-		ImageData<uint8_t> img_copy(appData.params.img_width, appData.params.img_height);
+		ImageData<uint8_t> img_copy(DISP_WIDTH, DISP_HEIGHT);
 
         // Set the flag indicatinf whether the window is opened or not to false
         bool windowOpened = false;
@@ -106,12 +106,12 @@ void display_thread(AppData& appData){
                 // Copy the image to the local copy
                 appData.img[appData.params.displayImageType].copyTo(img_copy);
 
-                const cv::cuda::GpuMat c_img(cv::Size(appData.params.img_width, appData.params.img_height), CV_8U, img_copy.devicePtr());
+                const cv::cuda::GpuMat c_img(cv::Size(DISP_WIDTH, DISP_HEIGHT), CV_8U, img_copy.devicePtr());
 
                 // Resize the image so that it fits the display
-                cv::cuda::resize(c_img, c_img_resized, cv::Size(DISP_WIDTH, DISP_HEIGHT));	
+                //cv::cuda::resize(c_img, c_img_resized, cv::Size(DISP_WIDTH, DISP_HEIGHT));	
                 
-                c_img_resized.download(img_disp);
+                c_img.download(img_disp);
 
                 if (appData.params.savevideo) {
                     video_writer.write(img_disp);
@@ -126,7 +126,7 @@ void display_thread(AppData& appData){
                 // Draw bead positions (if beadsearch enabled and show_markers flag active)
                 if((appData.params.beadsearch_G || appData.params.beadsearch_R) && (appData.params.show_markers || appData.params.show_labels)) {
 
-                    if(appData.params.beadsearch_G && (appData.params.displayImageType==ImageType::RAW_PHASE || appData.params.displayImageType==ImageType::MODULUS)) {
+                    if(appData.params.beadsearch_G && (appData.params.displayImageType==ImageType::PHASE || appData.params.displayImageType==ImageType::MODULUS)) {
                         lock_guard<mutex> mtx_bp(appData.mtx_bp_G);
                         for(auto &b : appData.bead_positions_G) {
                             auto x = (b.x*DISP_WIDTH)/appData.params.img_width;

@@ -29,7 +29,6 @@ AppData::AppData() {
 	img[ImageType::BACKPROP_R] = R_bckp;
 	img[ImageType::MODULUS] = modulus;
 	img[ImageType::PHASE] = phase;
-	img[ImageType::RAW_PHASE] = raw_phase;
 }
 
 void AppData::startTheApp() {

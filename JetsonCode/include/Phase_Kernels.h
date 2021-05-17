@@ -28,6 +28,8 @@ __global__ void rowConvolution(int N, int M, double diameter, double* kernel, do
 __global__ void offset(int count, double roff, double ioff, cufftDoubleComplex* in, cufftDoubleComplex* out);
 __global__ void offsetf(int count, double roff, double* in, double* out, bool sign);
 __global__ void extend(int count, int multiple, cufftDoubleComplex* in, cufftDoubleComplex* out);
+//TODO: Not very robust - expects 4 MP to 1 MP exactly
+__global__ void shrinkTo1MP(int N, int M, double* in, double* out);
 
 // Type conversion kernels
 __global__ void C2Z(int count, cufftComplex* in, cufftDoubleComplex* out);

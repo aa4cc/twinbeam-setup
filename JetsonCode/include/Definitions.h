@@ -33,8 +33,7 @@ enum class ImageType {
 	BACKPROP_G,
 	BACKPROP_R,
 	MODULUS,
-	PHASE,
-	RAW_PHASE
+	PHASE
 };
 
 enum class MessageType{

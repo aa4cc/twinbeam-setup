@@ -29,7 +29,7 @@
     "improc_gaussFiltSigma_R": 7,
     "cost": false,
     "iters0": 12,
-    "iters": 1,
+    "iters": 2,
     "mu": 0.02,
     "rconstr": [-2,0],
     "iconstr": [-1,1]

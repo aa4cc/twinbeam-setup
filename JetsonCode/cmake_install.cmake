@@ -1,4 +1,4 @@
-# Install script for directory: /home/nvidia/Documents/twin_beam_phase/twinbeam-setup/JetsonCode
+# Install script for directory: /home/nvidia/Documents/twinbeam-setup/JetsonCode
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -45,5 +45,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/home/nvidia/Documents/twin_beam_phase/twinbeam-setup/JetsonCode/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/home/nvidia/Documents/twinbeam-setup/JetsonCode/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

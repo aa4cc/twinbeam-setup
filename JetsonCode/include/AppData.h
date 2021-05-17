@@ -43,6 +43,7 @@ public:
 	std::mutex cam_mtx;
 	ImageData<uint8_t> camIG, camIR;
 	ImageData<double> phaseImg;
+	ImageData<double> phaseImgSmall;
 
 	cudaStream_t streamBack, streamPhase, streamNetwork;
 

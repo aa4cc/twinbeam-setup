@@ -13,6 +13,7 @@
 #include "BackPropagator.h"
 #include "fista.h"
 #include "Phase_Kernels.h"
+#include "Definitions.h"
 
 using namespace std;
 using namespace std::chrono;
@@ -56,10 +57,10 @@ void imgproc_thread(AppData& appData){
 			appData.params.rconstr,
 			appData.params.iconstr,
 			appData.params.mu,
-			appData.params.img_width,
-			appData.params.img_height,
+			DISP_WIDTH,
+			DISP_HEIGHT,
 			appData.params.cost,
-			PIXEL_DX,
+			PIXEL_DX*2,
 			LAMBDA_GREEN,
 			REFRACTION_INDEX,
 			0);
@@ -73,10 +74,10 @@ void imgproc_thread(AppData& appData){
 		appData.img[ImageType::RAW_R].create(appData.params.img_width, appData.params.img_height);
 		appData.img[ImageType::BACKPROP_G].create(appData.params.img_width, appData.params.img_height);
 		appData.img[ImageType::BACKPROP_R].create(appData.params.img_width, appData.params.img_height);
-		appData.img[ImageType::MODULUS].create(appData.params.img_width, appData.params.img_height);
-		appData.img[ImageType::PHASE].create(appData.params.img_width, appData.params.img_height);
-		appData.img[ImageType::RAW_PHASE].create(appData.params.img_width, appData.params.img_height);
+		appData.img[ImageType::MODULUS].create(DISP_HEIGHT, DISP_HEIGHT);
+		appData.img[ImageType::PHASE].create(DISP_HEIGHT, DISP_HEIGHT);
 		appData.phaseImg.create(appData.params.img_width, appData.params.img_height);
+		appData.phaseImgSmall.create(DISP_HEIGHT, DISP_HEIGHT);
 
 		// Initialize the counters for measuring the cycle duration and jitter
 		double iteration_count 			= 0;
@@ -96,7 +97,6 @@ void imgproc_thread(AppData& appData){
 		if(appData.params.debug) printf("INFO: imgproc_thread: entering the running stage\n");
 
 		while(appData.appStateIs(AppData::AppState::RUNNING)) {
-			auto t_cycle_start = steady_clock::now();
 
             // wait till a new image is ready
             std::unique_lock<std::mutex> lk(appData.cam_mtx);
@@ -104,6 +104,7 @@ void imgproc_thread(AppData& appData){
 			// unlock the mutex so that the camera thread can proceed to capture a new image
 			lk.unlock();
 			
+			auto t_cycle_start = steady_clock::now();
 			// If the app entered the EXITING state, break the loop and finish the thread
 			if(appData.appStateIs(AppData::AppState::EXITING)) break;
 
@@ -111,8 +112,10 @@ void imgproc_thread(AppData& appData){
 			auto t_cp_start = steady_clock::now();
 			appData.camIG.copyToAsync(appData.img[ImageType::RAW_G], 0);
 			appData.camIR.copyToAsync(appData.img[ImageType::RAW_R], 0);
-			appData.camIG.copyToAsync(appData.img[ImageType::RAW_PHASE], 0);
-			U82D<<<N_BLOCKS,N_THREADS>>>(appData.params.img_width*appData.params.img_height, appData.img[ImageType::RAW_PHASE].devicePtr(), appData.phaseImg.devicePtr());
+			U82D<<<N_BLOCKS,N_THREADS>>>(appData.params.img_width*appData.params.img_height, 
+			                             appData.img[ImageType::RAW_G].devicePtr(), appData.phaseImg.devicePtr());
+			shrinkTo1MP<<<N_BLOCKS,N_THREADS>>>(DISP_HEIGHT, DISP_WIDTH, 
+			                                    appData.phaseImg.devicePtr(), appData.phaseImgSmall.devicePtr());
 			auto t_cp_end = steady_clock::now();
 
 			// process the image
@@ -123,10 +126,11 @@ void imgproc_thread(AppData& appData){
 			auto t_backprop_end = steady_clock::now();
 			auto t_phase_start = steady_clock::now();
 			if(iteration_count == 0)
-				fista.iterate(appData.phaseImg.devicePtr(), appData.params.iters0, false);
+				fista.iterate(appData.phaseImgSmall.devicePtr(), appData.params.iters0, false);
 			else
-				fista.iterate(appData.phaseImg.devicePtr(), appData.params.iters, true);
+				fista.iterate(appData.phaseImgSmall.devicePtr(), appData.params.iters, true);
 			fista.update(appData.img[ImageType::MODULUS].devicePtr(), appData.img[ImageType::PHASE].devicePtr());
+			cudaDeviceSynchronize();
 			auto t_phase_end = steady_clock::now();
 
 			// find the beads (if enabled)
@@ -149,6 +153,7 @@ void imgproc_thread(AppData& appData){
 					appData.beadTracker_R.update(appData.bead_positions_R);
 				}
 			}
+			cudaDeviceSynchronize();
 			auto t_beadsfinder_end = steady_clock::now();
 
 			// Send the images to the subscribers
