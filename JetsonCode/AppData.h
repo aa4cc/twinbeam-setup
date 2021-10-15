@@ -7,6 +7,7 @@
 #define APPDATA_H
 
 #include <mutex> 
+#include <shared_mutex>
 #include <condition_variable>
 #include <vector>
 #include <map>

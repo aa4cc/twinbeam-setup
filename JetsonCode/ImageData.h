@@ -21,7 +21,7 @@ private:
     int width, height;           // dimensions of the image
 
 public:
-    mutable std::shared_timed_mutex mtx;
+    std::mutex mtx;
     ImageData() { };
     // ImageData(const ImageData<T>&) = default;
     ImageData<T>& operator=(const ImageData<T>& id) {
@@ -41,7 +41,7 @@ public:
     T* hostPtr(bool sync=false);
     T* devicePtr();
 
-    void copyTo(const ImageData<T>& dst);
+    void copyTo(ImageData<T>& dst);
 
     ~ImageData() { release(); };
 };

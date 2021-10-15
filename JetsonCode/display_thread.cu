@@ -11,6 +11,7 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core/cuda.hpp>
+#include <opencv2/cudawarping.hpp>
 #include <pthread.h>
 #include "display_thread.h"
 

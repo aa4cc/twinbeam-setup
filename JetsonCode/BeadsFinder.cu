@@ -33,7 +33,7 @@ void BeadsFinder::findBeads(ImageData<uint8_t>& inputImg)
     const cv::Mat img_write(cv::Size(im_width, im_height), CV_8U);
 
     {// Limit the scope of the mutex
-        std::shared_lock<std::shared_timed_mutex> l(inputImg.mtx);
+        std::lock_guard<std::mutex> l(inputImg.mtx);
         // Blur the image by the gaussian filter
         gaussianFilter->apply(img_in, img_filt);
     }

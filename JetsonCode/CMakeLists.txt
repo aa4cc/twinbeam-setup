@@ -9,10 +9,13 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_MODULE_PATH}")
 set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 set(CUDA_SEPARABLE_COMPILATION ON)
 
+find_path(ARGUS_INCLUDE_DIR Argus/Argus.h
+          HINTS "/usr/src/jetson_multimedia_api/argus/include")
+set(CMAKE_MODULE_PATH "/usr/src/jetson_multimedia_api/argus/cmake" "${CMAKE_MODULE_PATH}")
+
 find_package(CUDA REQUIRED)
 find_package(Argus REQUIRED)
 find_package(EGL REQUIRED)
-
 
 set(CUDA_NVCC_FLAGS #Xavier
 		${CUDA_NVCC_FLAGS};

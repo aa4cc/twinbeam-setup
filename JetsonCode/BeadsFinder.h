@@ -9,6 +9,7 @@
 #include <mutex>
 #include <vector>
 #include "cuda.h"
+#include <opencv2/cudafilters.hpp>
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/cuda.hpp>
 #include "ImageData.h"

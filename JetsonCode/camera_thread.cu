@@ -208,8 +208,8 @@ void camera_thread(AppData& appData){
 				lock(appData.cam_mtx, appData.camIG.mtx, appData.camIR.mtx);
 				// make sure all mutexes are unlocked when the scope is left
 				lock_guard<mutex> lk(appData.cam_mtx, adopt_lock);
-				unique_lock<shared_timed_mutex> G_lk(appData.camIG.mtx, adopt_lock);
-				unique_lock<shared_timed_mutex> R_lk(appData.camIR.mtx, adopt_lock);
+				std::lock_guard<std::mutex> G_lk(appData.camIG.mtx, adopt_lock);
+				std::lock_guard<std::mutex> R_lk(appData.camIR.mtx, adopt_lock);
 
 				yuv2bgr<<<numBlocks, NBLOCKS>>>(appData.params.img_width, appData.params.img_height,
 												appData.params.img_offset_X, appData.params.img_offset_Y,
