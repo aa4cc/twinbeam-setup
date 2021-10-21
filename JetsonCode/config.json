@@ -22,7 +22,7 @@
     "img_offset_R2G_X": 550,
     "img_offset_R2G_Y": 20,
     "backprop_z_R": 3100,
-    "backprop_z_G": 2400,
+    "backprop_z_G": 2347,
     "improc_thrs_G": 80,
     "improc_thrs_R": 140,
     "improc_gaussFiltSigma_G": 5,
@@ -30,7 +30,7 @@
     "cost": false,
     "iters0": 12,
     "iters": 2,
-    "mu": 0.02,
+    "mu": 0.2,
     "rconstr": [-2,0],
     "iconstr": [-1,1]
 }

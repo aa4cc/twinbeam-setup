@@ -54,8 +54,6 @@ void imgproc_thread(AppData& appData){
 		// Initialize the BackPropagator for the red image
 		BackPropagator backprop_R(appData.params.img_width, appData.params.img_height, LAMBDA_RED, (float)appData.params.backprop_z_R/1000000.0f, 0);
 		Fista fista(appData.params.z,
-			appData.params.rconstr,
-			appData.params.iconstr,
 			appData.params.mu,
 			DISP_WIDTH,
 			DISP_HEIGHT,

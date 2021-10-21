@@ -155,6 +155,24 @@ __global__ void strictBounds(int count, cufftDoubleComplex* arr, double r_min, d
     }
 }
 
+__global__ void positivityBounds(int count, cufftDoubleComplex* arr){
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+    for(int i = index; i < count; i += stride){
+        if(arr[i].x > 0)
+            arr[i].x = 0;
+    }
+}
+
+
+__global__ void strictBoundsf(int count, double* in, double min, double max){
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+    for(int i = index; i < count; i += stride){
+        in[i] = fmax(fmin(max, in[i]), min);
+    }
+}
+
 __global__ void softBounds(int count, cufftDoubleComplex* arr, double mu, double t){
     double tmp = mu*t;
     int index = blockIdx.x * blockDim.x + threadIdx.x;
